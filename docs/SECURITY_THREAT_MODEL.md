@@ -1,4 +1,4 @@
-# Security threat model — Phase 0 baseline
+# Security threat model — Phase 0/1 baseline
 
 ## Assets and trust boundaries
 
@@ -18,6 +18,15 @@ Assets: hosting credentials/tokens, customer site/database/email data, migration
 | Malicious provider output / AI prompt injection | Treat response/content as data, schema validate, redact, do not execute embedded instructions; deterministic policy engine authorizes actions |
 | Dependency or license risk | Lockfile, pinned runtime, dependency/SBOM and license scanning in CI |
 
+## Implemented local prototype controls
+
+- One-time bootstrap token file is created with mode `0600`; only its digest is stored in SQLite and it is consumed after the first owner is created.
+- Passwords use salted `scrypt` hashes. Random session tokens are stored by hash, cookies are `HttpOnly`/`SameSite=Strict`, sessions expire after 12 hours, and logout/disabled-user checks revoke access.
+- The local SQLite schema scopes accounts and jobs to an organization. API reads, site lookups, job lookups, audit reads and refresh requests include that scope. The worker rechecks the requesting actor's active state, organization and role.
+- Cookie-authenticated writes enforce same-origin and the API limits failed login/bootstrap attempts per client IP in the current process.
+- Owner/admin can query their own bootstrap and refresh audit records; the test verifies cross-tenant isolation and checks bootstrap credentials do not appear in events. This local log is not tamper-evident.
+- Executed negative checks cover anonymous access, cross-tenant reads/actions, audit isolation, viewer-role restrictions, worker policy rechecks, session expiry/logout, cross-origin writes and login throttling. Evidence: `tests/inventory-api.test.mjs` and `docs/TEST_EVIDENCE/2026-11-09-local-poc.md`.
+
 ## Current blockers
 
-The local proof has no authentication, tenant authorization, vault, provider egress control or real audit integrity. Do not put real hosting secrets/data into it or expose it as a production service. Threat-based verification is backlog ORB-005 and ORB-010.
+The local proof still lacks MFA/recovery, SSO, a vault, provider egress control, distributed rate limiting, production TLS/proxy guarantees and real audit integrity. It is loopback-only and synthetic-data-only. Do not add real hosting secrets/data or expose it as a production service. Remaining security work is tracked in ORB-005 and ORB-010.

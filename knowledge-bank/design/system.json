@@ -9,6 +9,7 @@
     "type": {"family": "system sans-serif until font/licensing decision", "body_px": 14, "table_px": 13, "heading_scale": [20, 24, 32]}
   },
   "screens": [
+    {"id": "SCREEN-AUTH", "states": ["bootstrap-required", "sign-in", "busy", "invalid-token", "invalid-credentials", "rate-limited", "session-expired"], "test_ids": ["AUTH-UI-001"]},
     {"id": "SCREEN-OVERVIEW", "states": ["loading", "populated", "empty", "error", "stale", "permission-restricted"], "test_ids": ["INV-UI-001", "A11Y-KEYBOARD-001"]},
     {"id": "SCREEN-ACCOUNT-DETAIL", "states": ["loading", "populated", "empty", "error", "stale", "permission-restricted"], "test_ids": ["ACCOUNT-DETAIL-001"]},
     {"id": "SCREEN-JOB-CENTER", "states": ["queued", "running", "complete", "failed", "blocked", "retrying"], "test_ids": ["JOB-UI-001"]}

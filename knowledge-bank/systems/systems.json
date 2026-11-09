@@ -36,7 +36,9 @@
         "Inventory",
         "Connections",
         "Jobs",
-        "Audit"
+        "Audit",
+        "bootstrap/session authentication",
+        "organization-scoped inventory and jobs"
       ],
       "dependencies": [
         "SYS-POSTGRES",
@@ -51,7 +53,9 @@
       ],
       "evidence_references": [
         "docs/ARCHITECTURE.md",
-        "docs/DATA_MODEL.md"
+        "docs/DATA_MODEL.md",
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "tests/inventory-api.test.mjs"
       ]
     },
     {

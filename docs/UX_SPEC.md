@@ -1,5 +1,9 @@
 # UX specification — initial operations dashboard
 
+## Authentication entry
+
+First run uses a setup form with a one-time token, owner email, and new password. Later visits use the email/password sign-in form. Show generic authentication errors, announce errors accessibly, and never reflect a supplied password or token. The one-time token is read by the local operator from `.data/first-admin.token`; the application must not display or log it. This is an early local prototype flow, not a production-ready identity or recovery experience.
+
 ## Information architecture
 
 Primary order: organization/client context -> hosting accounts -> websites -> operations. Global nav: Overview, Accounts, Websites, Migrations, Storage, Jobs, Settings. Global search/command palette and alerts are later slices. The first page emphasizes current account/site health, stale data, recent jobs and a safe refresh action.

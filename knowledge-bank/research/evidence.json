@@ -7,7 +7,10 @@
       "finding": "No. UAPI addresses cPanel account features; WHM Transfer Tool has separately documented root or sudo/su requirements.",
       "evidence_quality": "primary_official",
       "confidence": "high",
-      "source_urls": ["https://api.docs.cpanel.net/cpanel/introduction", "https://docs.cpanel.net/whm/transfers/transfer-tool/"],
+      "source_urls": [
+        "https://api.docs.cpanel.net/cpanel/introduction",
+        "https://docs.cpanel.net/whm/transfers/transfer-tool/"
+      ],
       "checked_at": "2026-11-09",
       "revisit_trigger": "Before implementing a new WHM operation or when cPanel changes API behavior"
     },
@@ -17,7 +20,9 @@
       "finding": "No. Provider feature configuration can disable Remote Database Access; discover and test per host.",
       "evidence_quality": "primary_official",
       "confidence": "high",
-      "source_urls": ["https://docs.cpanel.net/cpanel/databases/remote-mysql/"],
+      "source_urls": [
+        "https://docs.cpanel.net/cpanel/databases/remote-mysql/"
+      ],
       "checked_at": "2026-11-09",
       "revisit_trigger": "Before designing remote DB setup UX or claiming support"
     },
@@ -27,9 +32,25 @@
       "finding": "Estimated weighted evaluation favors React/TypeScript + NestJS modular monolith + PostgreSQL/BullMQ/Redis; local SQLite is a constrained prototype only.",
       "evidence_quality": "estimate",
       "confidence": "medium",
-      "source_urls": ["https://docs.nestjs.com/techniques/database", "https://docs.nestjs.com/techniques/queues", "https://laravel.com/framework/docs/queues"],
+      "source_urls": [
+        "https://docs.nestjs.com/techniques/database",
+        "https://docs.nestjs.com/techniques/queues",
+        "https://laravel.com/framework/docs/queues"
+      ],
       "checked_at": "2026-11-09",
       "revisit_trigger": "If install/resource measurements or security review contradict the ADR"
+    },
+    {
+      "id": "RES-AUTH-MFA-RECOVERY",
+      "question": "Which MFA and account-recovery properties should guide ORBICORE auth design?",
+      "finding": "Prefer a phishing-resistant cryptographic option such as WebAuthn/passkeys; OTP manual entry is not phishing-resistant. Recovery events should notify the subscriber. Adopt one-time recovery codes with hashed storage, strong reauthentication for regeneration, session revocation, and a documented self-hosted owner recovery runbook. This is a design recommendation; no NIST assurance-level compliance is claimed.",
+      "evidence_quality": "primary_official",
+      "confidence": "high",
+      "source_urls": [
+        "https://pages.nist.gov/800-63-4/sp800-63b.html"
+      ],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "Before implementing MFA/recovery or when NIST SP 800-63B changes"
     }
   ]
 }

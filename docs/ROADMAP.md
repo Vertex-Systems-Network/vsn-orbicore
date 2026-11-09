@@ -5,7 +5,7 @@ The product roadmap follows Sections 17 and 21 of the master directive. Phases a
 | Phase | Scope | Exit evidence | Current status |
 |---|---|---|---|
 | 0 | Research, feasibility, permissions, workflows, architecture, UX, backlog, mock inventory PoC | Current official-source research, weighted ADR, populated banks/specs, internally consistent diagrams, local PoC tests | Complete; exit evidence recorded in `docs/TEST_EVIDENCE/2026-11-09-local-poc.md` |
-| 1 | Web/API shell, auth/tenants, PostgreSQL, durable jobs, policy/audit, doctor, installer skeleton | Fresh local install and walkthrough; auth/tenant isolation; jobs and recovery tests | In progress; ORB-005 auth/tenant boundaries next; ORB-004 infrastructure blocked externally |
+| 1 | Web/API shell, auth/tenants, PostgreSQL, durable jobs, policy/audit, doctor, installer skeleton | Fresh local install and walkthrough; auth/tenant isolation; jobs and recovery tests | In progress; ORB-005 local auth/tenant implementation is being hardened; ORB-004 infrastructure blocked externally |
 | 2 | cPanel/WHM connection and inventory | Mock suite plus authorized live inventory with isolation, staleness and errors | Blocked external for live provider |
 | 3 | Permission-aware management operations | Reversible operations with evidence and policy tests | Not started |
 | 4 | Migration engine | Local and authorized sandbox proof of checksum, partial failure, rollback and DNS gate | Not started; live proof blocked external |

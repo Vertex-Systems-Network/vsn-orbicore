@@ -164,22 +164,22 @@
     },
     {
       "id": "SEC-SECRET-001",
-      "test": "Secret references are stored without serializing raw credentials",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "test": "Passwords are stored as scrypt hashes and one-time bootstrap token hashes are consumed at setup.",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Synthetic local SQLite fixture only; no MFA, external vault, or production session store"
       ]
     },
     {
       "id": "SEC-TENANT-001",
-      "test": "Unauthenticated and cross-tenant requests are denied at API and worker boundaries",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "test": "Unauthenticated inventory is denied and organizations see only their own accounts, sites, and refresh targets.",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Synthetic local SQLite fixture only; no MFA, external vault, or production session store"
       ]
     },
     {
@@ -214,12 +214,12 @@
     },
     {
       "id": "SEC-POLICY-001",
-      "test": "Worker rechecks actor policy before each privileged action",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "test": "The worker rechecks that the requesting user is enabled, belongs to the job organization, and still has an operational role.",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Synthetic local SQLite fixture only; no MFA, external vault, or production session store"
       ]
     },
     {
@@ -261,7 +261,97 @@
       "limitations": [
         "Design record only; no executed test evidence"
       ]
+    },
+    {
+      "id": "AUTH-CSRF-001",
+      "test": "SameSite session cookie and same-origin mutation checks reject cross-origin writes",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; in-memory rate limits are process-local"
+      ]
+    },
+    {
+      "id": "AUTH-RATE-001",
+      "test": "Repeated failed login requests are rate limited per process and client IP",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; in-memory rate limits are process-local"
+      ]
+    },
+    {
+      "id": "AUTH-SESSION-001",
+      "test": "Opaque session token is hashed in storage, expires, and is revoked at logout",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; in-memory rate limits are process-local"
+      ]
+    },
+    {
+      "id": "E2E-LOCAL-001",
+      "test": "Local Vite proxy flow completes first-owner setup, authenticated overview, and fixture refresh job",
+      "status": "MOCK-TESTED",
+      "command": "npm run smoke",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "App HTML is served but browser JavaScript rendering and visual behavior are not inspected"
+      ]
+    },
+    {
+      "id": "AUTH-UI-001",
+      "test": "Bootstrap and sign-in forms render and behave accessibly in supported browsers",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Browser visual/accessibility verification is blocked in this environment"
+      ]
+    },
+    {
+      "id": "SEC-AUDIT-001",
+      "test": "Audit events are organization-scoped, queryable by owner/admin, and omit bootstrap/password secrets",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Local append-only-by-API SQLite log; tamper evidence, retention, and external export are not implemented"
+      ]
+    },
+    {
+      "id": "AUTH-MFA-001",
+      "test": "Owner/admin enrolls, verifies, and revokes an MFA authenticator",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/DECISIONS/ADR-0002-authentication.md",
+      "limitations": [
+        "Design only; no MFA/recovery behavior is implemented"
+      ]
+    },
+    {
+      "id": "AUTH-RECOVERY-001",
+      "test": "One-time recovery code is single-use, audited, and revokes other sessions",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/DECISIONS/ADR-0002-authentication.md",
+      "limitations": [
+        "Design only; no MFA/recovery behavior is implemented"
+      ]
+    },
+    {
+      "id": "SEC-MFA-REPLAY-001",
+      "test": "Previously used OTP or recovery code cannot be replayed",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/DECISIONS/ADR-0002-authentication.md",
+      "limitations": [
+        "Design only; no MFA/recovery behavior is implemented"
+      ]
     }
   ],
-  "status_note": "Contains six executed local tests, including five mock API checks and bank/backlog validation. Other records are designed and have no executed test evidence. No browser visual/accessibility, live provider, PostgreSQL/Redis, or production checks are claimed."
+  "status_note": "Contains local mock API/auth/audit tests and the Vite proxy smoke. MFA/recovery test cases remain designed only. Browser-rendered accessibility, live provider, PostgreSQL/Redis, external vault, and production deployment remain unverified."
 }

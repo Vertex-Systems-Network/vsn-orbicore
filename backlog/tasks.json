@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-09T19:10:00Z",
+  "updated_at": "2026-11-09T20:30:00Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -184,7 +184,7 @@
         "ORB-001",
         "ORB-002"
       ],
-      "status": "ready",
+      "status": "mock_tested",
       "owner_agent": "codex",
       "assumptions": [
         "Synthetic fixture only before completion"
@@ -197,20 +197,36 @@
         "Session and MFA/recovery design documented"
       ],
       "test_ids": [
-        "SEC-TENANT-001",
-        "SEC-POLICY-001"
+        "AUTH-CSRF-001",
+        "AUTH-RATE-001",
+        "AUTH-SESSION-001",
+        "E2E-LOCAL-001",
+        "SEC-AUDIT-001",
+        "SEC-POLICY-001",
+        "SEC-SECRET-001",
+        "SEC-TENANT-001"
       ],
       "source_references": [
         "AI_Native_Multi_Hosting_Master_Prompt.md#12",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
       "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
+      "evidence_paths": [
+        "docs/DATA_MODEL.md",
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "docs/SECURITY_THREAT_MODEL.md",
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+        "docs/diagrams/auth-session.mmd",
+        "knowledge-bank/flows/auth-bootstrap-login.json",
+        "tests/inventory-api.test.mjs"
+      ],
+      "blockers": [
+        "MFA enrollment/recovery implementation and production-grade identity controls are separate follow-up work before any provider credentials"
+      ],
       "started_at": null,
-      "completed_at": null,
-      "verified_at": null,
-      "last_updated": "2026-11-09T19:10:00Z"
+      "completed_at": "2026-11-09T20:30:00Z",
+      "verified_at": "2026-11-09T20:30:00Z",
+      "last_updated": "2026-11-09T20:30:00Z"
     },
     {
       "id": "ORB-006",
@@ -349,8 +365,9 @@
         "Evidence includes browser/runtime and limitations"
       ],
       "test_ids": [
-        "INV-UI-001",
-        "A11Y-KEYBOARD-001"
+        "A11Y-KEYBOARD-001",
+        "AUTH-UI-001",
+        "INV-UI-001"
       ],
       "source_references": [
         "docs/UX_SPEC.md",
@@ -408,6 +425,53 @@
       "completed_at": null,
       "verified_at": null,
       "last_updated": "2026-11-09T19:10:00Z"
+    },
+    {
+      "id": "ORB-011",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Implement MFA enrollment, verification, recovery, and notifications",
+      "description": "Implement the ADR-0002 WebAuthn-first MFA policy, controlled TOTP fallback if needed, single-use recovery codes, session revocation, and recovery notifications before provider credentials are accepted.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-005"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [
+        "No provider credentials or high-impact operation is enabled before MFA/recovery controls pass",
+        "MFA secret encryption uses a separately stored key or approved secret manager"
+      ],
+      "acceptance_criteria": [
+        "Owners/admins enroll and verify MFA; recovery methods are bound to authenticated owner session",
+        "WebAuthn/passkeys are offered as phishing-resistant option; any OTP fallback is labeled correctly",
+        "Recovery codes are random, shown once, stored only as hashes, and consumed once",
+        "MFA recovery revokes sessions, emits audit event, and notifies verified contacts",
+        "Rate, replay, lockout, recovery, and authenticator revocation tests pass"
+      ],
+      "test_ids": [
+        "AUTH-MFA-001",
+        "AUTH-RECOVERY-001",
+        "SEC-MFA-REPLAY-001"
+      ],
+      "source_references": [
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "docs/RESEARCH/PHASE-0-RESEARCH.md",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#12"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "blockers": [
+        "MFA implementation, key-management design, and verified contact notification channel are not implemented"
+      ],
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T20:30:00Z"
     }
   ]
 }

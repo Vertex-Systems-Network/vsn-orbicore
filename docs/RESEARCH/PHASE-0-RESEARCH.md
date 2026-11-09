@@ -40,3 +40,7 @@ Sources: [Enhance features](https://enhance.com/product/features), [Enhance migr
 | Real provider auth scopes, rate limits, UAPI version compatibility | Unknown | Requires authorized sandbox |
 | VPS minimum CPU/RAM/disk, performance, S3 cost/egress | Unknown | Measure later; do not publish estimates as facts |
 | Persistent background agent automation on target host | Unknown/provider-specific | Opt-in only; no claim from directive alone |
+
+## Authentication follow-up research
+
+- NIST SP 800-63B, 4th Revision (published 2025) distinguishes phishing-resistant cryptographic authentication from manually entered OTP. It calls for at least one phishing-resistant option for AAL2 deployments and specifies that account-recovery events notify subscribers. This informs the proposed WebAuthn/passkey-first MFA and one-time recovery-code design in ADR-0002. ORBICORE has not claimed AAL2 compliance; the target deployment risk and exact assurance requirements still require review. Source: [NIST SP 800-63B, 4th Revision](https://pages.nist.gov/800-63-4/sp800-63b.html), checked 2026-11-09.

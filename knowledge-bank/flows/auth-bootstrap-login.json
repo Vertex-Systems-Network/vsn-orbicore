@@ -1,0 +1,75 @@
+{
+  "id": "FLOW-AUTH-BOOTSTRAP-SESSION",
+  "version": 1,
+  "name": "First-owner bootstrap and organization-scoped session",
+  "status": "MOCK-TESTED",
+  "inputs": [
+    "one-time bootstrap token",
+    "owner email",
+    "owner password",
+    "opaque session cookie"
+  ],
+  "preconditions": [
+    "Local API is bound to loopback",
+    "Synthetic fixture only",
+    "First-run token file is mode 0600",
+    "Password meets the 12-character minimum"
+  ],
+  "steps": [
+    {
+      "id": "bootstrap",
+      "action": "Verify one-time token digest and create first owner in org-demo",
+      "result": "Token is consumed; salted password hash is stored; session is issued"
+    },
+    {
+      "id": "authenticate",
+      "action": "Verify login and server-side session expiry/user-enabled state",
+      "result": "Only active organization user receives scoped actor context"
+    },
+    {
+      "id": "authorize",
+      "action": "Scope account/site/job queries and refresh requests to the actor organization",
+      "result": "Cross-organization references resolve as not found or denied"
+    },
+    {
+      "id": "worker-check",
+      "action": "Recheck requester organization, active state, and operator role before queued work",
+      "result": "Revoked or downgraded actor job fails closed"
+    },
+    {
+      "id": "logout",
+      "action": "Delete server-side session and expire cookie",
+      "result": "Subsequent protected API requests return 401"
+    }
+  ],
+  "failures": [
+    "Invalid bootstrap token",
+    "Weak password",
+    "Invalid credentials",
+    "Cross-origin mutation",
+    "Rate limited login",
+    "Expired session",
+    "Disabled or downgraded job actor"
+  ],
+  "resume_path": "Retry sign-in with the owner account; if first-run token is lost before setup, restart the local service to regenerate it while no users exist.",
+  "rollback_path": "Logout or disable the user to revoke sessions. This prototype has no self-service recovery or MFA recovery.",
+  "ui_entry_points": [
+    "Local first-run setup page",
+    "Local sign-in page"
+  ],
+  "test_ids": [
+    "SEC-TENANT-001",
+    "SEC-POLICY-001",
+    "SEC-SECRET-001",
+    "AUTH-CSRF-001",
+    "AUTH-RATE-001",
+    "AUTH-SESSION-001",
+    "E2E-LOCAL-001",
+    "SEC-AUDIT-001"
+  ],
+  "source_references": [
+    "docs/DECISIONS/ADR-0002-authentication.md",
+    "docs/SECURITY_THREAT_MODEL.md",
+    "docs/diagrams/auth-session.mmd"
+  ]
+}

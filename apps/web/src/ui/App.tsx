@@ -1,6 +1,46 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Icon } from "./icons";
 import type { HostingAccount, Job, Overview, Site } from "./types";
+
+type User = { id: string; email: string; role: string; organizationId: string };
+
+function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: boolean; onAuthenticated: (user: User) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(bootstrapRequired ? "/api/auth/bootstrap" : "/api/auth/login", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify(bootstrapRequired ? { token, email, password } : { email, password }),
+      });
+      const data = await response.json() as { user?: User; error?: string };
+      if (!response.ok || !data.user) throw new Error(data.error === "password_policy" ? "Choose a password with at least 12 characters." : data.error === "invalid_bootstrap_token" ? "The setup token is incorrect or has already been used." : "Could not sign in. Check the details and try again.");
+      onAuthenticated(data.user);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The local API is unavailable.");
+    } finally { setBusy(false); }
+  };
+
+  return <main className="auth-screen"><form className="auth-card" onSubmit={(event) => void submit(event)}>
+    <div className="brand-lockup auth-brand"><span className="brand-symbol"><i /><i /><i /></span><span><strong>ORBICORE</strong><small>BY VSN</small></span></div>
+    <div className="eyebrow"><span className="live-indicator" /> LOCAL ADMINISTRATION</div>
+    <h1>{bootstrapRequired ? "Set up your workspace" : "Welcome back"}</h1>
+    <p>{bootstrapRequired ? "Create the first workspace owner. The one-time setup token is stored in .data/first-admin.token." : "Sign in to your hosting workspace."}</p>
+    {bootstrapRequired && <label>One-time setup token<input autoComplete="off" type="password" required value={token} onChange={(event) => setToken(event.target.value)} /></label>}
+    <label>Email address<input autoComplete="username" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+    <label>Password<input autoComplete={bootstrapRequired ? "new-password" : "current-password"} type="password" minLength={bootstrapRequired ? 12 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+    {error && <div className="auth-error" role="alert">{error}</div>}
+    <button className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait..." : bootstrapRequired ? "Create workspace owner" : "Sign in"}</button>
+    <small className="auth-footnote">Local-only prototype. Use a unique password; provider credentials are not configured here.</small>
+  </form></main>;
+}
 
 const navGroups = [
   { label: "WORKSPACE", items: [{ label: "Overview", icon: "grid" }, { label: "Hosting accounts", icon: "server" }, { label: "Websites", icon: "globe" }] },
@@ -46,6 +86,9 @@ function JobRow({ job }: { job: Job }) {
 }
 
 export function App() {
+  const [actor, setActor] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [bootstrapRequired, setBootstrapRequired] = useState(false);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
@@ -70,7 +113,23 @@ export function App() {
     }
   }, []);
 
-  useEffect(() => { void loadOverview(); }, [loadOverview]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me").then(async (response) => {
+      if (response.ok) {
+        const data = await response.json() as { user: User };
+        if (!cancelled) setActor(data.user);
+      } else {
+        const status = await fetch("/api/auth/bootstrap-status").then((result) => result.json()) as { required: boolean };
+        if (!cancelled) setBootstrapRequired(status.required);
+      }
+    }).catch(() => {
+      if (!cancelled) setError("The local API is unavailable. Start the API service and try again.");
+    }).finally(() => { if (!cancelled) setAuthLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => { if (actor) void loadOverview(); }, [actor, loadOverview]);
 
   useEffect(() => {
     if (!selectedAccountId) { setSites([]); return; }
@@ -108,9 +167,19 @@ export function App() {
     }
   };
 
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setActor(null);
+    setOverview(null);
+    setSites([]);
+  };
+
   const activeAccount = overview?.accounts.find((account) => account.id === selectedAccountId);
   const jobs: Job[] = overview?.jobs ?? [];
   const utilization = overview?.storage.quotaBytes ? Math.round((overview.storage.usedBytes / overview.storage.quotaBytes) * 100) : 0;
+
+  if (authLoading) return <main className="auth-screen"><div className="auth-card auth-loading"><span className="loader" /> Checking your local session...</div></main>;
+  if (!actor) return <AuthGate bootstrapRequired={bootstrapRequired} onAuthenticated={(user) => { setActor(user); setError(null); }} />;
 
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Primary navigation">
@@ -119,7 +188,7 @@ export function App() {
       <nav className="primary-nav">
         {navGroups.map((group) => <div className="nav-group" key={group.label}><span className="nav-group-label">{group.label}</span>{group.items.map((item) => <button key={item.label} disabled={item.label !== "Overview"} title={item.label === "Overview" ? undefined : "Not available in this local demo"} className={`nav-item ${activeNav === item.label ? "active" : ""}`}><Icon name={item.icon} /><span>{item.label}</span>{item.label === "Jobs & activity" && jobs.length > 0 && <em>{jobs.length}</em>}</button>)}</div>)}
       </nav>
-      <div className="sidebar-bottom"><button className="nav-item settings-item" disabled title="Not available in this local demo"><span className="settings-gear">⚙</span><span>Settings</span></button><div className="user-profile"><span className="user-avatar">AM</span><span><strong>Alex Morgan</strong><small>Workspace owner</small></span><span className="profile-menu">•••</span></div></div>
+      <div className="sidebar-bottom"><button className="nav-item settings-item" disabled title="Not available in this local demo"><span className="settings-gear">⚙</span><span>Settings</span></button><div className="user-profile"><span className="user-avatar">{actor.email.slice(0, 1).toUpperCase()}</span><span><strong>{actor.email}</strong><small>{actor.role} · local workspace</small></span><button className="logout-button" onClick={() => void logout()} title="Sign out" aria-label="Sign out">↗</button></div></div>
     </aside>
 
     <main className="main-content">

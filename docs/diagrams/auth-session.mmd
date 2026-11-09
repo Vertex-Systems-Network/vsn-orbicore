@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> BootstrapRequired
+    BootstrapRequired --> Authenticated: valid one-time token
+    BootstrapRequired --> BootstrapRequired: invalid token or weak password
+    Authenticated --> Authenticated: session valid and actor enabled
+    Authenticated --> SignedOut: logout or session expiry
+    Authenticated --> JobQueued: permitted refresh request
+    JobQueued --> JobCompleted: worker rechecks actor and tenant
+    JobQueued --> JobFailed: actor disabled, downgraded, or tenant mismatch
+    SignedOut --> Authenticated: valid login
