@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsn-orbicore.local/schemas/system.schema.json",
+  "title": "Systems Bank record",
+  "type": "object",
+  "required": ["id", "name", "version", "status", "modules", "dependencies", "owner", "contracts", "evidence_references"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^SYS-[A-Z0-9-]+$"},
+    "name": {"type": "string"},
+    "version": {"type": "string"},
+    "status": {"enum": ["DESIGNED", "IMPLEMENTED", "MOCK-TESTED", "INTEGRATION-TESTED", "LIVE-VERIFIED", "RELEASED"]},
+    "modules": {"type": "array", "items": {"type": "string"}},
+    "dependencies": {"type": "array", "items": {"type": "string"}},
+    "owner": {"type": "string"},
+    "contracts": {"type": "array", "items": {"type": "string"}},
+    "evidence_references": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

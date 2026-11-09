@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "id": "SYS-WEB-CLIENT",
+      "name": "Web client",
+      "version": "0.1.0",
+      "status": "DESIGNED",
+      "modules": [
+        "Overview",
+        "Hosting accounts",
+        "Websites",
+        "Job center",
+        "Settings"
+      ],
+      "dependencies": [
+        "SYS-APPLICATION-API",
+        "SYS-DESIGN-SYSTEM"
+      ],
+      "owner": "product engineering",
+      "contracts": [
+        "OpenAPI versioned API",
+        "tenant-scoped session"
+      ],
+      "evidence_references": [
+        "docs/UX_SPEC.md"
+      ]
+    },
+    {
+      "id": "SYS-APPLICATION-API",
+      "name": "Application API and domain services",
+      "version": "0.1.0",
+      "status": "DESIGNED",
+      "modules": [
+        "Identity/policy",
+        "Inventory",
+        "Connections",
+        "Jobs",
+        "Audit",
+        "bootstrap/session authentication",
+        "organization-scoped inventory and jobs"
+      ],
+      "dependencies": [
+        "SYS-POSTGRES",
+        "SYS-JOB-WORKER",
+        "SYS-ADAPTER-CPANEL"
+      ],
+      "owner": "platform engineering",
+      "contracts": [
+        "validated request DTOs",
+        "typed domain result",
+        "redacted errors"
+      ],
+      "evidence_references": [
+        "docs/ARCHITECTURE.md",
+        "docs/DATA_MODEL.md",
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "tests/inventory-api.test.mjs"
+      ]
+    },
+    {
+      "id": "SYS-ADAPTER-CPANEL",
+      "name": "cPanel UAPI read adapter",
+      "version": "0.1.0",
+      "status": "DESIGNED",
+      "modules": [
+        "capability discovery",
+        "read-only inventory",
+        "error normalization"
+      ],
+      "dependencies": [
+        "SYS-APPLICATION-API",
+        "secret reference service"
+      ],
+      "owner": "integrations engineering",
+      "contracts": [
+        "HostingProviderAdapter",
+        "CapabilitySnapshot",
+        "InventoryPage"
+      ],
+      "evidence_references": [
+        "knowledge-bank/integrations/cpanel-uapi.json",
+        "docs/INTEGRATIONS.md"
+      ]
+    },
+    {
+      "id": "SYS-JOB-WORKER",
+      "name": "Policy-aware durable worker",
+      "version": "0.1.0",
+      "status": "DESIGNED",
+      "modules": [
+        "job state machine",
+        "idempotency",
+        "bounded retry",
+        "audit/outbox"
+      ],
+      "dependencies": [
+        "SYS-POSTGRES",
+        "SYS-REDIS-BULLMQ",
+        "SYS-APPLICATION-API"
+      ],
+      "owner": "platform engineering",
+      "contracts": [
+        "Job",
+        "JobStep",
+        "AuditEvent",
+        "PolicyDecision"
+      ],
+      "evidence_references": [
+        "knowledge-bank/flows/hosting-inventory.json",
+        "docs/diagrams/hosting-inventory-sequence.mmd"
+      ]
+    },
+    {
+      "id": "SYS-DESIGN-SYSTEM",
+      "name": "ORBICORE design system",
+      "version": "0.1.0",
+      "status": "DESIGNED",
+      "modules": [
+        "tokens",
+        "accessible primitives",
+        "data tables",
+        "operation states"
+      ],
+      "dependencies": [],
+      "owner": "product design",
+      "contracts": [
+        "screen state matrix",
+        "keyboard interaction patterns",
+        "WCAG 2.2 AA target"
+      ],
+      "evidence_references": [
+        "knowledge-bank/design/system.json",
+        "docs/UX_SPEC.md"
+      ]
+    },
+    {
+      "id": "SYS-POSTGRES",
+      "name": "PostgreSQL primary datastore",
+      "version": "16+ target",
+      "status": "DESIGNED",
+      "modules": [
+        "organizations and users",
+        "provider inventory",
+        "jobs and audits"
+      ],
+      "dependencies": [],
+      "owner": "platform engineering",
+      "contracts": [
+        "transactional domain repository",
+        "tenant-scoped persistence"
+      ],
+      "evidence_references": [
+        "docs/ARCHITECTURE.md",
+        "docs/DATA_MODEL.md"
+      ]
+    },
+    {
+      "id": "SYS-REDIS-BULLMQ",
+      "name": "Redis and BullMQ worker queue",
+      "version": "Redis 7+ target",
+      "status": "DESIGNED",
+      "modules": [
+        "durable queue",
+        "bounded retries",
+        "worker concurrency"
+      ],
+      "dependencies": [
+        "SYS-POSTGRES"
+      ],
+      "owner": "platform engineering",
+      "contracts": [
+        "idempotent jobs",
+        "restart recovery"
+      ],
+      "evidence_references": [
+        "docs/ARCHITECTURE.md",
+        "docs/RESEARCH/PHASE-0-RESEARCH.md"
+      ]
+    }
+  ]
+}

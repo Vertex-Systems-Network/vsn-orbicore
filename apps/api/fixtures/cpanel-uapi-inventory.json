@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "provider": "cPanel",
+    "source": "synthetic_fixture",
+    "live": false,
+    "providerVersion": "unknown",
+    "fetchedAt": "2026-11-09T00:00:00.000Z"
+  },
+  "accounts": [
+    {
+      "id": "acct-northstar",
+      "label": "Northstar Studio",
+      "host": "cp-nyc-03.example.invalid",
+      "username": "northstar_demo",
+      "health": "healthy",
+      "quotaBytes": 214748364800,
+      "usedBytes": 115964116992,
+      "sites": [
+        {"id": "site-northstar-main", "domain": "northstar-studio.example", "kind": "WordPress", "documentRoot": "/home/northstar/public_html", "phpVersion": "8.3", "status": "active"},
+        {"id": "site-northstar-shop", "domain": "shop.northstar-studio.example", "kind": "WooCommerce", "documentRoot": "/home/northstar/shop", "phpVersion": "8.2", "status": "active"},
+        {"id": "site-northstar-preview", "domain": "preview.northstar-studio.example", "kind": "WordPress", "documentRoot": "/home/northstar/preview", "phpVersion": "8.1", "status": "attention"}
+      ]
+    },
+    {
+      "id": "acct-copperline",
+      "label": "Copperline Commerce",
+      "host": "cp-fra-01.example.invalid",
+      "username": "copperline_demo",
+      "health": "attention",
+      "quotaBytes": 107374182400,
+      "usedBytes": 91268055040,
+      "sites": [
+        {"id": "site-copperline-main", "domain": "copperline.example", "kind": "WordPress", "documentRoot": "/home/copperline/public_html", "phpVersion": "8.2", "status": "active"},
+        {"id": "site-copperline-blog", "domain": "journal.copperline.example", "kind": "WordPress", "documentRoot": "/home/copperline/journal", "phpVersion": "8.1", "status": "active"}
+      ]
+    },
+    {
+      "id": "acct-fieldwork",
+      "label": "Fieldwork Digital",
+      "host": "cp-lon-08.example.invalid",
+      "username": "fieldwork_demo",
+      "health": "healthy",
+      "quotaBytes": 53687091200,
+      "usedBytes": 24159191040,
+      "sites": [
+        {"id": "site-fieldwork-main", "domain": "fieldwork.example", "kind": "WordPress", "documentRoot": "/home/fieldwork/public_html", "phpVersion": "8.3", "status": "active"},
+        {"id": "site-fieldwork-labs", "domain": "labs.fieldwork.example", "kind": "Static", "documentRoot": "/home/fieldwork/labs", "phpVersion": "N/A", "status": "active"}
+      ]
+    }
+  ]
+}

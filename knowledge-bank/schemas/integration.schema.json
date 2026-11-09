@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsn-orbicore.local/schemas/integration.schema.json",
+  "title": "Integration and capability record",
+  "type": "object",
+  "required": ["id", "provider", "version_scope", "operations", "auth_modes", "permission_requirements", "capabilities", "error_map", "mock_fixture", "live_status", "source_references", "reviewed_at"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^INT-[A-Z0-9-]+$"},
+    "provider": {"type": "string"},
+    "version_scope": {"type": "string"},
+    "operations": {"type": "array", "items": {"type": "string"}},
+    "auth_modes": {"type": "array", "items": {"type": "string"}},
+    "permission_requirements": {"type": "array", "items": {"type": "string"}},
+    "capabilities": {"type": "object", "additionalProperties": {"enum": ["supported", "read_only", "requires_whm", "requires_ssh", "requires_provider", "not_available", "unknown"]}},
+    "error_map": {"type": "object"},
+    "mock_fixture": {"type": ["string", "null"]},
+    "live_status": {"enum": ["blocked_external", "not_started", "INTEGRATION-TESTED", "LIVE-VERIFIED"]},
+    "source_references": {"type": "array", "items": {"type": "string"}},
+    "reviewed_at": {"type": "string", "format": "date"}
+  },
+  "additionalProperties": false
+}

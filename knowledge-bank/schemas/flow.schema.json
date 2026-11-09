@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsn-orbicore.local/schemas/flow.schema.json",
+  "title": "Flow Bank record",
+  "type": "object",
+  "required": ["id", "version", "name", "status", "inputs", "preconditions", "steps", "failures", "resume_path", "rollback_path", "ui_entry_points", "test_ids", "source_references"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^FLOW-[A-Z0-9-]+$"},
+    "version": {"type": "integer", "minimum": 1},
+    "name": {"type": "string", "minLength": 3},
+    "status": {"enum": ["DESIGNED", "IMPLEMENTED", "MOCK-TESTED", "INTEGRATION-TESTED", "LIVE-VERIFIED", "RELEASED"]},
+    "inputs": {"type": "array", "items": {"type": "string"}},
+    "preconditions": {"type": "array", "items": {"type": "string"}},
+    "steps": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "action", "result"], "properties": {"id": {"type": "string"}, "action": {"type": "string"}, "result": {"type": "string"}}}},
+    "failures": {"type": "array", "items": {"type": "string"}},
+    "resume_path": {"type": "string"},
+    "rollback_path": {"type": "string"},
+    "ui_entry_points": {"type": "array", "items": {"type": "string"}},
+    "test_ids": {"type": "array", "items": {"type": "string"}},
+    "source_references": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

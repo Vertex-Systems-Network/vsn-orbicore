@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "id": "INV-API-001",
+      "test": "health and overview expose synthetic fixture state clearly",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic fixture only",
+        "No provider call"
+      ]
+    },
+    {
+      "id": "INV-SITES-001",
+      "test": "site inventory is tenant fixture scoped and unknown accounts return 404",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Fixture tenant scope only; application authentication and real tenant enforcement are not implemented"
+      ]
+    },
+    {
+      "id": "INV-JOB-001",
+      "test": "refresh job persists queued and completed states",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Single-process SQLite demo worker"
+      ]
+    },
+    {
+      "id": "INV-IDEMPOTENCY-001",
+      "test": "idempotency key avoids duplicate refresh jobs",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Local API process only"
+      ]
+    },
+    {
+      "id": "INV-INPUT-001",
+      "test": "invalid JSON and oversized input are rejected without creating jobs",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Local API process only"
+      ]
+    },
+    {
+      "id": "A11Y-KEYBOARD-001",
+      "test": "Keyboard navigation and visible focus across the dashboard",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "ACCOUNT-DETAIL-001",
+      "test": "Account detail loading, empty, error, and permission states",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INV-STALE-001",
+      "test": "Last-known inventory remains visible and marked stale after provider failure",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INV-TIMEOUT-001",
+      "test": "Provider read timeout preserves last-known inventory and returns a stale state",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INV-UI-001",
+      "test": "Overview renders loading, populated, empty, error, stale, and restricted states",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "JOB-RETRY-001",
+      "test": "Read-only job retries use bounded backoff and honor Retry-After",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "JOB-UI-001",
+      "test": "Job center renders queued, running, completed, failed, blocked, and retrying states",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-DNS-GATE-001",
+      "test": "DNS cutover requires approval and a rollback record",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-PREFLIGHT-001",
+      "test": "Migration preflight blocks unsupported privileges and incompatible destinations",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-RESUME-001",
+      "test": "Migration resumes only at a verified checkpoint",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-ROLLBACK-001",
+      "test": "Migration rollback restores a verified snapshot and prior DNS records",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "SEC-SECRET-001",
+      "test": "Passwords are stored as scrypt hashes and one-time bootstrap token hashes are consumed at setup.",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; no MFA, external vault, or production session store"
+      ]
+    },
+    {
+      "id": "SEC-TENANT-001",
+      "test": "Unauthenticated inventory is denied and organizations see only their own accounts, sites, and refresh targets.",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; no MFA, external vault, or production session store"
+      ]
+    },
+    {
+      "id": "DOC-BANK-001",
+      "test": "knowledge-bank schemas, IDs, test references, dependencies, and paths resolve",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Validates the project schema subset currently used; not a general JSON Schema conformance implementation"
+      ]
+    },
+    {
+      "id": "INFRA-DB-001",
+      "test": "PostgreSQL Compose start and restart persistence",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INFRA-QUEUE-001",
+      "test": "Redis worker retry and restart recovery",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "SEC-POLICY-001",
+      "test": "The worker rechecks that the requesting user is enabled, belongs to the job organization, and still has an operational role.",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; no MFA, external vault, or production session store"
+      ]
+    },
+    {
+      "id": "CPANEL-LIVE-001",
+      "test": "Authorized read-only cPanel UAPI integration and revoked-token behavior",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INSTALL-FRESH-001",
+      "test": "Fresh idempotent installation and first-admin bootstrap",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INSTALL-RECOVERY-001",
+      "test": "Interrupted install resumes safely and redacts secrets",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "SEC-SSRF-001",
+      "test": "Provider adapter rejects loopback, private, link-local, and disallowed URL targets",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/SECURITY_THREAT_MODEL.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "AUTH-CSRF-001",
+      "test": "SameSite session cookie and same-origin mutation checks reject cross-origin writes",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; in-memory rate limits are process-local"
+      ]
+    },
+    {
+      "id": "AUTH-RATE-001",
+      "test": "Repeated failed login requests are rate limited per process and client IP",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; in-memory rate limits are process-local"
+      ]
+    },
+    {
+      "id": "AUTH-SESSION-001",
+      "test": "Opaque session token is hashed in storage, expires, and is revoked at logout",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic local SQLite fixture only; in-memory rate limits are process-local"
+      ]
+    },
+    {
+      "id": "E2E-LOCAL-001",
+      "test": "Local Vite proxy flow completes first-owner setup, authenticated overview, and fixture refresh job",
+      "status": "MOCK-TESTED",
+      "command": "npm run smoke",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "App HTML is served but browser JavaScript rendering and visual behavior are not inspected"
+      ]
+    },
+    {
+      "id": "AUTH-UI-001",
+      "test": "Bootstrap and sign-in forms render and behave accessibly in supported browsers",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Browser visual/accessibility verification is blocked in this environment"
+      ]
+    },
+    {
+      "id": "SEC-AUDIT-001",
+      "test": "Audit events are organization-scoped, queryable by owner/admin, and omit bootstrap/password secrets",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Local append-only-by-API SQLite log; tamper evidence, retention, and external export are not implemented"
+      ]
+    },
+    {
+      "id": "AUTH-MFA-001",
+      "test": "Owner password-reauthenticated MFA enrollment and second-factor login challenge with TOTP fallback",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/mfa.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
+      "limitations": [
+        "No WebAuthn/passkey flow; TOTP is not phishing-resistant",
+        "Synthetic in-memory SQLite only",
+        "No provider credentials or production assurance claim"
+      ]
+    },
+    {
+      "id": "AUTH-RECOVERY-001",
+      "test": "Single-use recovery code hashing, consumption, session revocation and notification outbox record",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/mfa.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
+      "limitations": [
+        "Notification remains blocked because recipient contact is not verified and no delivery adapter is configured",
+        "Recovery event does not implement authenticator rebinding",
+        "Synthetic in-memory SQLite only"
+      ]
+    },
+    {
+      "id": "SEC-MFA-REPLAY-001",
+      "test": "TOTP RFC 6238 vector and rejection of repeated accepted time step",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/mfa.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
+      "limitations": [
+        "Test clock is injected",
+        "Does not verify WebAuthn challenge/replay behavior"
+      ]
+    }
+  ],
+  "status_note": "Contains 18 passing local tests, including fixture API/auth/audit, MFA fallback, recovery-code, replay, challenge lockout/expiry and authenticator revocation coverage, plus the Vite proxy smoke. TOTP is a compatibility fallback only; WebAuthn/passkeys, verified-contact notification delivery, external production key management, browser-rendered accessibility, live provider, PostgreSQL/Redis, and production deployment remain unverified."
+}

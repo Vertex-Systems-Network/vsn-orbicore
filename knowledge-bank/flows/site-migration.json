@@ -1,0 +1,21 @@
+{
+  "id": "FLOW-SITE-MIGRATION",
+  "version": 1,
+  "name": "Authorized website migration with rollback",
+  "status": "DESIGNED",
+  "inputs": ["tenant_id", "source_site_id", "destination_account_id", "maintenance_policy", "approval_reference"],
+  "preconditions": ["Source and destination belong to tenant", "Required provider capabilities discovered", "Destination capacity and compatibility verified", "Backup/restore path available", "Change policy and approvals satisfied"],
+  "steps": [
+    {"id": "preflight", "action": "Compare DNS, PHP/extensions, files, database, quota, mail and cost implications", "result": "Pass/block report with provenance"},
+    {"id": "snapshot", "action": "Create encrypted restorable snapshot and verify checksum", "result": "Source recovery point recorded"},
+    {"id": "transfer", "action": "Transfer files/database in resumable chunks", "result": "Checksums and transfer checkpoints recorded"},
+    {"id": "verify", "action": "Restore destination and validate application health/data", "result": "Preview ready or failed with evidence"},
+    {"id": "cutover", "action": "After policy approval, update DNS and monitor", "result": "Cutover decision and observations audited"}
+  ],
+  "failures": ["Insufficient space", "Unsupported source privilege", "Database mismatch", "Checksum mismatch", "Partial transfer", "DNS propagation or MX issue", "Application health failure"],
+  "resume_path": "Resume from last verified checkpoint only after revalidating source/destination and idempotency state.",
+  "rollback_path": "Use verified snapshot and prior DNS record set; keep source intact until retention and acceptance gates pass.",
+  "ui_entry_points": ["Websites > Migrate"],
+  "test_ids": ["MIG-PREFLIGHT-001", "MIG-RESUME-001", "MIG-ROLLBACK-001", "MIG-DNS-GATE-001"],
+  "source_references": ["AI_Native_Multi_Hosting_Master_Prompt.md#5D", "docs/FEASIBILITY_MATRIX.md", "docs/diagrams/migration-state.mmd"]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "FLOW-HOSTING-INVENTORY",
+  "version": 1,
+  "name": "Read-only hosting inventory refresh",
+  "status": "DESIGNED",
+  "inputs": ["organization_id", "hosting_account_id", "actor_id", "idempotency_key"],
+  "preconditions": ["Authenticated actor", "Tenant membership verified", "Read inventory permission", "Connection reference available", "Provider capability snapshot permits the selected read"],
+  "steps": [
+    {"id": "validate", "action": "Validate tenant, connection status, and idempotency key", "result": "Request accepted or denied with safe reason"},
+    {"id": "enqueue", "action": "Persist job and audit event", "result": "Stable job ID and queued status"},
+    {"id": "recheck", "action": "Worker rechecks tenant and read policy", "result": "Job proceeds or remains blocked"},
+    {"id": "fetch", "action": "Call provider adapter and normalize data/error", "result": "Inventory page with provenance and fetched_at"},
+    {"id": "persist", "action": "Store inventory and update job/audit state", "result": "Counts and freshness visible in UI"}
+  ],
+  "failures": ["Connection timeout", "Expired/revoked token", "Unsupported operation", "Provider rate limit", "Malformed provider payload", "Tenant or policy denial"],
+  "resume_path": "Retry only idempotent read step with bounded backoff; store provider error and preserve last-known inventory with stale label.",
+  "rollback_path": "No remote data is mutated. Preserve last-known good inventory; mark refresh failed and retain redacted audit.",
+  "ui_entry_points": ["Overview > Refresh inventory", "Hosting account > Refresh"],
+  "test_ids": ["INV-API-001", "INV-JOB-001", "INV-STALE-001", "SEC-TENANT-001"],
+  "source_references": ["docs/INTEGRATIONS.md", "docs/SECURITY_THREAT_MODEL.md", "docs/diagrams/hosting-inventory-sequence.mmd"]
+}

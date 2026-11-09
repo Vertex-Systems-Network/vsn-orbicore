@@ -1,0 +1,18 @@
+stateDiagram-v2
+  [*] --> planned
+  planned --> preflight
+  preflight --> blocked: missing permission, space, or capability
+  preflight --> snapshot: preflight passed
+  snapshot --> transfer: snapshot verified
+  transfer --> restore: checksummed data copied
+  restore --> verify: restore completed
+  verify --> ready_for_cutover: health and integrity pass
+  verify --> failed: mismatch or health failure
+  ready_for_cutover --> cutover: approved window and policy
+  cutover --> monitor: DNS/traffic confirmation
+  monitor --> completed: acceptance and retention gate passed
+  cutover --> rolled_back: approved rollback path
+  failed --> rolled_back: recovery evidence available
+  blocked --> preflight: blocker resolved
+  completed --> [*]
+  rolled_back --> [*]

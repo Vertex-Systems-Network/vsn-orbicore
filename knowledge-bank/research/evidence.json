@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "id": "RES-CPANEL-UAPI-SCOPE",
+      "question": "Does UAPI imply WHM/root access?",
+      "finding": "No. UAPI addresses cPanel account features; WHM Transfer Tool has separately documented root or sudo/su requirements.",
+      "evidence_quality": "primary_official",
+      "confidence": "high",
+      "source_urls": [
+        "https://api.docs.cpanel.net/cpanel/introduction",
+        "https://docs.cpanel.net/whm/transfers/transfer-tool/"
+      ],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "Before implementing a new WHM operation or when cPanel changes API behavior"
+    },
+    {
+      "id": "RES-REMOTE-DB-PROVIDER",
+      "question": "Can a cPanel account always accept remote DB access?",
+      "finding": "No. Provider feature configuration can disable Remote Database Access; discover and test per host.",
+      "evidence_quality": "primary_official",
+      "confidence": "high",
+      "source_urls": [
+        "https://docs.cpanel.net/cpanel/databases/remote-mysql/"
+      ],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "Before designing remote DB setup UX or claiming support"
+    },
+    {
+      "id": "RES-STACK-TS-MODULAR",
+      "question": "Which initial stack best supports web/API reuse, adapters, and local proof?",
+      "finding": "Estimated weighted evaluation favors React/TypeScript + NestJS modular monolith + PostgreSQL/BullMQ/Redis; local SQLite is a constrained prototype only.",
+      "evidence_quality": "estimate",
+      "confidence": "medium",
+      "source_urls": [
+        "https://docs.nestjs.com/techniques/database",
+        "https://docs.nestjs.com/techniques/queues",
+        "https://laravel.com/framework/docs/queues"
+      ],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "If install/resource measurements or security review contradict the ADR"
+    },
+    {
+      "id": "RES-AUTH-MFA-RECOVERY",
+      "question": "Which MFA and account-recovery properties should guide ORBICORE auth design?",
+      "finding": "NIST SP 800-63B 4th Revision says OTP manual entry is not phishing-resistant, saved recovery codes must be at least 64 bits and stored hashed/consumed once, and recovery always triggers notification. RFC 6238 recommends a 30-second TOTP step and forbids accepting an OTP a second time after successful validation. SimpleWebAuthn documents one-time challenge persistence and credential ID/public key/counter storage for WebAuthn. This repo implements an encrypted TOTP compatibility fallback only; no NIST assurance or WebAuthn support is claimed.",
+      "evidence_quality": "primary_official",
+      "confidence": "high",
+      "source_urls": [
+        "https://pages.nist.gov/800-63-4/sp800-63b.html",
+        "https://www.rfc-editor.org/rfc/rfc6238/",
+        "https://github.com/MasterKale/SimpleWebAuthn/blob/master/example/example-server.d.ts"
+      ],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "Before enabling provider credentials, complete WebAuthn/passkey, verified notification contacts and delivery, and deployment key/recovery controls; recheck current standards and library APIs."
+    }
+  ]
+}

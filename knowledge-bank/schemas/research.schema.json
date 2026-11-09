@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsn-orbicore.local/schemas/research.schema.json",
+  "title": "Research evidence record",
+  "type": "object",
+  "required": ["id", "question", "finding", "evidence_quality", "confidence", "source_urls", "checked_at", "revisit_trigger"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^RES-[A-Z0-9-]+$"},
+    "question": {"type": "string"},
+    "finding": {"type": "string"},
+    "evidence_quality": {"enum": ["primary_official", "primary_paper", "vendor_claim", "secondary", "estimate"]},
+    "confidence": {"enum": ["high", "medium", "low", "unknown"]},
+    "source_urls": {"type": "array", "items": {"type": "string", "format": "uri"}},
+    "checked_at": {"type": "string", "format": "date"},
+    "revisit_trigger": {"type": "string"}
+  },
+  "additionalProperties": false
+}

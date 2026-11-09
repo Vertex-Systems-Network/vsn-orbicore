@@ -1,0 +1,24 @@
+sequenceDiagram
+  actor User
+  participant UI as Web UI
+  participant API as API
+  participant Policy as Tenant and policy
+  participant Job as Durable job store
+  participant Worker
+  participant Adapter as cPanel adapter
+  participant Host as cPanel UAPI
+  User->>UI: Request inventory refresh
+  UI->>API: POST refresh (idempotency key)
+  API->>Policy: Check tenant and read permission
+  Policy-->>API: Allow or deny with reason
+  API->>Job: Persist refresh job and audit event
+  API-->>UI: Job ID and queued state
+  Worker->>Job: Claim pending job
+  Worker->>Policy: Re-check tenant/action policy
+  Worker->>Adapter: Fetch read-only inventory
+  Adapter->>Host: UAPI request with TLS and scoped credentials
+  Host-->>Adapter: Response or provider error
+  Adapter-->>Worker: Normalized rows plus provenance
+  Worker->>Job: Persist result, timestamps, and outcome
+  UI->>API: Poll job and inventory state
+  API-->>UI: Status, freshness, counts, and safe error

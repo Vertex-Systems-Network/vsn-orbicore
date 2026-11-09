@@ -1,0 +1,13 @@
+flowchart TD
+  operator["Owner, operator, or read-only client"] --> ui["Web client"]
+  ui --> api["Authenticated application API"]
+  api --> policy["Identity, tenant, and action policy"]
+  policy --> domain["Domain modules"]
+  domain --> db[("PostgreSQL metadata and audit")]
+  domain --> queue["Durable queue"]
+  queue --> worker["Policy-checking worker"]
+  worker --> cp["cPanel UAPI adapter"]
+  worker --> whm["WHM adapter: separately privileged"]
+  worker --> object["S3-compatible storage adapter"]
+  worker --> db
+  db --> ui

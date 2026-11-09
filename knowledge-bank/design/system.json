@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "status": "DESIGNED",
+  "principles": ["Capability before action", "Freshness and evidence are visible", "Dense information remains readable", "Routine reads are distinct from high-impact operations", "Accessible interaction is part of visual quality"],
+  "tokens": {
+    "color": {"canvas": "#F5F7F8", "surface": "#FFFFFF", "ink": "#17222B", "nav": "#101A22", "primary": "#087F72", "info": "#2463A8", "warning": "#A96608", "danger": "#B33B3B", "border": "#DCE3E6"},
+    "spacing_px": [4, 8, 12, 16, 24, 32, 48],
+    "radius_px": {"small": 6, "medium": 10, "large": 16},
+    "type": {"family": "system sans-serif until font/licensing decision", "body_px": 14, "table_px": 13, "heading_scale": [20, 24, 32]}
+  },
+  "screens": [
+    {"id": "SCREEN-AUTH", "states": ["bootstrap-required", "sign-in", "busy", "invalid-token", "invalid-credentials", "rate-limited", "session-expired"], "test_ids": ["AUTH-UI-001"]},
+    {"id": "SCREEN-OVERVIEW", "states": ["loading", "populated", "empty", "error", "stale", "permission-restricted"], "test_ids": ["INV-UI-001", "A11Y-KEYBOARD-001"]},
+    {"id": "SCREEN-ACCOUNT-DETAIL", "states": ["loading", "populated", "empty", "error", "stale", "permission-restricted"], "test_ids": ["ACCOUNT-DETAIL-001"]},
+    {"id": "SCREEN-JOB-CENTER", "states": ["queued", "running", "complete", "failed", "blocked", "retrying"], "test_ids": ["JOB-UI-001"]}
+  ],
+  "accessibility": ["WCAG 2.2 AA target", "Visible keyboard focus", "Semantic tables/forms", "Reduced motion", "Errors announced and associated with controls", "Status not communicated by color alone"],
+  "decisions": ["No screenshot cloning", "shadcn/ui, Mantine and Headless UI are candidates; exact primitive library pending evaluation"]
+}

@@ -1,0 +1,484 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-11-09T23:41:00+05:00",
+  "tasks": [
+    {
+      "id": "ORB-001",
+      "epic": "Phase 0: Research and feasibility",
+      "title": "Research provider boundaries and select the initial architecture",
+      "description": "Record official provider constraints, competitor workflows, stack options, risk/permission limits, and decision rationale.",
+      "priority": "P0",
+      "risk": "medium",
+      "phase": 0,
+      "dependencies": [],
+      "status": "verified",
+      "owner_agent": "codex",
+      "assumptions": [
+        "No live provider account is authorized yet",
+        "The product is web-first and self-hostable"
+      ],
+      "acceptance_criteria": [
+        "Dated primary-source references",
+        "Permission matrix",
+        "Weighted stack ADR with estimated scores labeled",
+        "Unknowns explicitly listed"
+      ],
+      "test_ids": [],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#4",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#9",
+        "docs/RESEARCH/PHASE-0-RESEARCH.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/RESEARCH/PHASE-0-RESEARCH.md",
+        "docs/FEASIBILITY_MATRIX.md",
+        "docs/DECISIONS/ADR-0001-architecture.md"
+      ],
+      "blockers": [],
+      "started_at": "2026-11-09T00:00:00Z",
+      "completed_at": "2026-11-09T19:00:00Z",
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-002",
+      "epic": "Phase 0: Research and feasibility",
+      "title": "Build local mock cPanel inventory vertical slice",
+      "description": "Implement fixture-backed adapter, persisted local inventory, HTTP API, durable refresh job/worker, and interactive UI.",
+      "priority": "P0",
+      "risk": "medium",
+      "phase": 0,
+      "dependencies": [
+        "ORB-001"
+      ],
+      "status": "mock_tested",
+      "owner_agent": "codex",
+      "assumptions": [
+        "SQLite is local single-user PoC only",
+        "Fixture data is synthetic"
+      ],
+      "acceptance_criteria": [
+        "UI reads data through API",
+        "Rows are persisted in real local DB",
+        "Refresh job state is durable",
+        "Error/stale states do not claim live success",
+        "Repeatable tests cover API and worker"
+      ],
+      "test_ids": [
+        "INV-API-001",
+        "INV-SITES-001",
+        "INV-JOB-001",
+        "INV-IDEMPOTENCY-001",
+        "INV-INPUT-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#4",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#21"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+        "tests/inventory-api.test.mjs"
+      ],
+      "blockers": [
+        "Browser-level visual/accessibility and live provider behavior remain unverified"
+      ],
+      "started_at": "2026-11-09T00:00:00Z",
+      "completed_at": null,
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-003",
+      "epic": "Phase 0: Research and feasibility",
+      "title": "Create persistent AI rules, project documentation, diagrams, and banks",
+      "description": "Create populated, linked sources of truth for AI agents, product, architecture, research, UX, security, tasks, and evidence.",
+      "priority": "P0",
+      "risk": "low",
+      "phase": 0,
+      "dependencies": [
+        "ORB-001"
+      ],
+      "status": "verified",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Rule entry points agree with AGENTS.md",
+        "Required docs have factual content",
+        "Banks have unique IDs/cross-links and validation schema",
+        "Diagrams label target vs implemented boundaries",
+        "Backlog and state agree"
+      ],
+      "test_ids": [
+        "DOC-BANK-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#3",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#7",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#19"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "AGENTS.md",
+        "docs/",
+        "knowledge-bank/",
+        "scripts/validate-banks.mjs",
+        "tests/knowledge-bank.test.mjs"
+      ],
+      "blockers": [],
+      "started_at": "2026-11-09T00:00:00Z",
+      "completed_at": "2026-11-09T19:00:00Z",
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-004",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Run PostgreSQL and Redis-backed worker locally and in Compose",
+      "description": "Add production-shaped persistent DB and queue with health/readiness and restart recovery.",
+      "priority": "P1",
+      "risk": "medium",
+      "phase": 1,
+      "dependencies": [
+        "ORB-002"
+      ],
+      "status": "blocked_external",
+      "owner_agent": "codex",
+      "assumptions": [
+        "Docker or installable local PostgreSQL/Redis will be available in a later environment"
+      ],
+      "acceptance_criteria": [
+        "Compose starts cleanly",
+        "Migrations persist across restart",
+        "Job retry/recovery tests pass",
+        "Fresh install walkthrough is reproducible"
+      ],
+      "test_ids": [
+        "INFRA-DB-001",
+        "INFRA-QUEUE-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#6",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#16"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [
+        "Docker, PostgreSQL, and Redis unavailable in current environment"
+      ],
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-005",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Implement authentication, tenant isolation, policy enforcement, and audit",
+      "description": "Enforce tenant scope and operation policy in API and worker before real credentials or provider operations.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-001",
+        "ORB-002"
+      ],
+      "status": "mock_tested",
+      "owner_agent": "codex",
+      "assumptions": [
+        "Synthetic fixture only before completion"
+      ],
+      "acceptance_criteria": [
+        "Unauthenticated access denied",
+        "Cross-tenant read/write/job denial tested",
+        "Policy rechecked in worker",
+        "Audit is redacted and queryable",
+        "Session and MFA/recovery design documented"
+      ],
+      "test_ids": [
+        "AUTH-CSRF-001",
+        "AUTH-RATE-001",
+        "AUTH-SESSION-001",
+        "E2E-LOCAL-001",
+        "SEC-AUDIT-001",
+        "SEC-POLICY-001",
+        "SEC-SECRET-001",
+        "SEC-TENANT-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#12",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/DATA_MODEL.md",
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "docs/SECURITY_THREAT_MODEL.md",
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+        "docs/diagrams/auth-session.mmd",
+        "knowledge-bank/flows/auth-bootstrap-login.json",
+        "tests/inventory-api.test.mjs"
+      ],
+      "blockers": [
+        "MFA enrollment/recovery implementation and production-grade identity controls are separate follow-up work before any provider credentials"
+      ],
+      "started_at": null,
+      "completed_at": "2026-11-09T20:30:00Z",
+      "verified_at": "2026-11-09T20:30:00Z",
+      "last_updated": "2026-11-09T20:30:00Z"
+    },
+    {
+      "id": "ORB-006",
+      "epic": "Phase 2: cPanel/WHM connections and inventory",
+      "title": "Verify read-only cPanel UAPI adapter against authorized sandbox",
+      "description": "Validate auth, capability discovery, errors, stale data, revocation, and least privilege on an owner-authorized disposable account.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 2,
+      "dependencies": [
+        "ORB-005"
+      ],
+      "status": "blocked_external",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Authorized sandbox account",
+        "No mutations",
+        "Revoked/denied token path tested",
+        "Evidence redacted and timestamps recorded"
+      ],
+      "test_ids": [
+        "CPANEL-LIVE-001"
+      ],
+      "source_references": [
+        "docs/INTEGRATIONS.md",
+        "docs/FEASIBILITY_MATRIX.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [
+        "No sandbox account or scoped token provided"
+      ],
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-007",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Implement idempotent installation preflight and first-admin bootstrap",
+      "description": "Detect supported environment, validate storage/DB/queue, securely initialize an administrator, write an install report, and recover from interruption.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-004",
+        "ORB-005"
+      ],
+      "status": "proposed",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Fresh install walkthrough",
+        "Resume/repair path",
+        "Secrets not returned in diagnostics",
+        "Rollback/migration behavior documented and tested"
+      ],
+      "test_ids": [
+        "INSTALL-FRESH-001",
+        "INSTALL-RECOVERY-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#16"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-008",
+      "epic": "Phase 0: Research and feasibility",
+      "title": "Validate research/decision banks and generate cross-reference checks",
+      "description": "Validate structured records against versioned JSON schemas and ensure IDs, declared test references, source paths, and fixtures resolve.",
+      "priority": "P0",
+      "risk": "low",
+      "phase": 0,
+      "dependencies": [
+        "ORB-003"
+      ],
+      "status": "verified",
+      "owner_agent": "codex",
+      "assumptions": [
+        "The validator supports the subset of JSON Schema keywords used by repository schemas"
+      ],
+      "acceptance_criteria": [
+        "Schema validation is reproducible",
+        "Bank IDs are unique",
+        "Test IDs and local source/fixture paths resolve",
+        "Automated test covers validator"
+      ],
+      "test_ids": [
+        "DOC-BANK-001"
+      ],
+      "source_references": [
+        "docs/TEST_STRATEGY.md",
+        "knowledge-bank/README.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "scripts/validate-banks.mjs",
+        "tests/knowledge-bank.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md"
+      ],
+      "blockers": [],
+      "started_at": "2026-11-09T18:50:00Z",
+      "completed_at": "2026-11-09T19:00:00Z",
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-009",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Run dashboard accessibility and browser visual verification",
+      "description": "Verify keyboard use, screen-reader names, contrast, responsive layout, and loading/empty/error/stale/permission states in a real browser.",
+      "priority": "P1",
+      "risk": "medium",
+      "phase": 1,
+      "dependencies": [
+        "ORB-002"
+      ],
+      "status": "blocked_environment",
+      "owner_agent": "codex",
+      "assumptions": [
+        "A supported browser can access the local app"
+      ],
+      "acceptance_criteria": [
+        "Desktop and mobile browser screenshots reviewed",
+        "Search, account selection, refresh, and API error state exercised",
+        "Keyboard/focus and basic contrast reviewed",
+        "Evidence includes browser/runtime and limitations"
+      ],
+      "test_ids": [
+        "A11Y-KEYBOARD-001",
+        "AUTH-UI-001",
+        "INV-UI-001"
+      ],
+      "source_references": [
+        "docs/UX_SPEC.md",
+        "docs/TEST_STRATEGY.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md"
+      ],
+      "blockers": [
+        "Shared Chrome cannot reach the isolated loopback server; Playwright Chromium download returned a truncated 0 MiB archive from the official CDN"
+      ],
+      "started_at": "2026-11-09T19:00:00Z",
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-010",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Add threat-model security suite and dependency/SBOM scanning",
+      "description": "Automate high-risk negative security cases and dependency/license/SBOM checks as tooling becomes available.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-005"
+      ],
+      "status": "proposed",
+      "owner_agent": "codex",
+      "assumptions": [
+        "No real provider credentials are added before auth and tenant isolation gates pass"
+      ],
+      "acceptance_criteria": [
+        "SSRF, path traversal, injection, replay, tenant, and secret exposure cases tested",
+        "Dependency audit and software bill of materials are reproducible",
+        "License gate is documented and reproducible"
+      ],
+      "test_ids": [
+        "SEC-SSRF-001",
+        "SEC-POLICY-001"
+      ],
+      "source_references": [
+        "docs/SECURITY_THREAT_MODEL.md",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#12"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/SECURITY_THREAT_MODEL.md",
+        "docs/TEST_STRATEGY.md",
+        "tests/"
+      ],
+      "blockers": [],
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T19:10:00Z"
+    },
+    {
+      "id": "ORB-011",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Implement MFA enrollment, verification, recovery, and notifications",
+      "description": "Implement the ADR-0002 WebAuthn-first MFA policy, controlled TOTP fallback if needed, single-use recovery codes, session revocation, and recovery notifications before provider credentials are accepted.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-005"
+      ],
+      "status": "in_progress",
+      "owner_agent": "codex",
+      "assumptions": [
+        "No provider credentials or high-impact operation is enabled before MFA/recovery controls pass",
+        "MFA secret encryption uses a separately stored key or approved secret manager"
+      ],
+      "acceptance_criteria": [
+        "Owners/admins enroll and verify MFA; recovery methods are bound to authenticated owner session",
+        "WebAuthn/passkeys are offered as phishing-resistant option; any OTP fallback is labeled correctly",
+        "Recovery codes are random, shown once, stored only as hashes, and consumed once",
+        "MFA recovery revokes sessions, emits audit event, and notifies verified contacts",
+        "Rate, replay, lockout, recovery, and authenticator revocation tests pass"
+      ],
+      "test_ids": [
+        "AUTH-MFA-001",
+        "AUTH-RECOVERY-001",
+        "SEC-MFA-REPLAY-001"
+      ],
+      "source_references": [
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "docs/RESEARCH/PHASE-0-RESEARCH.md",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#12"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/DECISIONS/ADR-0002-authentication.md",
+        "docs/SECURITY_THREAT_MODEL.md",
+        "apps/api/mfa.mjs",
+        "apps/api/server.mjs",
+        "apps/web/src/ui/App.tsx",
+        "tests/mfa.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md"
+      ],
+      "blockers": [
+        "WebAuthn/passkey enrollment and login challenge are not implemented; TOTP fallback is explicitly not phishing-resistant",
+        "Notification outbox is recorded as blocked because this build has no verified notification contact or delivery adapter",
+        "No production secret manager/key rotation or multi-process throttling; do not use for provider credentials"
+      ],
+      "started_at": "2026-11-09T23:10:00+05:00",
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T23:41:00+05:00"
+    }
+  ]
+}

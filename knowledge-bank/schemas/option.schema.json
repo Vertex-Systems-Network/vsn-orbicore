@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsn-orbicore.local/schemas/option.schema.json",
+  "title": "Options Bank record",
+  "type": "object",
+  "required": ["id", "key", "type", "default", "validation", "scope", "security_classification", "capability_requirements", "dependencies", "help_text", "implementation_status", "test_ids"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^OPT-[A-Z0-9-]+$"},
+    "key": {"type": "string"},
+    "type": {"enum": ["string", "integer", "number", "boolean", "enum", "array", "object"]},
+    "default": {},
+    "validation": {"type": "string"},
+    "scope": {"enum": ["global", "organization", "account", "site", "job"]},
+    "security_classification": {"enum": ["public", "internal", "sensitive", "secret_reference"]},
+    "capability_requirements": {"type": "array", "items": {"type": "string"}},
+    "dependencies": {"type": "array", "items": {"type": "string"}},
+    "help_text": {"type": "string"},
+    "implementation_status": {"enum": ["implemented", "not_implemented", "planned"]},
+    "test_ids": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}
