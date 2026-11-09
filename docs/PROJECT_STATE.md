@@ -21,7 +21,7 @@ Use `DESIGNED`, `IMPLEMENTED`, `MOCK-TESTED`, `INTEGRATION-TESTED`, `LIVE-VERIFI
 
 ## Current checkpoint
 
-- Last pushed feature branch: `f7fb336da48bd2b8a035270e7aa588730981d82a` on `feat/phase-0-foundation`; local code and documentation are verified in the current worktree; checkpoint commit/push follows.
-- Local code: fixture-backed account/site API, SQLite persistence, refresh worker, React dashboard and tests. Local checks are recorded in `docs/TEST_EVIDENCE/2026-11-09-local-poc.md`.
-- Feature branch was published to GitHub in the prior checkpoint; the GitHub connector commit differs from local Git commit metadata but represents the same tracked file tree.
+- Latest tested software checkpoint: local commit `752d23b9ec68bb1f73e56df88d58afa4c3357e2e`; published GitHub equivalent `00068c85f795a5370b891b4c36480ddc69678aed` on `feat/phase-0-foundation`. The connector recreated commit metadata while preserving the tracked tree.
+- Local code: fixture-backed account/site API, SQLite persistence, refresh worker, React dashboard, auth/MFA fallback and tests. `npm test` passed 18/18; lint, build, doctor, Vite-proxied smoke and `git diff --check` passed. Evidence and limits are in `docs/TEST_EVIDENCE/2026-11-09-local-poc.md` and `docs/TEST_EVIDENCE/2026-11-09-mfa-local.md`.
+- Feature branch is current through the MFA checkpoint. Local/remote commit SHAs differ due to connector-created Git metadata; remote compare against `main` should show the feature branch ahead and not behind.
 - Phase 0 exit criteria are met: research/specification/banks are internally cross-validated and Phase 0 tests pass; the current suite adds auth and smoke coverage. ORB-001/003/008 are verified; ORB-002 remains mock-tested. Browser QA ORB-009 is a Phase 1 blocker. ORB-005 local auth/tenant/audit slice is mock-tested. ORB-011 TOTP compatibility and recovery-code behavior is mock-tested; WebAuthn/passkeys, verified notification delivery, authenticator rebinding and production identity gates remain open before any real credentials.
