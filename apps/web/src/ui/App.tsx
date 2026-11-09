@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Icon } from "./icons";
 import type { HostingAccount, Job, Overview, Site } from "./types";
 
-type User = { id: string; email: string; role: string; organizationId: string };
+type User = { id: string; email: string; role: string; organizationId: string; mfaEnabled?: boolean | number };
 
 function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: boolean; onAuthenticated: (user: User) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
+  const [mfaChallenge, setMfaChallenge] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,11 +18,16 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(bootstrapRequired ? "/api/auth/bootstrap" : "/api/auth/login", {
+      const response = await fetch(mfaChallenge ? "/api/auth/mfa/challenge" : bootstrapRequired ? "/api/auth/bootstrap" : "/api/auth/login", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify(bootstrapRequired ? { token, email, password } : { email, password }),
+        body: JSON.stringify(mfaChallenge ? { challenge: mfaChallenge, code: mfaCode } : bootstrapRequired ? { token, email, password } : { email, password }),
       });
-      const data = await response.json() as { user?: User; error?: string };
+      const data = await response.json() as { user?: User; error?: string; mfaRequired?: boolean; challenge?: string };
+      if (response.status === 202 && data.mfaRequired && data.challenge) {
+        setMfaChallenge(data.challenge);
+        setPassword("");
+        return;
+      }
       if (!response.ok || !data.user) throw new Error(data.error === "password_policy" ? "Choose a password with at least 12 characters." : data.error === "invalid_bootstrap_token" ? "The setup token is incorrect or has already been used." : "Could not sign in. Check the details and try again.");
       onAuthenticated(data.user);
     } catch (cause) {
@@ -31,15 +38,61 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
   return <main className="auth-screen"><form className="auth-card" onSubmit={(event) => void submit(event)}>
     <div className="brand-lockup auth-brand"><span className="brand-symbol"><i /><i /><i /></span><span><strong>ORBICORE</strong><small>BY VSN</small></span></div>
     <div className="eyebrow"><span className="live-indicator" /> LOCAL ADMINISTRATION</div>
-    <h1>{bootstrapRequired ? "Set up your workspace" : "Welcome back"}</h1>
-    <p>{bootstrapRequired ? "Create the first workspace owner. The one-time setup token is stored in .data/first-admin.token." : "Sign in to your hosting workspace."}</p>
-    {bootstrapRequired && <label>One-time setup token<input autoComplete="off" type="password" required value={token} onChange={(event) => setToken(event.target.value)} /></label>}
-    <label>Email address<input autoComplete="username" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-    <label>Password<input autoComplete={bootstrapRequired ? "new-password" : "current-password"} type="password" minLength={bootstrapRequired ? 12 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+    <h1>{bootstrapRequired ? "Set up your workspace" : mfaChallenge ? "Verify your sign-in" : "Welcome back"}</h1>
+    <p>{bootstrapRequired ? "Create the first workspace owner. The one-time setup token is stored in .data/first-admin.token." : mfaChallenge ? "Enter a current authenticator code or a one-time recovery code." : "Sign in to your hosting workspace."}</p>
+    {!mfaChallenge && bootstrapRequired && <label>One-time setup token<input autoComplete="off" type="password" required value={token} onChange={(event) => setToken(event.target.value)} /></label>}
+    {!mfaChallenge && <label>Email address<input autoComplete="username" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>}
+    {!mfaChallenge && <label>Password<input autoComplete={bootstrapRequired ? "new-password" : "current-password"} type="password" minLength={bootstrapRequired ? 12 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
+    {mfaChallenge && <><label>Authenticator or recovery code<input autoComplete="one-time-code" inputMode="text" autoFocus required value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} /></label><small>TOTP is a compatibility fallback and is not phishing-resistant. Use a saved recovery code only once.</small><button type="button" className="auth-restart" onClick={() => { setMfaChallenge(""); setMfaCode(""); setError(null); }}>Start sign-in again</button></>}
     {error && <div className="auth-error" role="alert">{error}</div>}
-    <button className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait..." : bootstrapRequired ? "Create workspace owner" : "Sign in"}</button>
+    <button className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait..." : mfaChallenge ? "Verify and sign in" : bootstrapRequired ? "Create workspace owner" : "Sign in"}</button>
     <small className="auth-footnote">Local-only prototype. Use a unique password; provider credentials are not configured here.</small>
   </form></main>;
+}
+
+function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolean; onEnabled: () => void; onDisabled: () => void; onClose: () => void }) {
+  const [secret, setSecret] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const begin = async () => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/auth/mfa/enroll", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: currentPassword }) });
+      const data = await response.json() as { secret?: string; error?: string };
+      if (!response.ok || !data.secret) throw new Error(data.error === "mfa_key_unavailable" ? "Set ORBICORE_MFA_ENCRYPTION_KEY to a base64-encoded 32-byte key and restart the API." : data.error === "reauthentication_required" ? "Enter your current password to confirm this security change." : "Could not start MFA enrollment.");
+      setSecret(data.secret);
+      setCurrentPassword("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "MFA setup failed."); }
+    finally { setBusy(false); }
+  };
+  const confirm = async () => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/auth/mfa/confirm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
+      const data = await response.json() as { recoveryCodes?: string[] };
+      if (!response.ok || !data.recoveryCodes) throw new Error("Code not accepted. Check your authenticator and try again.");
+      setRecoveryCodes(data.recoveryCodes); onEnabled();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "MFA verification failed."); }
+    finally { setBusy(false); }
+  };
+  const disable = async () => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/auth/mfa/disable", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: currentPassword, code }) });
+      const data = await response.json() as { disabled?: boolean };
+      if (!response.ok || !data.disabled) throw new Error("Password and a current, unused authenticator code are required.");
+      onDisabled();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not disable MFA."); }
+    finally { setBusy(false); }
+  };
+  return <div className="mfa-backdrop"><section className="mfa-panel" role="dialog" aria-modal="true" aria-labelledby="mfa-title">
+    <button className="mfa-close" onClick={onClose} aria-label="Close security setup">×</button><div className="eyebrow">ACCOUNT SECURITY</div><h2 id="mfa-title">Authenticator setup</h2>
+    {recoveryCodes.length ? <><p>Save these recovery codes offline. They are shown once and each works once.</p><ul className="recovery-codes">{recoveryCodes.map((item) => <li key={item}>{item}</li>)}</ul><button className="primary-button" onClick={onClose}>I saved the codes</button></> : enabled ? <><p>Disabling MFA requires your current password and a new, unused authenticator code. All sessions will be revoked.</p><label>Current password<input type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label><label>Current authenticator code<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label><button className="primary-button" disabled={busy || !currentPassword || code.length !== 6} onClick={() => void disable()}>{busy ? "Verifying…" : "Disable MFA and sign out"}</button></> : !secret ? <><p>Time-based codes are a compatibility fallback and are not phishing-resistant. Confirm your password before binding a new authenticator.</p><label>Current password<input type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label><button className="primary-button" disabled={busy || !currentPassword} onClick={() => void begin()}>{busy ? "Starting…" : "Start enrollment"}</button></> : <><p>Enter this key into an authenticator app, then verify a current six-digit code.</p><code className="mfa-secret">{secret}</code><label>Six-digit code<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label><button className="primary-button" disabled={busy || code.length !== 6} onClick={() => void confirm()}>{busy ? "Verifying…" : "Verify and enable"}</button></>}
+    {error && <div className="auth-error" role="alert">{error}</div>}
+  </section></div>;
 }
 
 const navGroups = [
@@ -97,6 +150,7 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showMfaSetup, setShowMfaSetup] = useState(false);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -188,7 +242,7 @@ export function App() {
       <nav className="primary-nav">
         {navGroups.map((group) => <div className="nav-group" key={group.label}><span className="nav-group-label">{group.label}</span>{group.items.map((item) => <button key={item.label} disabled={item.label !== "Overview"} title={item.label === "Overview" ? undefined : "Not available in this local demo"} className={`nav-item ${activeNav === item.label ? "active" : ""}`}><Icon name={item.icon} /><span>{item.label}</span>{item.label === "Jobs & activity" && jobs.length > 0 && <em>{jobs.length}</em>}</button>)}</div>)}
       </nav>
-      <div className="sidebar-bottom"><button className="nav-item settings-item" disabled title="Not available in this local demo"><span className="settings-gear">⚙</span><span>Settings</span></button><div className="user-profile"><span className="user-avatar">{actor.email.slice(0, 1).toUpperCase()}</span><span><strong>{actor.email}</strong><small>{actor.role} · local workspace</small></span><button className="logout-button" onClick={() => void logout()} title="Sign out" aria-label="Sign out">↗</button></div></div>
+      <div className="sidebar-bottom">{["owner", "admin"].includes(actor.role) && <button className="nav-item settings-item" onClick={() => setShowMfaSetup(true)}><span className="settings-gear">⚿</span><span>{actor.mfaEnabled ? "Manage MFA" : "Set up MFA"}</span></button>}<div className="user-profile"><span className="user-avatar">{actor.email.slice(0, 1).toUpperCase()}</span><span><strong>{actor.email}</strong><small>{actor.role} · local workspace</small></span><button className="logout-button" onClick={() => void logout()} title="Sign out" aria-label="Sign out">↗</button></div></div>
     </aside>
 
     <main className="main-content">
@@ -228,5 +282,6 @@ export function App() {
         <footer className="page-footer"><span>VSN ORBICORE <b>·</b> Local demo build</span><span>Inventory source: {overview?.source === "mock_fixture" ? "synthetic fixture" : "provider"} <b>·</b> Live connections: {overview?.liveConnections ?? 0}</span></footer>
       </div>
     </main>
+    {showMfaSetup && <MfaSetup enabled={Boolean(actor.mfaEnabled)} onClose={() => setShowMfaSetup(false)} onEnabled={() => setActor((current) => current ? { ...current, mfaEnabled: true } : current)} onDisabled={() => { setShowMfaSetup(false); setActor(null); }} />}
   </div>;
 }

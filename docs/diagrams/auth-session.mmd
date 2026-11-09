@@ -7,4 +7,9 @@ stateDiagram-v2
     Authenticated --> JobQueued: permitted refresh request
     JobQueued --> JobCompleted: worker rechecks actor and tenant
     JobQueued --> JobFailed: actor disabled, downgraded, or tenant mismatch
-    SignedOut --> Authenticated: valid login
+    SignedOut --> PasswordVerified: valid password
+    PasswordVerified --> Authenticated: MFA not enabled in local prototype
+    PasswordVerified --> MfaChallenge: MFA enabled; issue one-time challenge
+    MfaChallenge --> Authenticated: valid, unused TOTP step
+    MfaChallenge --> Authenticated: valid recovery code; revoke prior sessions and write blocked notification
+    MfaChallenge --> SignedOut: invalid, expired, or replayed code

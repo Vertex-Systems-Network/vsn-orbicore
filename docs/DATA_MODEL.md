@@ -1,12 +1,16 @@
 # Initial data model
 
-All persistent business rows require stable IDs, tenant scope where applicable, creation/update times, provenance, and lifecycle state. Secrets are external references and never values.
+Persistent business rows use stable IDs, tenant scope where applicable, timestamps, provenance and lifecycle state. Provider credentials remain external references; the local TOTP seed is encrypted at rest and must use a separately configured key.
 
 | Entity | Key fields | Scope/relationship | Status |
 |---|---|---|---|
 | Organization | id, name, lifecycle | root tenant | Local `org-demo` tenant seeded for the synthetic fixture |
-| User | id, organization_id, email, scrypt salt/hash, role, disabled, created_at | unique by organization/email | Local bootstrap and session sign-in implemented; MFA/recovery not implemented |
-| Session | token_hash, user_id, expires_at, created_at | user scoped; opaque token hash only | Local SQLite; 12-hour expiry and logout revocation |
+| User | id, organization_id, email, scrypt salt/hash, role, disabled, created_at | unique by organization/email | Local bootstrap/sign-in implemented; password-reauthenticated TOTP fallback and recovery-code workflow are mock-tested; WebAuthn and verified notifications remain open |
+| Session | token_hash, user_id, expires_at, mfa_verified, created_at | user scoped; opaque token hash only | Local SQLite; 12-hour expiry and logout/MFA-enrollment/recovery/disable revocation |
+| Authenticator | user_id, encrypted_secret, enabled, pending_expires_at, last_totp_step | one per local user | AES-256-GCM with externally configured key; TOTP fallback only |
+| RecoveryCode | user_id, code_hash, used_at | user scoped; one-time high-entropy codes | Hash stored; plaintext returned once at enrollment |
+| LoginChallenge | token_hash, user_id, expires_at, created_at | one active challenge per user | Single-use password-after-MFA challenge, short expiry |
+| NotificationOutbox | id, user_id, event, recipient, status, created_at | user scoped | Recovery rows remain blocked until contact verification/delivery exists |
 | HostingAccount | id, organization_id, provider_id, label, username_ref, capability_snapshot_id, health, last_synced_at | tenant scoped | Implemented locally with fixture data only |
 | Connection | id, account_id, auth_mode, secret_reference, status, checked_at | secret reference only | Designed; not implemented |
 | CapabilitySnapshot | id, account_id, provider_version, fetched_at, capabilities_json, source | immutable evidence | Designed |

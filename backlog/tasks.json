@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-09T20:30:00Z",
+  "updated_at": "2026-11-09T23:41:00+05:00",
   "tasks": [
     {
       "id": "ORB-001",
@@ -437,7 +437,7 @@
       "dependencies": [
         "ORB-005"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "owner_agent": "codex",
       "assumptions": [
         "No provider credentials or high-impact operation is enabled before MFA/recovery controls pass",
@@ -463,15 +463,22 @@
       "commit_hash": null,
       "evidence_paths": [
         "docs/DECISIONS/ADR-0002-authentication.md",
-        "docs/SECURITY_THREAT_MODEL.md"
+        "docs/SECURITY_THREAT_MODEL.md",
+        "apps/api/mfa.mjs",
+        "apps/api/server.mjs",
+        "apps/web/src/ui/App.tsx",
+        "tests/mfa.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md"
       ],
       "blockers": [
-        "MFA implementation, key-management design, and verified contact notification channel are not implemented"
+        "WebAuthn/passkey enrollment and login challenge are not implemented; TOTP fallback is explicitly not phishing-resistant",
+        "Notification outbox is recorded as blocked because this build has no verified notification contact or delivery adapter",
+        "No production secret manager/key rotation or multi-process throttling; do not use for provider credentials"
       ],
-      "started_at": null,
+      "started_at": "2026-11-09T23:10:00+05:00",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T20:30:00Z"
+      "last_updated": "2026-11-09T23:41:00+05:00"
     }
   ]
 }

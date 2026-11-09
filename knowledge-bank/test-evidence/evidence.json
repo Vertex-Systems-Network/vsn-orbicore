@@ -324,34 +324,39 @@
     },
     {
       "id": "AUTH-MFA-001",
-      "test": "Owner/admin enrolls, verifies, and revokes an MFA authenticator",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/DECISIONS/ADR-0002-authentication.md",
+      "test": "Owner password-reauthenticated MFA enrollment and second-factor login challenge with TOTP fallback",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/mfa.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
       "limitations": [
-        "Design only; no MFA/recovery behavior is implemented"
+        "No WebAuthn/passkey flow; TOTP is not phishing-resistant",
+        "Synthetic in-memory SQLite only",
+        "No provider credentials or production assurance claim"
       ]
     },
     {
       "id": "AUTH-RECOVERY-001",
-      "test": "One-time recovery code is single-use, audited, and revokes other sessions",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/DECISIONS/ADR-0002-authentication.md",
+      "test": "Single-use recovery code hashing, consumption, session revocation and notification outbox record",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/mfa.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
       "limitations": [
-        "Design only; no MFA/recovery behavior is implemented"
+        "Notification remains blocked because recipient contact is not verified and no delivery adapter is configured",
+        "Recovery event does not implement authenticator rebinding",
+        "Synthetic in-memory SQLite only"
       ]
     },
     {
       "id": "SEC-MFA-REPLAY-001",
-      "test": "Previously used OTP or recovery code cannot be replayed",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/DECISIONS/ADR-0002-authentication.md",
+      "test": "TOTP RFC 6238 vector and rejection of repeated accepted time step",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/mfa.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
       "limitations": [
-        "Design only; no MFA/recovery behavior is implemented"
+        "Test clock is injected",
+        "Does not verify WebAuthn challenge/replay behavior"
       ]
     }
   ],
-  "status_note": "Contains local mock API/auth/audit tests and the Vite proxy smoke. MFA/recovery test cases remain designed only. Browser-rendered accessibility, live provider, PostgreSQL/Redis, external vault, and production deployment remain unverified."
+  "status_note": "Contains 18 passing local tests, including fixture API/auth/audit, MFA fallback, recovery-code, replay, challenge lockout/expiry and authenticator revocation coverage, plus the Vite proxy smoke. TOTP is a compatibility fallback only; WebAuthn/passkeys, verified-contact notification delivery, external production key management, browser-rendered accessibility, live provider, PostgreSQL/Redis, and production deployment remain unverified."
 }

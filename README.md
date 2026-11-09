@@ -6,11 +6,11 @@ The [master development directive](AI_Native_Multi_Hosting_Master_Prompt.md) gov
 
 ## Current status
 
-Phase 0 exit criteria are met. Phase 1 is underway. Local bootstrap/login, session checks, and organization-scoped fixture reads/jobs are implemented and tested, but MFA/recovery, production identity, PostgreSQL/Redis, and the installation wizard remain unverified. The service uses synthetic data only and does not connect to real hosting accounts or perform production operations.
+Phase 0 exit criteria are met. Phase 1 is underway. Local bootstrap/login, tenant scoping, audit, a TOTP compatibility fallback, and one-time recovery codes are mock-tested. WebAuthn/passkeys, verified notification delivery, production key management, PostgreSQL/Redis, and the installation wizard remain unverified. The service uses synthetic data only and does not connect to real hosting accounts or perform production operations.
 
 ## Local development
 
-Requires Node.js 24+ and npm. Run `npm ci`, `npm test`, `npm run lint`, `npm run build`, then `npm run dev`. On first launch, read the one-time owner setup token from `.data/first-admin.token` and enter it at `http://127.0.0.1:41750`. Keep both services local-only and do not use real hosting credentials. The Vite UI listens on `127.0.0.1:41750`; the API listens on `127.0.0.1:41751`. The API seeds `.data/orbicore.sqlite` from a synthetic fixture. Start with [contribution guidance](CONTRIBUTING.md), [the next action](docs/NEXT_ACTION.md), and [project state](docs/PROJECT_STATE.md).
+Requires Node.js 24+ and npm. Run `npm ci`, `npm test`, `npm run lint`, `npm run build`, then `npm run dev`. On first launch, read the one-time owner setup token from `.data/first-admin.token` and enter it at `http://127.0.0.1:41750`. To enable the MFA compatibility fallback, create `.env` from `.env.example`, generate a unique key with `openssl rand -base64 32`, export the variables in your shell, then run the app. Keep both services local-only and do not use real hosting credentials. The Vite UI listens on `127.0.0.1:41750`; the API listens on `127.0.0.1:41751`. The API seeds `.data/orbicore.sqlite` from a synthetic fixture. Start with [contribution guidance](CONTRIBUTING.md), [the next action](docs/NEXT_ACTION.md), and [project state](docs/PROJECT_STATE.md).
 
 ## Project records
 
