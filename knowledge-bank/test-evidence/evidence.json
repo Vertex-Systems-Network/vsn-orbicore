@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "records": [],
+  "status_note": "No test run is recorded at bootstrap. Add dated command, runtime, exit code, commit, fixtures, and limitations after executing the local suite. Never include secrets or customer data."
+}

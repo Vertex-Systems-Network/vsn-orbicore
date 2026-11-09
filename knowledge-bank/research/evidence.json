@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "id": "RES-CPANEL-UAPI-SCOPE",
+      "question": "Does UAPI imply WHM/root access?",
+      "finding": "No. UAPI addresses cPanel account features; WHM Transfer Tool has separately documented root or sudo/su requirements.",
+      "evidence_quality": "primary_official",
+      "confidence": "high",
+      "source_urls": ["https://api.docs.cpanel.net/cpanel/introduction", "https://docs.cpanel.net/whm/transfers/transfer-tool/"],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "Before implementing a new WHM operation or when cPanel changes API behavior"
+    },
+    {
+      "id": "RES-REMOTE-DB-PROVIDER",
+      "question": "Can a cPanel account always accept remote DB access?",
+      "finding": "No. Provider feature configuration can disable Remote Database Access; discover and test per host.",
+      "evidence_quality": "primary_official",
+      "confidence": "high",
+      "source_urls": ["https://docs.cpanel.net/cpanel/databases/remote-mysql/"],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "Before designing remote DB setup UX or claiming support"
+    },
+    {
+      "id": "RES-STACK-TS-MODULAR",
+      "question": "Which initial stack best supports web/API reuse, adapters, and local proof?",
+      "finding": "Estimated weighted evaluation favors React/TypeScript + NestJS modular monolith + PostgreSQL/BullMQ/Redis; local SQLite is a constrained prototype only.",
+      "evidence_quality": "estimate",
+      "confidence": "medium",
+      "source_urls": ["https://docs.nestjs.com/techniques/database", "https://docs.nestjs.com/techniques/queues", "https://laravel.com/framework/docs/queues"],
+      "checked_at": "2026-11-09",
+      "revisit_trigger": "If install/resource measurements or security review contradict the ADR"
+    }
+  ]
+}

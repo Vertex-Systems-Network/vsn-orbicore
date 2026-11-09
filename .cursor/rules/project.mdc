@@ -1,0 +1,8 @@
+---
+description: Canonical VSN ORBICORE product, security, and resume rules
+alwaysApply: true
+---
+
+Follow [`AGENTS.md`](../../AGENTS.md) as canonical policy and read `docs/PROJECT_STATE.md`, `docs/NEXT_ACTION.md`, `docs/BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/KNOWN_ISSUES.md`, and `docs/HANDOFF.md` before changes. `AI_Native_Multi_Hosting_Master_Prompt.md` is the governing product charter.
+
+Choose one highest-priority unblocked backlog task, implement locally, run relevant checks, review the diff, then update project state/evidence and checkpoint on the authorized branch. Never claim mock tests prove live provider behavior. Never infer WHM/root access, store credentials in source/logs, cross tenant boundaries, or perform destructive/production operations without a scoped policy and authorization. Follow truthful status labels and UX/security requirements in `AGENTS.md`.

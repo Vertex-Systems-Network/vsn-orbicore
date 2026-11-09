@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "id": "OPT-REFRESH-TIMEOUT",
+      "key": "providers.cpanel.read_timeout_seconds",
+      "type": "integer",
+      "default": 20,
+      "validation": "Integer 3..120; reject non-integers and values outside range.",
+      "scope": "account",
+      "security_classification": "internal",
+      "capability_requirements": ["cPanel UAPI read operation"],
+      "dependencies": ["OPT-RETRY-COUNT"],
+      "help_text": "Maximum time for one read-only provider request. A timeout preserves last-known data and marks it stale.",
+      "implementation_status": "planned",
+      "test_ids": ["INV-TIMEOUT-001"]
+    },
+    {
+      "id": "OPT-RETRY-COUNT",
+      "key": "jobs.read_retry_limit",
+      "type": "integer",
+      "default": 2,
+      "validation": "Integer 0..5; exponential backoff with jitter and provider Retry-After respected.",
+      "scope": "organization",
+      "security_classification": "internal",
+      "capability_requirements": [],
+      "dependencies": [],
+      "help_text": "Bounded retry count for idempotent reads only. Never applies to non-idempotent mutations.",
+      "implementation_status": "planned",
+      "test_ids": ["JOB-RETRY-001"]
+    },
+    {
+      "id": "OPT-CONNECTION-SECRET-REF",
+      "key": "connections.secret_reference",
+      "type": "string",
+      "default": null,
+      "validation": "Vault reference only; raw secret values are rejected and never serialized to jobs.",
+      "scope": "account",
+      "security_classification": "secret_reference",
+      "capability_requirements": [],
+      "dependencies": [],
+      "help_text": "Reference to a scoped, encrypted credential entry. Secret manager integration is not implemented yet.",
+      "implementation_status": "not_implemented",
+      "test_ids": ["SEC-SECRET-001"]
+    },
+    {
+      "id": "OPT-MIGRATION-CUTOVER-APPROVAL",
+      "key": "migration.cutover_requires_approval",
+      "type": "boolean",
+      "default": true,
+      "validation": "Must remain true unless an organization policy explicitly authorizes a bounded cutover window.",
+      "scope": "organization",
+      "security_classification": "sensitive",
+      "capability_requirements": ["DNS provider mutation capability"],
+      "dependencies": ["OPT-MIGRATION-ROLLBACK-WINDOW"],
+      "help_text": "DNS cutover can change live traffic. It requires approval and a rollback plan by default.",
+      "implementation_status": "planned",
+      "test_ids": ["MIG-DNS-GATE-001"]
+    },
+    {
+      "id": "OPT-MIGRATION-ROLLBACK-WINDOW",
+      "key": "migration.rollback_window_minutes",
+      "type": "integer",
+      "default": 60,
+      "validation": "Integer 15..10080; must not expire before the retention/acceptance gate.",
+      "scope": "job",
+      "security_classification": "sensitive",
+      "capability_requirements": ["Verified snapshot", "Prior DNS record snapshot"],
+      "dependencies": [],
+      "help_text": "Minimum window to keep recovery available after a cutover.",
+      "implementation_status": "planned",
+      "test_ids": ["MIG-ROLLBACK-001"]
+    }
+  ]
+}

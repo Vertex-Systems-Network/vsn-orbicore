@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "source_of_truth": "backlog/tasks.json",
+  "epics": [
+    {"id": "EPIC-PHASE-0", "name": "Research and feasibility", "task_ids": ["ORB-001", "ORB-002", "ORB-003"]},
+    {"id": "EPIC-PHASE-1", "name": "Platform foundation", "task_ids": ["ORB-004", "ORB-005", "ORB-007"]},
+    {"id": "EPIC-PHASE-2", "name": "cPanel/WHM inventory", "task_ids": ["ORB-006"]}
+  ],
+  "commit_to_test_evidence_mapping": [],
+  "release_ids": [],
+  "updated_at": "2026-11-09"
+}

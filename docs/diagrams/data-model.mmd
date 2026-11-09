@@ -1,0 +1,15 @@
+erDiagram
+  ORGANIZATION ||--o{ MEMBERSHIP : contains
+  USER ||--o{ MEMBERSHIP : joins
+  ORGANIZATION ||--o{ HOSTING_ACCOUNT : owns
+  PROVIDER ||--o{ HOSTING_ACCOUNT : serves
+  HOSTING_ACCOUNT ||--o{ DOMAIN : discovers
+  DOMAIN ||--o{ WEBSITE : maps_to
+  HOSTING_ACCOUNT ||--o{ CONNECTION : authenticates_via
+  HOSTING_ACCOUNT ||--o{ CAPABILITY_SNAPSHOT : reports
+  ORGANIZATION ||--o{ JOB : schedules
+  JOB ||--o{ JOB_STEP : records
+  JOB ||--o{ AUDIT_EVENT : emits
+  ORGANIZATION ||--o{ STORAGE_ENDPOINT : configures
+  ORGANIZATION ||--o{ MIGRATION_PLAN : plans
+  MIGRATION_PLAN ||--o{ JOB : executes
