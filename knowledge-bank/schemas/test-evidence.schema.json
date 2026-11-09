@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsn-orbicore.local/schemas/test-evidence.schema.json",
+  "title": "Test evidence record",
+  "type": "object",
+  "required": ["id", "test", "status", "command", "evidence_path", "limitations"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9-]+$"},
+    "test": {"type": "string", "minLength": 5},
+    "status": {"enum": ["DESIGNED", "MOCK-TESTED", "INTEGRATION-TESTED", "LIVE-VERIFIED", "RELEASED"]},
+    "command": {"type": "string"},
+    "evidence_path": {"type": "string"},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

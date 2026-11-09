@@ -1,5 +1,5 @@
 # Knowledge and execution bank
 
-This is the versioned structured companion to project docs. JSON Schemas under `schemas/` define Flow, Options, Systems, Integration and Research record shapes. Records use stable IDs and refer to source docs, tasks, tests, or evidence paths. `backlog/tasks.json` is the canonical executable backlog; `knowledge-bank/backlog/delivery.json` is only the epic-to-task index.
+This versioned structured companion contains flows, options, system components, design decisions, integrations, research, test evidence, and backlog links. JSON Schema records live in `schemas/`. `npm run lint` validates JSON syntax, validates these records against their JSON Schemas, enforces globally unique bank IDs, checks declared test IDs and local source/evidence paths, and verifies local fixture paths. The validator intentionally supports the JSON Schema keywords used by these project schemas; it is not a general draft 2020-12 validator.
 
-Current banks: `flows/`, `options/`, `systems/`, `design/`, `integrations/`, `research/`, `test-evidence/`, and `backlog/`. Validate JSON and schemas before committing; add generated consistency checks as a Phase 1 task. Every option that has no code effect must say `not_implemented` or `planned`.
+`backlog/tasks.json` is the canonical executable backlog; `backlog/delivery.json` is its epic-to-task index. Every option records whether its behavior is implemented, planned, or not implemented. Research and system records link to dated sources, docs, tests, and fixtures where available.

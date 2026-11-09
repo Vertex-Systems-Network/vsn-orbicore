@@ -6,8 +6,8 @@
 - Repository started with two files and three commits. Created local feature branch `feat/phase-0-foundation` from upstream `main` at `eb2a67ed18f9848ec12484e5d0d7a9f9367ef481`.
 - Captured current Node/npm/Python versions and confirmed Docker, PostgreSQL, Redis are absent. Confirmed npm registry is reachable.
 - Research confirmed cPanel UAPI is account-scoped, WHM Transfer Tool has higher privilege requirements, and remote database access depends on provider configuration. Full notes and dated source URLs are in `docs/RESEARCH/PHASE-0-RESEARCH.md`.
-- Implemented fixture-backed API, SQLite inventory, local refresh queue/worker, and React dashboard; `npm test` (5/5), lint, typecheck, production build, doctor, and local API/web smoke checks passed. Detailed scope and limitations: `docs/TEST_EVIDENCE/2026-11-09-local-poc.md`.
-- Phase 0 remains open: architecture and knowledge-bank acceptance criteria need review; no live cPanel credentials, PostgreSQL, or Redis available. Commit/push status will be filled after delivery.
+- Implemented fixture-backed API, SQLite inventory, local refresh queue/worker, and React dashboard; `npm test` (6/6), lint, typecheck, production build, doctor, and local API/web smoke checks passed. Detailed scope and limitations: `docs/TEST_EVIDENCE/2026-11-09-local-poc.md`.
+- ORB-001 research and ORB-003 documentation/bank acceptance criteria are verified; ORB-008 validator is implemented and covered by a test. ORB-002 remains mock-tested. Browser UI/accessibility review was attempted but blocked because shared Chrome cannot access the isolated loopback server and the official Playwright Chromium download returned a truncated archive. Live cPanel, PostgreSQL, and Redis checks remain open. Phase 0 exit criteria are met; ORB-005 authentication and tenant isolation is the next implementation task before any real credentials. The feature branch is on GitHub; its connector-created commit SHA differs from the local commit SHA because commit metadata was recreated while preserving the tracked tree.
 
 ## Resume
 

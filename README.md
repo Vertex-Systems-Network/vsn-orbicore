@@ -6,7 +6,7 @@ The [master development directive](AI_Native_Multi_Hosting_Master_Prompt.md) gov
 
 ## Current status
 
-Phase 0 research is in progress. The local inventory proof of concept is implemented and mock-tested with seeded cPanel-shaped data and local SQLite; it does not connect to real hosting accounts or perform production operations. PostgreSQL and Redis integration, authentication, tenant isolation, and the installation wizard remain unverified.
+Phase 0 exit criteria are met. Phase 1 is underway; authentication, tenant isolation, PostgreSQL/Redis integration, and the installation wizard remain unverified. The local inventory proof of concept is implemented and mock-tested with seeded cPanel-shaped data and local SQLite; it does not connect to real hosting accounts or perform production operations. PostgreSQL and Redis integration, authentication, tenant isolation, and the installation wizard remain unverified.
 
 ## Local development
 

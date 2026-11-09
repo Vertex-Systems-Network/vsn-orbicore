@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-09 (UTC)
 **Product:** VSN ORBICORE — AI-assisted hosting control plane
-**Phase:** Phase 0 in progress; mock inventory proof of concept implemented and locally verified
+**Phase:** Phase 0 exit met; Phase 1 in progress. ORB-001/003/008 verified; inventory slice mock-tested.
 **Branch at task start:** `feat/phase-0-foundation`, based on upstream `main` commit `eb2a67ed18f9848ec12484e5d0d7a9f9367ef481`
 **Repo at task start:** only README and master directive; no source implementation, CI, docs, or test suite
 **Verified environment:** Node.js 24.22.1, npm 11.9.0, Python 3.12; npm registry reachable; Docker/PostgreSQL/Redis absent
@@ -23,5 +23,5 @@ Use `DESIGNED`, `IMPLEMENTED`, `MOCK-TESTED`, `INTEGRATION-TESTED`, `LIVE-VERIFI
 
 - Last verified upstream commit: `eb2a67ed18f9848ec12484e5d0d7a9f9367ef481`.
 - Local code: fixture-backed account/site API, SQLite persistence, refresh worker, React dashboard and tests. Local checks are recorded in `docs/TEST_EVIDENCE/2026-11-09-local-poc.md`.
-- Current task branch remains local until push is confirmed; record commit SHA and push result after delivery.
-- Phase 0 is not complete: knowledge-bank schema validation, full UI/browser QA, architecture/research acceptance review and external integration prerequisites remain open.
+- Feature branch was published to GitHub in the prior checkpoint; the GitHub connector commit differs from local Git commit metadata but represents the same tracked file tree.
+- Phase 0 exit criteria are met: research/specification/banks are internally cross-validated and six local tests pass. ORB-001/003/008 are verified; ORB-002 remains mock-tested. Browser QA ORB-009 is a Phase 1 blocker. ORB-005 auth/tenant implementation is next and must precede real credentials.

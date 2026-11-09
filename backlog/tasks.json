@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-09T00:00:00Z",
+  "updated_at": "2026-11-09T19:10:00Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -11,19 +11,35 @@
       "risk": "medium",
       "phase": 0,
       "dependencies": [],
-      "status": "in_progress",
+      "status": "verified",
       "owner_agent": "codex",
-      "assumptions": ["No live provider account is authorized yet", "The product is web-first and self-hostable"],
-      "acceptance_criteria": ["Dated primary-source references", "Permission matrix", "Weighted stack ADR with estimated scores labeled", "Unknowns explicitly listed"],
+      "assumptions": [
+        "No live provider account is authorized yet",
+        "The product is web-first and self-hostable"
+      ],
+      "acceptance_criteria": [
+        "Dated primary-source references",
+        "Permission matrix",
+        "Weighted stack ADR with estimated scores labeled",
+        "Unknowns explicitly listed"
+      ],
       "test_ids": [],
-      "source_references": ["AI_Native_Multi_Hosting_Master_Prompt.md#4", "AI_Native_Multi_Hosting_Master_Prompt.md#9", "docs/RESEARCH/PHASE-0-RESEARCH.md"],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#4",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#9",
+        "docs/RESEARCH/PHASE-0-RESEARCH.md"
+      ],
       "commit_hash": null,
-      "evidence_paths": ["docs/RESEARCH/PHASE-0-RESEARCH.md", "docs/DECISIONS/ADR-0001-architecture.md", "docs/FEASIBILITY_MATRIX.md"],
+      "evidence_paths": [
+        "docs/RESEARCH/PHASE-0-RESEARCH.md",
+        "docs/FEASIBILITY_MATRIX.md",
+        "docs/DECISIONS/ADR-0001-architecture.md"
+      ],
       "blockers": [],
       "started_at": "2026-11-09T00:00:00Z",
-      "completed_at": null,
-      "verified_at": null,
-      "last_updated": "2026-11-09T00:00:00Z"
+      "completed_at": "2026-11-09T19:00:00Z",
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
     },
     {
       "id": "ORB-002",
@@ -33,20 +49,45 @@
       "priority": "P0",
       "risk": "medium",
       "phase": 0,
-      "dependencies": ["ORB-001"],
-      "status": "in_progress",
+      "dependencies": [
+        "ORB-001"
+      ],
+      "status": "mock_tested",
       "owner_agent": "codex",
-      "assumptions": ["SQLite is local single-user PoC only", "Fixture data is synthetic"],
-      "acceptance_criteria": ["UI reads data through API", "Rows are persisted in real local DB", "Refresh job state is durable", "Error/stale states do not claim live success", "Repeatable tests cover API and worker"],
-      "test_ids": ["INV-API-001", "INV-JOB-001", "INV-UI-001"],
-      "source_references": ["AI_Native_Multi_Hosting_Master_Prompt.md#4", "AI_Native_Multi_Hosting_Master_Prompt.md#21"],
+      "assumptions": [
+        "SQLite is local single-user PoC only",
+        "Fixture data is synthetic"
+      ],
+      "acceptance_criteria": [
+        "UI reads data through API",
+        "Rows are persisted in real local DB",
+        "Refresh job state is durable",
+        "Error/stale states do not claim live success",
+        "Repeatable tests cover API and worker"
+      ],
+      "test_ids": [
+        "INV-API-001",
+        "INV-SITES-001",
+        "INV-JOB-001",
+        "INV-IDEMPOTENCY-001",
+        "INV-INPUT-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#4",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#21"
+      ],
       "commit_hash": null,
-      "evidence_paths": ["docs/TEST_EVIDENCE/"],
-      "blockers": [],
+      "evidence_paths": [
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+        "tests/inventory-api.test.mjs"
+      ],
+      "blockers": [
+        "Browser-level visual/accessibility and live provider behavior remain unverified"
+      ],
       "started_at": "2026-11-09T00:00:00Z",
       "completed_at": null,
-      "verified_at": null,
-      "last_updated": "2026-11-09T00:00:00Z"
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
     },
     {
       "id": "ORB-003",
@@ -56,20 +97,40 @@
       "priority": "P0",
       "risk": "low",
       "phase": 0,
-      "dependencies": ["ORB-001"],
-      "status": "in_progress",
+      "dependencies": [
+        "ORB-001"
+      ],
+      "status": "verified",
       "owner_agent": "codex",
       "assumptions": [],
-      "acceptance_criteria": ["Rule entry points agree with AGENTS.md", "Required docs have factual content", "Banks have unique IDs/cross-links and validation schema", "Diagrams label target vs implemented boundaries", "Backlog and state agree"],
-      "test_ids": ["DOC-JSON-001", "DOC-LINK-001"],
-      "source_references": ["AI_Native_Multi_Hosting_Master_Prompt.md#3", "AI_Native_Multi_Hosting_Master_Prompt.md#7", "AI_Native_Multi_Hosting_Master_Prompt.md#19"],
+      "acceptance_criteria": [
+        "Rule entry points agree with AGENTS.md",
+        "Required docs have factual content",
+        "Banks have unique IDs/cross-links and validation schema",
+        "Diagrams label target vs implemented boundaries",
+        "Backlog and state agree"
+      ],
+      "test_ids": [
+        "DOC-BANK-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#3",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#7",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#19"
+      ],
       "commit_hash": null,
-      "evidence_paths": ["docs/", "knowledge-bank/", "backlog/tasks.json"],
+      "evidence_paths": [
+        "AGENTS.md",
+        "docs/",
+        "knowledge-bank/",
+        "scripts/validate-banks.mjs",
+        "tests/knowledge-bank.test.mjs"
+      ],
       "blockers": [],
       "started_at": "2026-11-09T00:00:00Z",
-      "completed_at": null,
-      "verified_at": null,
-      "last_updated": "2026-11-09T00:00:00Z"
+      "completed_at": "2026-11-09T19:00:00Z",
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
     },
     {
       "id": "ORB-004",
@@ -79,20 +140,37 @@
       "priority": "P1",
       "risk": "medium",
       "phase": 1,
-      "dependencies": ["ORB-002"],
+      "dependencies": [
+        "ORB-002"
+      ],
       "status": "blocked_external",
       "owner_agent": "codex",
-      "assumptions": ["Docker or installable local PostgreSQL/Redis will be available in a later environment"],
-      "acceptance_criteria": ["Compose starts cleanly", "Migrations persist across restart", "Job retry/recovery tests pass", "Fresh install walkthrough is reproducible"],
-      "test_ids": ["INFRA-DB-001", "INFRA-QUEUE-001"],
-      "source_references": ["AI_Native_Multi_Hosting_Master_Prompt.md#6", "AI_Native_Multi_Hosting_Master_Prompt.md#16"],
+      "assumptions": [
+        "Docker or installable local PostgreSQL/Redis will be available in a later environment"
+      ],
+      "acceptance_criteria": [
+        "Compose starts cleanly",
+        "Migrations persist across restart",
+        "Job retry/recovery tests pass",
+        "Fresh install walkthrough is reproducible"
+      ],
+      "test_ids": [
+        "INFRA-DB-001",
+        "INFRA-QUEUE-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#6",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#16"
+      ],
       "commit_hash": null,
       "evidence_paths": [],
-      "blockers": ["Docker, PostgreSQL, and Redis unavailable in current environment"],
+      "blockers": [
+        "Docker, PostgreSQL, and Redis unavailable in current environment"
+      ],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T00:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z"
     },
     {
       "id": "ORB-005",
@@ -102,20 +180,37 @@
       "priority": "P1",
       "risk": "high",
       "phase": 1,
-      "dependencies": ["ORB-001", "ORB-002"],
+      "dependencies": [
+        "ORB-001",
+        "ORB-002"
+      ],
       "status": "ready",
       "owner_agent": "codex",
-      "assumptions": ["Synthetic fixture only before completion"],
-      "acceptance_criteria": ["Unauthenticated access denied", "Cross-tenant read/write/job denial tested", "Policy rechecked in worker", "Audit is redacted and queryable", "Session and MFA/recovery design documented"],
-      "test_ids": ["SEC-TENANT-001", "SEC-POLICY-001"],
-      "source_references": ["AI_Native_Multi_Hosting_Master_Prompt.md#12", "docs/SECURITY_THREAT_MODEL.md"],
+      "assumptions": [
+        "Synthetic fixture only before completion"
+      ],
+      "acceptance_criteria": [
+        "Unauthenticated access denied",
+        "Cross-tenant read/write/job denial tested",
+        "Policy rechecked in worker",
+        "Audit is redacted and queryable",
+        "Session and MFA/recovery design documented"
+      ],
+      "test_ids": [
+        "SEC-TENANT-001",
+        "SEC-POLICY-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#12",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
       "commit_hash": null,
       "evidence_paths": [],
       "blockers": [],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T00:00:00Z"
+      "last_updated": "2026-11-09T19:10:00Z"
     },
     {
       "id": "ORB-006",
@@ -125,20 +220,34 @@
       "priority": "P1",
       "risk": "high",
       "phase": 2,
-      "dependencies": ["ORB-005"],
+      "dependencies": [
+        "ORB-005"
+      ],
       "status": "blocked_external",
       "owner_agent": "codex",
       "assumptions": [],
-      "acceptance_criteria": ["Authorized sandbox account", "No mutations", "Revoked/denied token path tested", "Evidence redacted and timestamps recorded"],
-      "test_ids": ["CPANEL-LIVE-001"],
-      "source_references": ["docs/INTEGRATIONS.md", "docs/FEASIBILITY_MATRIX.md"],
+      "acceptance_criteria": [
+        "Authorized sandbox account",
+        "No mutations",
+        "Revoked/denied token path tested",
+        "Evidence redacted and timestamps recorded"
+      ],
+      "test_ids": [
+        "CPANEL-LIVE-001"
+      ],
+      "source_references": [
+        "docs/INTEGRATIONS.md",
+        "docs/FEASIBILITY_MATRIX.md"
+      ],
       "commit_hash": null,
       "evidence_paths": [],
-      "blockers": ["No sandbox account or scoped token provided"],
+      "blockers": [
+        "No sandbox account or scoped token provided"
+      ],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T00:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z"
     },
     {
       "id": "ORB-007",
@@ -148,20 +257,157 @@
       "priority": "P1",
       "risk": "high",
       "phase": 1,
-      "dependencies": ["ORB-004", "ORB-005"],
+      "dependencies": [
+        "ORB-004",
+        "ORB-005"
+      ],
       "status": "proposed",
       "owner_agent": "codex",
       "assumptions": [],
-      "acceptance_criteria": ["Fresh install walkthrough", "Resume/repair path", "Secrets not returned in diagnostics", "Rollback/migration behavior documented and tested"],
-      "test_ids": ["INSTALL-FRESH-001", "INSTALL-RECOVERY-001"],
-      "source_references": ["AI_Native_Multi_Hosting_Master_Prompt.md#16"],
+      "acceptance_criteria": [
+        "Fresh install walkthrough",
+        "Resume/repair path",
+        "Secrets not returned in diagnostics",
+        "Rollback/migration behavior documented and tested"
+      ],
+      "test_ids": [
+        "INSTALL-FRESH-001",
+        "INSTALL-RECOVERY-001"
+      ],
+      "source_references": [
+        "AI_Native_Multi_Hosting_Master_Prompt.md#16"
+      ],
       "commit_hash": null,
       "evidence_paths": [],
       "blockers": [],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T00:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-008",
+      "epic": "Phase 0: Research and feasibility",
+      "title": "Validate research/decision banks and generate cross-reference checks",
+      "description": "Validate structured records against versioned JSON schemas and ensure IDs, declared test references, source paths, and fixtures resolve.",
+      "priority": "P0",
+      "risk": "low",
+      "phase": 0,
+      "dependencies": [
+        "ORB-003"
+      ],
+      "status": "verified",
+      "owner_agent": "codex",
+      "assumptions": [
+        "The validator supports the subset of JSON Schema keywords used by repository schemas"
+      ],
+      "acceptance_criteria": [
+        "Schema validation is reproducible",
+        "Bank IDs are unique",
+        "Test IDs and local source/fixture paths resolve",
+        "Automated test covers validator"
+      ],
+      "test_ids": [
+        "DOC-BANK-001"
+      ],
+      "source_references": [
+        "docs/TEST_STRATEGY.md",
+        "knowledge-bank/README.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "scripts/validate-banks.mjs",
+        "tests/knowledge-bank.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md"
+      ],
+      "blockers": [],
+      "started_at": "2026-11-09T18:50:00Z",
+      "completed_at": "2026-11-09T19:00:00Z",
+      "verified_at": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-009",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Run dashboard accessibility and browser visual verification",
+      "description": "Verify keyboard use, screen-reader names, contrast, responsive layout, and loading/empty/error/stale/permission states in a real browser.",
+      "priority": "P1",
+      "risk": "medium",
+      "phase": 1,
+      "dependencies": [
+        "ORB-002"
+      ],
+      "status": "blocked_environment",
+      "owner_agent": "codex",
+      "assumptions": [
+        "A supported browser can access the local app"
+      ],
+      "acceptance_criteria": [
+        "Desktop and mobile browser screenshots reviewed",
+        "Search, account selection, refresh, and API error state exercised",
+        "Keyboard/focus and basic contrast reviewed",
+        "Evidence includes browser/runtime and limitations"
+      ],
+      "test_ids": [
+        "INV-UI-001",
+        "A11Y-KEYBOARD-001"
+      ],
+      "source_references": [
+        "docs/UX_SPEC.md",
+        "docs/TEST_STRATEGY.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md"
+      ],
+      "blockers": [
+        "Shared Chrome cannot reach the isolated loopback server; Playwright Chromium download returned a truncated 0 MiB archive from the official CDN"
+      ],
+      "started_at": "2026-11-09T19:00:00Z",
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T19:00:00Z"
+    },
+    {
+      "id": "ORB-010",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Add threat-model security suite and dependency/SBOM scanning",
+      "description": "Automate high-risk negative security cases and dependency/license/SBOM checks as tooling becomes available.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-005"
+      ],
+      "status": "proposed",
+      "owner_agent": "codex",
+      "assumptions": [
+        "No real provider credentials are added before auth and tenant isolation gates pass"
+      ],
+      "acceptance_criteria": [
+        "SSRF, path traversal, injection, replay, tenant, and secret exposure cases tested",
+        "Dependency audit and software bill of materials are reproducible",
+        "License gate is documented and reproducible"
+      ],
+      "test_ids": [
+        "SEC-SSRF-001",
+        "SEC-POLICY-001"
+      ],
+      "source_references": [
+        "docs/SECURITY_THREAT_MODEL.md",
+        "AI_Native_Multi_Hosting_Master_Prompt.md#12"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [
+        "docs/SECURITY_THREAT_MODEL.md",
+        "docs/TEST_STRATEGY.md",
+        "tests/"
+      ],
+      "blockers": [],
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-09T19:10:00Z"
     }
   ]
 }

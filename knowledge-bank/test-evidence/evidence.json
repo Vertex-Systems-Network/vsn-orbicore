@@ -1,5 +1,267 @@
 {
   "schema_version": 1,
-  "records": [],
-  "status_note": "No test run is recorded at bootstrap. Add dated command, runtime, exit code, commit, fixtures, and limitations after executing the local suite. Never include secrets or customer data."
+  "records": [
+    {
+      "id": "INV-API-001",
+      "test": "health and overview expose synthetic fixture state clearly",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Synthetic fixture only",
+        "No provider call"
+      ]
+    },
+    {
+      "id": "INV-SITES-001",
+      "test": "site inventory is tenant fixture scoped and unknown accounts return 404",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Fixture tenant scope only; application authentication and real tenant enforcement are not implemented"
+      ]
+    },
+    {
+      "id": "INV-JOB-001",
+      "test": "refresh job persists queued and completed states",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Single-process SQLite demo worker"
+      ]
+    },
+    {
+      "id": "INV-IDEMPOTENCY-001",
+      "test": "idempotency key avoids duplicate refresh jobs",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Local API process only"
+      ]
+    },
+    {
+      "id": "INV-INPUT-001",
+      "test": "invalid JSON and oversized input are rejected without creating jobs",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Local API process only"
+      ]
+    },
+    {
+      "id": "A11Y-KEYBOARD-001",
+      "test": "Keyboard navigation and visible focus across the dashboard",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "ACCOUNT-DETAIL-001",
+      "test": "Account detail loading, empty, error, and permission states",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INV-STALE-001",
+      "test": "Last-known inventory remains visible and marked stale after provider failure",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INV-TIMEOUT-001",
+      "test": "Provider read timeout preserves last-known inventory and returns a stale state",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INV-UI-001",
+      "test": "Overview renders loading, populated, empty, error, stale, and restricted states",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "JOB-RETRY-001",
+      "test": "Read-only job retries use bounded backoff and honor Retry-After",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "JOB-UI-001",
+      "test": "Job center renders queued, running, completed, failed, blocked, and retrying states",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-DNS-GATE-001",
+      "test": "DNS cutover requires approval and a rollback record",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-PREFLIGHT-001",
+      "test": "Migration preflight blocks unsupported privileges and incompatible destinations",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-RESUME-001",
+      "test": "Migration resumes only at a verified checkpoint",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "MIG-ROLLBACK-001",
+      "test": "Migration rollback restores a verified snapshot and prior DNS records",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "SEC-SECRET-001",
+      "test": "Secret references are stored without serializing raw credentials",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "SEC-TENANT-001",
+      "test": "Unauthenticated and cross-tenant requests are denied at API and worker boundaries",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "DOC-BANK-001",
+      "test": "knowledge-bank schemas, IDs, test references, dependencies, and paths resolve",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "limitations": [
+        "Validates the project schema subset currently used; not a general JSON Schema conformance implementation"
+      ]
+    },
+    {
+      "id": "INFRA-DB-001",
+      "test": "PostgreSQL Compose start and restart persistence",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INFRA-QUEUE-001",
+      "test": "Redis worker retry and restart recovery",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "SEC-POLICY-001",
+      "test": "Worker rechecks actor policy before each privileged action",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "CPANEL-LIVE-001",
+      "test": "Authorized read-only cPanel UAPI integration and revoked-token behavior",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INSTALL-FRESH-001",
+      "test": "Fresh idempotent installation and first-admin bootstrap",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "INSTALL-RECOVERY-001",
+      "test": "Interrupted install resumes safely and redacts secrets",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    },
+    {
+      "id": "SEC-SSRF-001",
+      "test": "Provider adapter rejects loopback, private, link-local, and disallowed URL targets",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/SECURITY_THREAT_MODEL.md",
+      "limitations": [
+        "Design record only; no executed test evidence"
+      ]
+    }
+  ],
+  "status_note": "Contains six executed local tests, including five mock API checks and bank/backlog validation. Other records are designed and have no executed test evidence. No browser visual/accessibility, live provider, PostgreSQL/Redis, or production checks are claimed."
 }

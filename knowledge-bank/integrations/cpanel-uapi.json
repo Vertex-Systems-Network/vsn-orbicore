@@ -2,13 +2,37 @@
   "id": "INT-CPANEL-UAPI",
   "provider": "cPanel & WHM",
   "version_scope": "UAPI versions and provider roles vary; live capability/version discovery required",
-  "operations": ["TLS/connection validation", "read-only capability discovery", "read-only domains/sites/usage inventory"],
-  "auth_modes": ["cPanel API token + cPanel username; avoid raw password where token is available"],
-  "permission_requirements": ["Account-context UAPI permission for requested function", "Provider may disable features or API roles"],
-  "capabilities": {"inventory": "unknown", "site_file_read": "unknown", "full_account_transfer": "requires_whm", "remote_database": "requires_provider"},
-  "error_map": {"401/403": "denied_or_invalid_token", "429": "rate_limited", "timeout": "stale_last_known_data", "invalid_json": "malformed_provider_response"},
-  "mock_fixture": "tests/fixtures/cpanel-uapi-inventory.json",
+  "operations": [
+    "TLS/connection validation",
+    "read-only capability discovery",
+    "read-only domains/sites/usage inventory"
+  ],
+  "auth_modes": [
+    "cPanel API token + cPanel username; avoid raw password where token is available"
+  ],
+  "permission_requirements": [
+    "Account-context UAPI permission for requested function",
+    "Provider may disable features or API roles"
+  ],
+  "capabilities": {
+    "inventory": "unknown",
+    "site_file_read": "unknown",
+    "full_account_transfer": "requires_whm",
+    "remote_database": "requires_provider"
+  },
+  "error_map": {
+    "401/403": "denied_or_invalid_token",
+    "429": "rate_limited",
+    "timeout": "stale_last_known_data",
+    "invalid_json": "malformed_provider_response"
+  },
+  "mock_fixture": "apps/api/fixtures/cpanel-uapi-inventory.json",
   "live_status": "blocked_external",
-  "source_references": ["https://api.docs.cpanel.net/cpanel/introduction", "https://api.docs.cpanel.net/cpanel/tokens", "https://docs.cpanel.net/whm/transfers/transfer-tool/", "https://docs.cpanel.net/cpanel/databases/remote-mysql/"],
+  "source_references": [
+    "https://api.docs.cpanel.net/cpanel/introduction",
+    "https://api.docs.cpanel.net/cpanel/tokens",
+    "https://docs.cpanel.net/whm/transfers/transfer-tool/",
+    "https://docs.cpanel.net/cpanel/databases/remote-mysql/"
+  ],
   "reviewed_at": "2026-11-09"
 }
