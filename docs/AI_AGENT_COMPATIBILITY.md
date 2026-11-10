@@ -8,4 +8,4 @@
 | Gemini CLI | `GEMINI.md` | same canonical documents | Adapter entry point available; verify tool behavior against current official docs when needed |
 | GitHub Copilot | `.github/copilot-instructions.md` | same canonical documents | Instructions available |
 
-Tool-specific rules must remain short adapters to `AGENTS.md`, not duplicate conflicting policy. No agent tool has authority to access an account or environment not explicitly authorized by the owner.
+All adapters require the GitHub-only workflow in `AGENTS.md`: branch/PR/Actions/review/merge through the canonical repository; no local clone or local-only checkpoint. Tool-specific rules remain short adapters, and no agent has authority to access an account or environment the owner has not authorized.
