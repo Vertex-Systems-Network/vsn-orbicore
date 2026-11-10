@@ -6,7 +6,7 @@ The [master development directive](AI_Native_Multi_Hosting_Master_Prompt.md) gov
 
 ## Current status
 
-Phase 0 exit criteria are met. Phase 1 is underway. Local bootstrap/login, tenant scoping, audit, a TOTP compatibility fallback, and one-time recovery codes are mock-tested. Passkey enrollment/login server routes and UI are implemented on the ORB-011 feature branch; browser authenticator verification, verified notification delivery, production key management, PostgreSQL/Redis, and the installation wizard remain unverified. The service uses synthetic data only and does not connect to real hosting accounts or perform production operations.
+Phase 0 exit criteria are met. Phase 1 is underway. Local bootstrap/login, tenant scoping, audit, a TOTP compatibility fallback, and one-time recovery codes are mock-tested. Passkey enrollment/login server routes and UI are merged and CI-verified; browser authenticator verification, verified notification delivery, production key management, PostgreSQL/Redis, and the installation wizard remain unverified. The service uses synthetic data only and does not connect to real hosting accounts or perform production operations.
 
 ## Local development
 
