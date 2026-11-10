@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID, randomBytes, createHash, scryptSync, timingSafeEqual } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
+import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from "@simplewebauthn/server";
 import { decryptMfaSecret, encodeBase32, encryptMfaSecret, mfaEncryptionKey, newRecoveryCodes, recoveryCodeHash, verifyTotp } from "./mfa.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -152,6 +153,26 @@ function createDatabase(dbPath, fixture) {
       token_hash TEXT PRIMARY KEY,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS passkeys (
+      credential_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      public_key TEXT NOT NULL,
+      counter INTEGER NOT NULL DEFAULT 0,
+      transports_json TEXT NOT NULL DEFAULT '[]',
+      device_type TEXT NOT NULL,
+      backed_up INTEGER NOT NULL DEFAULT 0 CHECK (backed_up IN (0, 1)),
+      created_at TEXT NOT NULL,
+      last_used_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS passkeys_user ON passkeys(user_id);
+    CREATE TABLE IF NOT EXISTS webauthn_challenges (
+      handle_hash TEXT PRIMARY KEY,
+      challenge TEXT NOT NULL,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'login')),
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS authenticators (
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       encrypted_secret TEXT NOT NULL,
@@ -251,7 +272,7 @@ function jobFromRow(row) {
   };
 }
 
-export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaClock = () => Date.now() } = {}) {
+export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:41750" } = {}) {
   const fixture = readFixture(fixturePath);
   const db = createDatabase(dbPath, fixture);
   const accountQuery = db.prepare(`SELECT a.*, COUNT(s.id) AS site_count FROM accounts a
@@ -429,6 +450,162 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         return json(response, 201, { user });
       } catch (error) {
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/passkeys/register/options") {
+      if (!allowSameOrigin(request, response)) return;
+      const actor = actorFor(request);
+      if (!actor) return json(response, 401, { error: "authentication_required" });
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      if (authRateLimited(request, response)) return;
+      try {
+        const body = await readJson(request);
+        const user = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
+        const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, user?.password_salt ?? "orbicore-no-user-salt") : "";
+        if (!user || !safeEqual(candidate, user.password_hash)) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "reauthentication_required" });
+        }
+        authFailures.delete(request.socket.remoteAddress ?? "unknown");
+        const existing = db.prepare("SELECT credential_id, transports_json FROM passkeys WHERE user_id = ?").all(actor.id);
+        const options = await generateRegistrationOptions({
+          rpName: "VSN ORBICORE",
+          rpID: webauthnRPID,
+          userName: actor.email,
+          userDisplayName: actor.email,
+          userID: Buffer.from(actor.id),
+          attestationType: "none",
+          excludeCredentials: existing.map((row) => ({ id: row.credential_id, transports: JSON.parse(row.transports_json) })),
+          authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
+          supportedAlgorithmIDs: [-7, -257],
+          timeout: 60_000,
+        });
+        const handle = randomBytes(32).toString("base64url");
+        const now = new Date(mfaClock());
+        const expires = new Date(now.getTime() + 5 * 60_000).toISOString();
+        db.prepare("DELETE FROM webauthn_challenges WHERE user_id = ? OR expires_at <= ?").run(actor.id, now.toISOString());
+        db.prepare("INSERT INTO webauthn_challenges (handle_hash, challenge, user_id, purpose, expires_at, created_at) VALUES (?, ?, ?, 'registration', ?, ?)")
+          .run(sha256(handle), options.challenge, actor.id, expires, now.toISOString());
+        return json(response, 200, { challengeHandle: handle, options, expiresAt: expires });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "webauthn_unavailable" });
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/passkeys/register/verify") {
+      if (!allowSameOrigin(request, response)) return;
+      const actor = actorFor(request);
+      if (!actor) return json(response, 401, { error: "authentication_required" });
+      if (authRateLimited(request, response)) return;
+      try {
+        const body = await readJson(request);
+        if (typeof body.challengeHandle !== "string" || !body.response || body.challengeHandle.length > 120) return json(response, 400, { error: "invalid_request" });
+        const handleHash = sha256(body.challengeHandle);
+        const now = new Date(mfaClock()).toISOString();
+        const pending = db.prepare("SELECT challenge, expires_at FROM webauthn_challenges WHERE handle_hash = ? AND user_id = ? AND purpose = 'registration'").get(handleHash, actor.id);
+        db.prepare("DELETE FROM webauthn_challenges WHERE handle_hash = ?").run(handleHash);
+        if (!pending || pending.expires_at <= now) return json(response, 410, { error: "webauthn_challenge_expired" });
+        const result = await verifyRegistrationResponse({
+          response: body.response,
+          expectedChallenge: pending.challenge,
+          expectedOrigin: webauthnOrigin,
+          expectedRPID: webauthnRPID,
+          requireUserVerification: true,
+        });
+        if (!result.verified || !result.registrationInfo) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "webauthn_verification_failed" });
+        }
+        const info = result.registrationInfo;
+        const credential = info.credential;
+        const createdAt = new Date(mfaClock()).toISOString();
+        db.prepare("INSERT INTO passkeys (credential_id, user_id, public_key, counter, transports_json, device_type, backed_up, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+          .run(credential.id, actor.id, Buffer.from(credential.publicKey).toString("base64"), credential.counter,
+            JSON.stringify(credential.transports ?? []), info.credentialDeviceType, info.credentialBackedUp ? 1 : 0, createdAt);
+        db.prepare("INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json) VALUES (?, ?, ?, 'auth.passkey.enroll', ?, 'completed', ?, ?)")
+          .run(randomUUID(), actor.organizationId, actor.id, credential.id, createdAt, JSON.stringify({ deviceType: info.credentialDeviceType, backedUp: info.credentialBackedUp }));
+        authFailures.delete(request.socket.remoteAddress ?? "unknown");
+        return json(response, 201, { enrolled: true, credentialId: credential.id, deviceType: info.credentialDeviceType, backedUp: info.credentialBackedUp });
+      } catch (error) {
+        return json(response, error.status ?? 401, { error: error.status ? "invalid_request" : "webauthn_verification_failed" });
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/passkeys/login/options") {
+      if (!allowSameOrigin(request, response)) return;
+      if (authRateLimited(request, response)) return;
+      try {
+        const body = await readJson(request);
+        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+        const user = email.length <= 254 ? db.prepare("SELECT id FROM users WHERE email = ? AND disabled = 0").get(email) : null;
+        const credentials = user ? db.prepare("SELECT credential_id, transports_json FROM passkeys WHERE user_id = ?").all(user.id) : [];
+        if (!user || credentials.length === 0) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "passkey_unavailable" });
+        }
+        const options = await generateAuthenticationOptions({
+          rpID: webauthnRPID,
+          allowCredentials: credentials.map((row) => ({ id: row.credential_id, transports: JSON.parse(row.transports_json) })),
+          userVerification: "required",
+          timeout: 60_000,
+        });
+        const handle = randomBytes(32).toString("base64url");
+        const now = new Date(mfaClock());
+        const expires = new Date(now.getTime() + 5 * 60_000).toISOString();
+        db.prepare("DELETE FROM webauthn_challenges WHERE user_id = ? OR expires_at <= ?").run(user.id, now.toISOString());
+        db.prepare("INSERT INTO webauthn_challenges (handle_hash, challenge, user_id, purpose, expires_at, created_at) VALUES (?, ?, ?, 'login', ?, ?)")
+          .run(sha256(handle), options.challenge, user.id, expires, now.toISOString());
+        return json(response, 200, { challengeHandle: handle, options, expiresAt: expires });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "webauthn_unavailable" });
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/passkeys/login/verify") {
+      if (!allowSameOrigin(request, response)) return;
+      if (authRateLimited(request, response)) return;
+      try {
+        const body = await readJson(request);
+        if (typeof body.challengeHandle !== "string" || !body.response || body.challengeHandle.length > 120) return json(response, 401, { error: "invalid_passkey_challenge" });
+        const handleHash = sha256(body.challengeHandle);
+        const now = new Date(mfaClock()).toISOString();
+        const pending = db.prepare("SELECT c.challenge, c.user_id, c.expires_at, u.id, u.email, u.role, u.organization_id, u.mfa_enabled FROM webauthn_challenges c JOIN users u ON u.id = c.user_id WHERE c.handle_hash = ? AND c.purpose = 'login' AND u.disabled = 0").get(handleHash);
+        db.prepare("DELETE FROM webauthn_challenges WHERE handle_hash = ?").run(handleHash);
+        if (!pending || pending.expires_at <= now) return json(response, 401, { error: "invalid_passkey_challenge" });
+        const credential = db.prepare("SELECT credential_id, public_key, counter, transports_json FROM passkeys WHERE credential_id = ? AND user_id = ?").get(body.response.id, pending.user_id);
+        if (!credential) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "invalid_passkey" });
+        }
+        const verification = await verifyAuthenticationResponse({
+          response: body.response,
+          expectedChallenge: pending.challenge,
+          expectedOrigin: webauthnOrigin,
+          expectedRPID: webauthnRPID,
+          credential: {
+            id: credential.credential_id,
+            publicKey: new Uint8Array(Buffer.from(credential.public_key, "base64")),
+            counter: credential.counter,
+            transports: JSON.parse(credential.transports_json),
+          },
+          requireUserVerification: true,
+        });
+        if (!verification.verified) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "webauthn_verification_failed" });
+        }
+        const info = verification.authenticationInfo;
+        if (info.newCounter <= credential.counter && (credential.counter !== 0 || info.newCounter !== 0)) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "webauthn_counter_replay" });
+        }
+        const updated = db.prepare("UPDATE passkeys SET counter = ?, last_used_at = ? WHERE credential_id = ? AND counter = ?")
+          .run(info.newCounter, now, credential.credential_id, credential.counter);
+        if (updated.changes !== 1) return json(response, 401, { error: "webauthn_counter_replay" });
+        const user = { id: pending.id, email: pending.email, role: pending.role, organizationId: pending.organization_id, mfaEnabled: pending.mfa_enabled };
+        issueSession(user, response, true);
+        authFailures.delete(request.socket.remoteAddress ?? "unknown");
+        return json(response, 200, { user, method: "passkey" });
+      } catch (error) {
+        registerAuthFailure(request);
+        return json(response, error.status ?? 401, { error: error.status ? "invalid_request" : "webauthn_verification_failed" });
       }
     }
     if (request.method === "POST" && url.pathname === "/api/auth/mfa/enroll") {

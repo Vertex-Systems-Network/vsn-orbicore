@@ -4,12 +4,44 @@ import type { HostingAccount, Job, Overview, Site } from "./types";
 
 type User = { id: string; email: string; role: string; organizationId: string; mfaEnabled?: boolean | number };
 
+type WebAuthnRequestOptions = {
+  challenge: string;
+  rpId?: string;
+  user?: { id: string };
+  allowCredentials?: Array<{ id: string; type: "public-key"; transports?: AuthenticatorTransport[] }>;
+  excludeCredentials?: Array<{ id: string; type: "public-key"; transports?: AuthenticatorTransport[] }>;
+  [key: string]: unknown;
+};
+
+const fromBase64Url = (value: string) => Uint8Array.from(atob(value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=")), (character) => character.charCodeAt(0));
+const toBase64Url = (value: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(value))).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
+const publicKeyOptions = (options: WebAuthnRequestOptions) => ({
+  ...options,
+  challenge: fromBase64Url(options.challenge),
+  ...(options.user ? { user: { ...options.user, id: fromBase64Url(options.user.id) } } : {}),
+  ...(options.allowCredentials ? { allowCredentials: options.allowCredentials.map((item) => ({ ...item, id: fromBase64Url(item.id) })) } : {}),
+  ...(options.excludeCredentials ? { excludeCredentials: options.excludeCredentials.map((item) => ({ ...item, id: fromBase64Url(item.id) })) } : {}),
+});
+
+function serializeCredential(credential: PublicKeyCredential) {
+  const response = credential.response;
+  const common = { id: credential.id, rawId: toBase64Url(credential.rawId), type: credential.type, authenticatorAttachment: credential.authenticatorAttachment, clientExtensionResults: credential.getClientExtensionResults() };
+  if (response instanceof AuthenticatorAttestationResponse) {
+    return { ...common, response: { clientDataJSON: toBase64Url(response.clientDataJSON), attestationObject: toBase64Url(response.attestationObject), transports: response.getTransports() } };
+  }
+  const assertion = response as AuthenticatorAssertionResponse;
+  return { ...common, response: { clientDataJSON: toBase64Url(assertion.clientDataJSON), authenticatorData: toBase64Url(assertion.authenticatorData), signature: toBase64Url(assertion.signature), userHandle: assertion.userHandle ? toBase64Url(assertion.userHandle) : null } };
+}
+
+
+
 function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: boolean; onAuthenticated: (user: User) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [mfaChallenge, setMfaChallenge] = useState("");
   const [mfaCode, setMfaCode] = useState("");
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +67,28 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
     } finally { setBusy(false); }
   };
 
+  const signInWithPasskey = async () => {
+    setPasskeyBusy(true);
+    setError(null);
+    try {
+      if (!email.trim()) throw new Error("Enter your email first so ORBICORE can locate your passkey.");
+      const optionsResponse = await fetch("/api/auth/passkeys/login/options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
+      const optionsData = await optionsResponse.json() as { challengeHandle?: string; options?: WebAuthnRequestOptions; error?: string };
+      if (!optionsResponse.ok || !optionsData.challengeHandle || !optionsData.options) throw new Error("No passkey is available for this account.");
+      const credential = await navigator.credentials.get({ publicKey: publicKeyOptions(optionsData.options) as unknown as PublicKeyCredentialRequestOptions });
+      if (!(credential instanceof PublicKeyCredential)) throw new Error("Passkey sign-in was cancelled.");
+      const verification = await fetch("/api/auth/passkeys/login/verify", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ challengeHandle: optionsData.challengeHandle, response: serializeCredential(credential) }),
+      });
+      const result = await verification.json() as { user?: User };
+      if (!verification.ok || !result.user) throw new Error("Passkey verification failed. Start sign-in again.");
+      onAuthenticated(result.user);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "This browser could not complete passkey sign-in.");
+    } finally { setPasskeyBusy(false); }
+  };
+
   return <main className="auth-screen"><form className="auth-card" onSubmit={(event) => void submit(event)}>
     <div className="brand-lockup auth-brand"><span className="brand-symbol"><i /><i /><i /></span><span><strong>ORBICORE</strong><small>BY VSN</small></span></div>
     <div className="eyebrow"><span className="live-indicator" /> LOCAL ADMINISTRATION</div>
@@ -46,6 +100,7 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
     {mfaChallenge && <><label>Authenticator or recovery code<input autoComplete="one-time-code" inputMode="text" autoFocus required value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} /></label><small>TOTP is a compatibility fallback and is not phishing-resistant. Use a saved recovery code only once.</small><button type="button" className="auth-restart" onClick={() => { setMfaChallenge(""); setMfaCode(""); setError(null); }}>Start sign-in again</button></>}
     {error && <div className="auth-error" role="alert">{error}</div>}
     <button className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait..." : mfaChallenge ? "Verify and sign in" : bootstrapRequired ? "Create workspace owner" : "Sign in"}</button>
+    {!bootstrapRequired && !mfaChallenge && <button type="button" className="secondary-button auth-passkey" disabled={passkeyBusy || busy} onClick={() => void signInWithPasskey()}>{passkeyBusy ? "Waiting for passkey..." : "Sign in with a passkey"}</button>}
     <small className="auth-footnote">Local-only prototype. Use a unique password; provider credentials are not configured here.</small>
   </form></main>;
 }
@@ -57,6 +112,25 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPasskeySetup, setShowPasskeySetup] = useState(false);
+  const [passkeyPassword, setPasskeyPassword] = useState("");
+  const [passkeyStatus, setPasskeyStatus] = useState("");
+  const enrollPasskey = async () => {
+    setBusy(true); setError(""); setPasskeyStatus("");
+    try {
+      const optionsResponse = await fetch("/api/auth/passkeys/register/options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: passkeyPassword }) });
+      const optionsData = await optionsResponse.json() as { challengeHandle?: string; options?: WebAuthnRequestOptions; error?: string };
+      if (!optionsResponse.ok || !optionsData.challengeHandle || !optionsData.options) throw new Error(optionsData.error === "reauthentication_required" ? "Enter your current password to confirm this passkey enrollment." : "Could not start passkey enrollment.");
+      const credential = await navigator.credentials.create({ publicKey: publicKeyOptions(optionsData.options) as unknown as PublicKeyCredentialCreationOptions });
+      if (!(credential instanceof PublicKeyCredential)) throw new Error("Passkey enrollment was cancelled.");
+      const verify = await fetch("/api/auth/passkeys/register/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ challengeHandle: optionsData.challengeHandle, response: serializeCredential(credential) }) });
+      const result = await verify.json() as { enrolled?: boolean };
+      if (!verify.ok || !result.enrolled) throw new Error("The authenticator response could not be verified. Start again.");
+      setPasskeyStatus("Passkey enrolled on this device. Keep another sign-in method available for recovery.");
+      setPasskeyPassword("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "This browser could not enroll a passkey."); }
+    finally { setBusy(false); }
+  };
   const begin = async () => {
     setBusy(true); setError("");
     try {
@@ -90,6 +164,8 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
   };
   return <div className="mfa-backdrop"><section className="mfa-panel" role="dialog" aria-modal="true" aria-labelledby="mfa-title">
     <button className="mfa-close" onClick={onClose} aria-label="Close security setup">×</button><div className="eyebrow">ACCOUNT SECURITY</div><h2 id="mfa-title">Authenticator setup</h2>
+    <button type="button" className="secondary-button" onClick={() => setShowPasskeySetup((value) => !value)}>{showPasskeySetup ? "Hide passkey setup" : "Add a passkey"}</button>
+    {showPasskeySetup && <div className="passkey-setup"><p>Use a device passkey or security key. Confirm your password to register it.</p><label>Current password<input type="password" autoComplete="current-password" value={passkeyPassword} onChange={(event) => setPasskeyPassword(event.target.value)} /></label><button type="button" className="primary-button" disabled={busy || !passkeyPassword} onClick={() => void enrollPasskey()}>{busy ? "Waiting for authenticator…" : "Register passkey"}</button>{passkeyStatus && <p role="status">{passkeyStatus}</p>}</div>}
     {recoveryCodes.length ? <><p>Save these recovery codes offline. They are shown once and each works once.</p><ul className="recovery-codes">{recoveryCodes.map((item) => <li key={item}>{item}</li>)}</ul><button className="primary-button" onClick={onClose}>I saved the codes</button></> : enabled ? <><p>Disabling MFA requires your current password and a new, unused authenticator code. All sessions will be revoked.</p><label>Current password<input type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label><label>Current authenticator code<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label><button className="primary-button" disabled={busy || !currentPassword || code.length !== 6} onClick={() => void disable()}>{busy ? "Verifying…" : "Disable MFA and sign out"}</button></> : !secret ? <><p>Time-based codes are a compatibility fallback and are not phishing-resistant. Confirm your password before binding a new authenticator.</p><label>Current password<input type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label><button className="primary-button" disabled={busy || !currentPassword} onClick={() => void begin()}>{busy ? "Starting…" : "Start enrollment"}</button></> : <><p>Enter this key into an authenticator app, then verify a current six-digit code.</p><code className="mfa-secret">{secret}</code><label>Six-digit code<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label><button className="primary-button" disabled={busy || code.length !== 6} onClick={() => void confirm()}>{busy ? "Verifying…" : "Verify and enable"}</button></>}
     {error && <div className="auth-error" role="alert">{error}</div>}
   </section></div>;

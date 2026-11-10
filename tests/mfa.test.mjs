@@ -172,3 +172,56 @@ test("MFA enrollment refuses when the external encryption key is unavailable", a
   assert.equal(login.status, 503);
   assert.equal(login.headers.get("set-cookie"), null);
 });
+
+
+test("passkey registration binds one-time challenges to origin and expires them", async () => {
+  await setup();
+  const optionsResponse = await fetch(`${baseUrl}/api/auth/passkeys/register/options`, {
+    method: "POST", headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ password: "unique-test-password-123" }),
+  });
+  assert.equal(optionsResponse.status, 200);
+  const { challengeHandle, options } = await optionsResponse.json();
+  const evilClientData = Buffer.from(JSON.stringify({
+    type: "webauthn.create",
+    challenge: options.challenge,
+    origin: "https://evil.example",
+    crossOrigin: false,
+  })).toString("base64url");
+  const rejected = await fetch(`${baseUrl}/api/auth/passkeys/register/verify`, {
+    method: "POST", headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ challengeHandle, response: {
+      id: "credential", rawId: Buffer.from("credential").toString("base64url"), type: "public-key",
+      response: { clientDataJSON: evilClientData, attestationObject: "oA" },
+    } }),
+  });
+  assert.equal(rejected.status, 401);
+  const replay = await fetch(`${baseUrl}/api/auth/passkeys/register/verify`, {
+    method: "POST", headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ challengeHandle, response: {} }),
+  });
+  assert.equal(replay.status, 410);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS count FROM passkeys").get().count, 0);
+
+  const nextOptions = await fetch(`${baseUrl}/api/auth/passkeys/register/options`, {
+    method: "POST", headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ password: "unique-test-password-123" }),
+  }).then((response) => response.json());
+  app.db.prepare("UPDATE webauthn_challenges SET expires_at = '2000-01-01T00:00:00.000Z' WHERE handle_hash = ?")
+    .run(createHash("sha256").update(nextOptions.challengeHandle).digest("hex"));
+  const expired = await fetch(`${baseUrl}/api/auth/passkeys/register/verify`, {
+    method: "POST", headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ challengeHandle: nextOptions.challengeHandle, response: {} }),
+  });
+  assert.equal(expired.status, 410);
+});
+
+test("passkey login options require an enrolled credential without revealing account state", async () => {
+  await setup();
+  const response = await fetch(`${baseUrl}/api/auth/passkeys/login/options`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "owner@example.test" }),
+  });
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "passkey_unavailable" });
+});
