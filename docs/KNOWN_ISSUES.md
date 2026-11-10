@@ -1,9 +1,10 @@
 # Known issues and blockers
 
-| ID | Severity | State | Detail | Workaround / next step |
+| ID | Severity | State | Detail | Next action |
 |---|---|---|---|---|
-| KI-001 | High | Partial | Local bootstrap/login, hashed sessions, tenant-scoped inventory/jobs and worker role rechecks are implemented; a TOTP compatibility fallback and one-time recovery codes are mock-tested; WebAuthn/passkeys, verified notifications, recovery rebinding, production-grade policy, external secrets vault, distributed throttling and hardened deployment are absent | Keep API loopback-only and use synthetic data; finish ORB-005 before adding provider credentials |
-| KI-002 | Medium | Open | Docker, PostgreSQL and Redis are absent from current environment | Continue the local SQLite slice; mark production queue/database integration blocked |
-| KI-003 | High | Open | No authorized cPanel/WHM sandbox account or token supplied | Mock fixtures only; live integration remains `blocked_external` |
-| KI-004 | Medium | Open | No supported VPS minimums or performance baselines have been measured | Establish a reproducible benchmark after the production stack is running |
-| KI-005 | Low | Open | Current branch protection was observed disabled on main | Use a feature branch and avoid direct main writes; owner can enable protections later |
+| KI-001 | High | Partial | Bootstrap/login, tenant scopes, TOTP/recovery, WebAuthn enrollment/login, passkey inventory/revocation and password-reauthenticated rebinding are implemented. Browser E2E, verified contact delivery, production key/restore lifecycle, SSO, vault, distributed throttling, hardening and tamper-evident audit are unverified. | Loopback/synthetic-only; execute ORB-012–015 before provider credentials. |
+| KI-002 | Medium | Environment blocked | Docker/PostgreSQL/Redis absent in earlier environment; hosted service-container feasibility unknown. | Attempt ORB-016 in GitHub Actions. |
+| KI-003 | High | External blocked | No authorized cPanel/WHM sandbox account or scoped token. | Keep fixture-only until owner supplies disposable least-privilege access. |
+| KI-004 | Medium | Open | VPS minimums and performance baselines not measured. | Benchmark after production-shaped stack is available. |
+| KI-005 | Low | Open | Main branch-protection state from earlier inspection may be stale. | Continue PR flow; recheck governance state when scheduled. |
+| KI-006 | High | Unverified | CI lacks browser E2E, threat-model tests, secret/dependency scans, SBOM/license gates and service-backed DB/queue tests. | Track ORB-012, ORB-015, ORB-016 and ORB-018. |
