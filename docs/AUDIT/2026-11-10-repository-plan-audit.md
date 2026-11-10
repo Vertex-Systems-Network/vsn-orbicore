@@ -18,7 +18,7 @@ Read the GitHub repository `Vertex-Systems-Network/vsn-orbicore` at baseline `fa
 
 ## CI and correction history
 
-The initial PR run failed because the validator reported missing mappings/test IDs for the newly split tasks. That failure was used as actionable audit evidence; epic mappings and test records were added. GitHub Actions then passed on commit `be4739a8e954c5428726ba461d508d88a3a8907a` (run [42742130584](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/42742130584)): npm ci, 21 tests, lint, build, smoke, and doctor. Later documentation/evidence commits still require the final PR run before merge.
+The initial PR run failed because the validator reported missing mappings/test IDs for the newly split tasks. That failure was used as actionable audit evidence; epic mappings and test records were added. GitHub Actions passed on the final reviewed branch checkpoint `7b357e2a2e814eae8a92fc3cd7ed820b1591b215` (run [42742347757](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/42742347757)): npm ci, 21 tests, lint, build, smoke, and doctor. The PR is ready to merge subject to the repository's review policy.
 
 ## Remaining unverified
 
