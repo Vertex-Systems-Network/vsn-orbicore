@@ -100,7 +100,7 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
     {mfaChallenge && <><label>Authenticator or recovery code<input autoComplete="one-time-code" inputMode="text" autoFocus required value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} /></label><small>TOTP is a compatibility fallback and is not phishing-resistant. Use a saved recovery code only once.</small><button type="button" className="auth-restart" onClick={() => { setMfaChallenge(""); setMfaCode(""); setError(null); }}>Start sign-in again</button></>}
     {error && <div className="auth-error" role="alert">{error}</div>}
     <button className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait..." : mfaChallenge ? "Verify and sign in" : bootstrapRequired ? "Create workspace owner" : "Sign in"}</button>
-    {!bootstrapRequired && !mfaChallenge && <button type="button" className="secondary-button auth-passkey" disabled={passkeyBusy || busy} onClick={() => void signInWithPasskey()}>{passkeyBusy ? "Waiting for passkey..." : "Sign in with a passkey"}</button>
+    {!bootstrapRequired && !mfaChallenge && <button type="button" className="secondary-button auth-passkey" disabled={passkeyBusy || busy} onClick={() => void signInWithPasskey()}>{passkeyBusy ? "Waiting for passkey..." : "Sign in with a passkey"}</button>}
     <small className="auth-footnote">Local-only prototype. Use a unique password; provider credentials are not configured here.</small>
   </form></main>;
 }
