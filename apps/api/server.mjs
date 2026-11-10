@@ -452,6 +452,38 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }
+    if (request.method === "GET" && url.pathname === "/api/auth/passkeys") {
+      const actor = actorFor(request);
+      if (!actor) return json(response, 401, { error: "authentication_required" });
+      const passkeys = db.prepare("SELECT credential_id AS credentialId, device_type AS deviceType, backed_up AS backedUp, created_at AS createdAt, last_used_at AS lastUsedAt FROM passkeys WHERE user_id = ? ORDER BY created_at, credential_id").all(actor.id);
+      return json(response, 200, { passkeys });
+    }
+    const revokePasskeyMatch = url.pathname.match(/^\/api\/auth\/passkeys\/([^/]+)$/);
+    if (request.method === "DELETE" && revokePasskeyMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      const actor = actorFor(request);
+      if (!actor) return json(response, 401, { error: "authentication_required" });
+      if (authRateLimited(request, response)) return;
+      try {
+        const credentialId = decodeURIComponent(revokePasskeyMatch[1]);
+        const body = await readJson(request);
+        const user = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
+        const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, user?.password_salt ?? "orbicore-no-user-salt") : "";
+        if (!user || !safeEqual(candidate, user.password_hash)) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "reauthentication_required" });
+        }
+        const now = new Date().toISOString();
+        const removed = db.prepare("DELETE FROM passkeys WHERE credential_id = ? AND user_id = ?").run(credentialId, actor.id);
+        if (removed.changes !== 1) return json(response, 404, { error: "passkey_not_found" });
+        db.prepare("INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json) VALUES (?, ?, ?, 'auth.passkey.revoke', ?, 'completed', ?, ?)")
+          .run(randomUUID(), actor.organizationId, actor.id, credentialId, now, JSON.stringify({ passwordReauthenticated: true }));
+        authFailures.delete(request.socket.remoteAddress ?? "unknown");
+        return json(response, 200, { revoked: true, credentialId });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
     if (request.method === "POST" && url.pathname === "/api/auth/passkeys/register/options") {
       if (!allowSameOrigin(request, response)) return;
       const actor = actorFor(request);

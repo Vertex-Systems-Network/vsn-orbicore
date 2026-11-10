@@ -225,3 +225,31 @@ test("passkey login options require an enrolled credential without revealing acc
   assert.equal(response.status, 401);
   assert.deepEqual(await response.json(), { error: "passkey_unavailable" });
 });
+
+
+test("passkey inventory is private and revocation requires password reauthentication", async () => {
+  await setup();
+  const userId = app.db.prepare("SELECT id FROM users WHERE email = 'owner@example.test'").get().id;
+  app.db.prepare("INSERT INTO passkeys (credential_id, user_id, public_key, counter, transports_json, device_type, backed_up, created_at) VALUES (?, ?, ?, 0, '[]', 'singleDevice', 0, ?)")
+    .run("credential-one", userId, Buffer.from("test-public-key").toString("base64"), new Date(clockMs).toISOString());
+  const listed = await fetch(`${baseUrl}/api/auth/passkeys`, { headers: { cookie } });
+  assert.equal(listed.status, 200);
+  const { passkeys } = await listed.json();
+  assert.equal(passkeys.length, 1);
+  assert.equal(passkeys[0].credentialId, "credential-one");
+  assert.equal("publicKey" in passkeys[0], false);
+
+  const wrongPassword = await fetch(`${baseUrl}/api/auth/passkeys/credential-one`, {
+    method: "DELETE", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ password: "wrong-password" }),
+  });
+  assert.equal(wrongPassword.status, 401);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS count FROM passkeys WHERE user_id = ?").get(userId).count, 1);
+
+  const revoked = await fetch(`${baseUrl}/api/auth/passkeys/credential-one`, {
+    method: "DELETE", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ password: "unique-test-password-123" }),
+  });
+  assert.equal(revoked.status, 200);
+  assert.equal((await revoked.json()).revoked, true);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS count FROM passkeys WHERE user_id = ?").get(userId).count, 0);
+  assert.equal(app.db.prepare("SELECT action FROM audit_events WHERE action = 'auth.passkey.revoke'").get().action, "auth.passkey.revoke");
+});

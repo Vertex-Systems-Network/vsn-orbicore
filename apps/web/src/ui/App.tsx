@@ -115,6 +115,20 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
   const [passkeyPassword, setPasskeyPassword] = useState("");
   const [passkeyStatus, setPasskeyStatus] = useState("");
+  const [passkeys, setPasskeys] = useState<Array<{ credentialId: string; deviceType: string; backedUp: number; createdAt: string; lastUsedAt: string | null }>>([]);
+  useEffect(() => { void fetch("/api/auth/passkeys").then(async (response) => { if (response.ok) { const result = await response.json() as { passkeys: typeof passkeys }; setPasskeys(result.passkeys); } }); }, []);
+  const revokePasskey = async (credentialId: string) => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`/api/auth/passkeys/${encodeURIComponent(credentialId)}`, { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: passkeyPassword }) });
+      const result = await response.json() as { revoked?: boolean; error?: string };
+      if (!response.ok || !result.revoked) throw new Error(result.error === "reauthentication_required" ? "Enter your current password before removing a passkey." : "Could not remove this passkey.");
+      setPasskeys((current) => current.filter((item) => item.credentialId !== credentialId));
+      setPasskeyStatus("Passkey removed. You can register a replacement from this signed-in session.");
+      setPasskeyPassword("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Passkey removal failed."); }
+    finally { setBusy(false); }
+  };
   const enrollPasskey = async () => {
     setBusy(true); setError(""); setPasskeyStatus("");
     try {
@@ -165,7 +179,7 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
   return <div className="mfa-backdrop"><section className="mfa-panel" role="dialog" aria-modal="true" aria-labelledby="mfa-title">
     <button className="mfa-close" onClick={onClose} aria-label="Close security setup">×</button><div className="eyebrow">ACCOUNT SECURITY</div><h2 id="mfa-title">Authenticator setup</h2>
     <button type="button" className="secondary-button" onClick={() => setShowPasskeySetup((value) => !value)}>{showPasskeySetup ? "Hide passkey setup" : "Add a passkey"}</button>
-    {showPasskeySetup && <div className="passkey-setup"><p>Use a device passkey or security key. Confirm your password to register it.</p><label>Current password<input type="password" autoComplete="current-password" value={passkeyPassword} onChange={(event) => setPasskeyPassword(event.target.value)} /></label><button type="button" className="primary-button" disabled={busy || !passkeyPassword} onClick={() => void enrollPasskey()}>{busy ? "Waiting for authenticator…" : "Register passkey"}</button>{passkeyStatus && <p role="status">{passkeyStatus}</p>}</div>}
+    {showPasskeySetup && <div className="passkey-setup"><p>Use a device passkey or security key. Confirm your password to register or remove one.</p><label>Current password<input type="password" autoComplete="current-password" value={passkeyPassword} onChange={(event) => setPasskeyPassword(event.target.value)} /></label><button type="button" className="primary-button" disabled={busy || !passkeyPassword} onClick={() => void enrollPasskey()}>{busy ? "Waiting for authenticator…" : "Register passkey"}</button><h3>Registered passkeys</h3>{passkeys.length ? <ul>{passkeys.map((item) => <li key={item.credentialId}><span>{item.deviceType}{item.backedUp ? " · synced backup" : ""}{item.lastUsedAt ? ` · used ${new Date(item.lastUsedAt).toLocaleDateString()}` : ""}</span><button type="button" disabled={busy || !passkeyPassword} onClick={() => void revokePasskey(item.credentialId)}>Remove</button></li>)}</ul> : <p>No passkeys registered.</p>}{passkeyStatus && <p role="status">{passkeyStatus}</p>}</div>}
     {recoveryCodes.length ? <><p>Save these recovery codes offline. They are shown once and each works once.</p><ul className="recovery-codes">{recoveryCodes.map((item) => <li key={item}>{item}</li>)}</ul><button className="primary-button" onClick={onClose}>I saved the codes</button></> : enabled ? <><p>Disabling MFA requires your current password and a new, unused authenticator code. All sessions will be revoked.</p><label>Current password<input type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label><label>Current authenticator code<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label><button className="primary-button" disabled={busy || !currentPassword || code.length !== 6} onClick={() => void disable()}>{busy ? "Verifying…" : "Disable MFA and sign out"}</button></> : !secret ? <><p>Time-based codes are a compatibility fallback and are not phishing-resistant. Confirm your password before binding a new authenticator.</p><label>Current password<input type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label><button className="primary-button" disabled={busy || !currentPassword} onClick={() => void begin()}>{busy ? "Starting…" : "Start enrollment"}</button></> : <><p>Enter this key into an authenticator app, then verify a current six-digit code.</p><code className="mfa-secret">{secret}</code><label>Six-digit code<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label><button className="primary-button" disabled={busy || code.length !== 6} onClick={() => void confirm()}>{busy ? "Verifying…" : "Verify and enable"}</button></>}
     {error && <div className="auth-error" role="alert">{error}</div>}
   </section></div>;

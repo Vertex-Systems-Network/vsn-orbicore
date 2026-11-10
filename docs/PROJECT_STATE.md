@@ -1,8 +1,8 @@
 # Project state
 
-**Updated:** 2026-11-10 04:40 Asia/Karachi
+**Updated:** 2026-11-10 05:10 Asia/Karachi
 **Product:** VSN ORBICORE — AI-assisted hosting control plane
-**Phase:** Phase 0 exit met; Phase 1 in progress. ORB-001/003/008 verified; ORB-002/005 mock-tested; ORB-011 WebAuthn server/UI implementation in progress; current CI passed all checks on the server/UI checkpoint.
+**Phase:** Phase 0 exit met; Phase 1 in progress. ORB-001/003/008 verified; ORB-002/005 mock-tested; ORB-011 WebAuthn server/UI merged and CI-verified; authenticator recovery management in progress.
 **Branch at task start:** `feat/phase-0-foundation`, based on upstream `main` commit `eb2a67ed18f9848ec12484e5d0d7a9f9367ef481`
 **Initial repository baseline:** at Phase 0 start, only README and master directive existed; current source/doc tree is now present
 **Verified environment:** Node.js 24.22.1, npm 11.9.0, Python 3.12; npm registry reachable; Docker/PostgreSQL/Redis absent
@@ -21,8 +21,8 @@ Use `DESIGNED`, `IMPLEMENTED`, `MOCK-TESTED`, `INTEGRATION-TESTED`, `LIVE-VERIFI
 
 ## Current checkpoint
 
-- Phase 0 was merged to `main` at `4edee8239329293c5c8a34a90eb72be348d7e0ea`; work for ORB-011 is isolated on `feat/orb-011-webauthn`.
-- Added the maintained `@simplewebauthn/server` 14.1.0 dependency and lockfile. GitHub Actions resolved the lockfile on the feature branch.
-- ORB-011 server and UI now add passkey enrollment/login flows and one-time, five-minute enrollment and login challenges; password-reauthenticated passkey enrollment; required user verification; configured RP ID/origin validation; signature verification; credential counters with conditional updates; counter-replay rejection; challenge replay rejection; and passkey audit events.
-- Added tests for origin mismatch, expired registration challenges, consumed-challenge replay, and unavailable credentials. GitHub Actions passed npm ci, all 20 tests, lint, build, smoke, and doctor on the current server/UI checkpoint.
-- Existing limits remain: notification contact is unverified, no notification delivery, no key backup/rotation runbook, no browser UI verification, no PostgreSQL/Redis, no live provider connections, and no production readiness. Keep credentials out of the prototype.
+- Phase 0 was merged to `main` at `4edee8239329293c5c8a34a90eb72be348d7e0ea`. ORB-011 WebAuthn passkey server and UI checkpoint was merged via PR #2 at `bdd3b6179d911cb0abdd3a35f9aefb17dca02ab5`.
+- GitHub CI passed on that merge: npm ci, 20 tests, lint, build, smoke, and doctor. The passkey routes use SimpleWebAuthn; challenges expire after five minutes and are consumed once; the server requires user verification and validates expected RP ID/origin. Credential counters are checked and updated conditionally.
+- Current branch `feat/orb-011-passkey-recovery` adds owner passkey inventory/revocation, password reauthentication and recovery UI, with a dedicated operations guide. This branch has not yet been CI-verified.
+- Browser-level registration/assertion with a virtual or physical authenticator remains unverified. Verified notification contact/delivery is blocked because no delivery integration is configured. Key rotation and automated restore are blocked until migration/restore tooling exists; see `docs/AUTHENTICATOR_OPERATIONS.md`.
+- Existing limits remain: no live provider connections, no PostgreSQL/Redis, no production readiness. Do not accept provider credentials or expose the prototype.
