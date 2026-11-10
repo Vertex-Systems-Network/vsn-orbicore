@@ -244,9 +244,11 @@ Design for low-cost VPS and developer laptops. State minimum realistic CPU/RAM/s
 
 Implement a **development backlog in-repo immediately**, plus a visual Backlog/Job Center in the product when that phase is reached. The backlog is not a decorative kanban; it is executable planning, traceability and evidence.
 
-**Task schema:** `id`, `epic`, `title`, `description`, `priority`, `risk`, `phase`, `dependencies`, `status`, `owner_agent`, `assumptions`, `acceptance_criteria`, `test_ids`, `source_references`, `commit_hash`, `evidence_paths`, `blockers`, `started_at`, `completed_at`, `verified_at`, `last_updated`.
+**Task schema:** `id`, `epic`, `title`, `description`, `priority`, `risk`, `phase`, `dependencies`, `status`, `verification_level`, `blocker_type`, `owner_agent`, `assumptions`, `acceptance_criteria`, `test_ids`, `source_references`, `commit_hash`, `evidence_paths`, `blockers`, `started_at`, `completed_at`, `verified_at`, `last_updated`.
 
-**Permitted task statuses:** `proposed`, `researched`, `ready`, `in_progress`, `implemented_unverified`, `testing`, `verified`, `blocked_external`, `blocked_technical`, `deferred`, `reopened`. Never equate code written with verified. A feature can be `verified_mock` and `blocked_external` for real-provider testing; display both dimensions rather than false 100% completion.
+**Lifecycle status:** `proposed`, `researched`, `ready`, `in_progress`, `implemented_unverified`, `testing`, `verified`, `blocked`, `deferred`, `reopened`.
+
+**Verification level:** `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integration_tested`, `live_verified`, `docs_reviewed`. This is the strongest evidence recorded, separate from lifecycle. A blocked task uses `blocker_type` (`environment`, `external`, `technical`) plus an exact blocker and next action. Never use `mock_tested`, `blocked_environment`, or `blocked_external` as lifecycle values; never equate code with verification.
 
 **Backlog screens:** Epics/roadmap, dependency graph, current sprint/work queue, statuses with counts, blockers, CI health, risk, test coverage, job timeline, Git commits, release candidates, and actual completed vs deferred. No fabricated percent completion. Machine-readable reports and human-readable snapshots must agree.
 
@@ -290,14 +292,16 @@ Security tests: auth bypass, tenant cross-access, SSRF, path traversal, SQL/comm
 
 ## 13. DevOps and Git policy
 
-**Local-first rule:** Each development task is developed, tested and documented locally or in the explicitly authorized isolated environment. After the quality gate, commit and push to the authorized Git branch. Do NOT push broken untested features as 'complete'. Intermediate checkpoints can be pushed as work-in-progress with a truthful status and safe feature flags.
+**Default rule:** Develop, test and document in the explicitly authorized environment; checkpoint after the quality gate. Do not label untested features complete. Work-in-progress checkpoints must carry truthful status.
+
+**Explicit GitHub-only override:** When the user or repository instructions require GitHub-remote-only work, this overrides the local-first default. Do not clone or edit a local copy. Use the canonical repository, branch from the authorized base, edit through GitHub, run checks in GitHub Actions, review the complete PR diff/checks, then merge only after success. If a required operation is unavailable, record the exact tool limitation and stop at the last complete remote checkpoint; do not switch to local work.
 
 **Git hygiene:**
 - Use descriptive atomic commits, issue IDs and conventional commit style if selected.
 - Avoid force-push, rewriting shared history, committing secrets, leaked environment files or massive transient build artifacts.
 - Use feature branches/PRs for higher-risk modifications, checks before merge, tags/releases for verified artifacts.
 - Preserve other authors' uncommitted changes. Inspect diff before staging.
-- Push at natural checkpoints and before likely session/context interruption. If authentication/network is unavailable, commit locally if possible and record precise push blocker.
+- Push at natural checkpoints and before likely session/context interruption. In GitHub-only mode, do not fall back to a local commit; record the exact remote-tool blocker and preserve the last remote checkpoint.
 - Record the last tested commit and build artifact SHA in status files. Do not claim a push happened unless the remote reports success.
 
 **CI/CD:** lint, typecheck, formatting, unit tests, integration tests, contract tests, e2e smoke tests, security scans, SBOM/license checks, build, artifact checksum/signing where supported, preview deploy, migration smoke, release and rollback. Deploy production only under policy. Support local Docker Compose/test containers or equivalent reproducible environments.
@@ -514,7 +518,7 @@ At the end of each execution interval, report concise **verified** results: comp
 ## 21. First execution instructions — START HERE
 
 Upon receiving this master directive in a repository:
-1. Determine repository identity and permissions; **do not assume there is a repo or valid credentials**.
+1. Determine repository identity and permissions; **do not assume there is a repo or valid credentials**. When GitHub-only mode is specified, verify the canonical repository/ref and use GitHub for project changes.
 2. Inspect codebase and Git history. If project is blank, bootstrap only Phase 0 and Phase 1 foundations; if not blank, reconcile existing modules to roadmap.
 3. Research current official cPanel/WHM UAPI, token, transfers, backup and remote DB documentation, relevant provider capabilities, agent rule formats, and UI frameworks; record dated links, exact limitations and comparative tradeoffs.
 4. Create project-wide canonical AI rules and four tool-specific entry points: `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/project.mdc`, `GEMINI.md` (plus optional `.github/copilot-instructions.md`). All point to current repository state and resume plan.

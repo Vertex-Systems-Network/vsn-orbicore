@@ -1,5 +1,5 @@
 # Gemini CLI entry point
 
-Canonical policy: [`AGENTS.md`](AGENTS.md). Resume from [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md), [`docs/NEXT_ACTION.md`](docs/NEXT_ACTION.md), [`docs/BACKLOG.md`](docs/BACKLOG.md), and [`docs/HANDOFF.md`](docs/HANDOFF.md). Read the relevant architecture/ADR, knowledge-bank records, and sections of `AI_Native_Multi_Hosting_Master_Prompt.md` before work.
+Canonical policy: [`AGENTS.md`](AGENTS.md). Resume from [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md), [`docs/NEXT_ACTION.md`](docs/NEXT_ACTION.md), [`docs/BACKLOG.md`](docs/BACKLOG.md), and [`docs/HANDOFF.md`](docs/HANDOFF.md). Read relevant architecture/ADR, knowledge-bank records, and the master directive before work.
 
-Use repository commands as defined in `package.json`. Work locally, test the changed behavior, update persistent evidence, review the complete diff, and commit/push only to the authorized development branch. Respect capability discovery, least privilege, secret redaction, explicit production approval, and truthful status labels in `AGENTS.md`.
+For this repo, use GitHub only: feature branch from current `main`, remote edits, GitHub Actions checks, PR review, then merge after checks pass. Do not clone or save local-only project changes. Report exact remote-tool blockers instead of switching to local work. Follow security and evidence rules in `AGENTS.md`.

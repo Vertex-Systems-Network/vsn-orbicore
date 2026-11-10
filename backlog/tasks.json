@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "updated_at": "2026-11-09T23:41:00+05:00",
+  "schema_version": 2,
+  "updated_at": "2026-11-10T08:00:00Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -39,7 +39,9 @@
       "started_at": "2026-11-09T00:00:00Z",
       "completed_at": "2026-11-09T19:00:00Z",
       "verified_at": "2026-11-09T19:00:00Z",
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "docs_reviewed",
+      "blocker_type": null
     },
     {
       "id": "ORB-002",
@@ -52,7 +54,7 @@
       "dependencies": [
         "ORB-001"
       ],
-      "status": "mock_tested",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [
         "SQLite is local single-user PoC only",
@@ -87,7 +89,9 @@
       "started_at": "2026-11-09T00:00:00Z",
       "completed_at": null,
       "verified_at": "2026-11-09T19:00:00Z",
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "mock_tested",
+      "blocker_type": "environment"
     },
     {
       "id": "ORB-003",
@@ -130,20 +134,22 @@
       "started_at": "2026-11-09T00:00:00Z",
       "completed_at": "2026-11-09T19:00:00Z",
       "verified_at": "2026-11-09T19:00:00Z",
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "docs_reviewed",
+      "blocker_type": null
     },
     {
       "id": "ORB-004",
       "epic": "Phase 1: Platform foundation",
       "title": "Run PostgreSQL and Redis-backed worker locally and in Compose",
-      "description": "Add production-shaped persistent DB and queue with health/readiness and restart recovery.",
+      "description": "Author Compose configuration and verify PostgreSQL/Redis-backed persistence and worker recovery using GitHub-hosted service containers; do not claim integration success until its workflow passes.",
       "priority": "P1",
       "risk": "medium",
       "phase": 1,
       "dependencies": [
         "ORB-002"
       ],
-      "status": "blocked_external",
+      "status": "blocked",
       "owner_agent": "codex",
       "assumptions": [
         "Docker or installable local PostgreSQL/Redis will be available in a later environment"
@@ -165,12 +171,14 @@
       "commit_hash": null,
       "evidence_paths": [],
       "blockers": [
-        "Docker, PostgreSQL, and Redis unavailable in current environment"
+        "Docker/PostgreSQL/Redis were unavailable in the previously inspected environment; GitHub Actions service-container feasibility remains untested."
       ],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "none",
+      "blocker_type": "environment"
     },
     {
       "id": "ORB-005",
@@ -184,7 +192,7 @@
         "ORB-001",
         "ORB-002"
       ],
-      "status": "mock_tested",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [
         "Synthetic fixture only before completion"
@@ -226,7 +234,9 @@
       "started_at": null,
       "completed_at": "2026-11-09T20:30:00Z",
       "verified_at": "2026-11-09T20:30:00Z",
-      "last_updated": "2026-11-09T20:30:00Z"
+      "last_updated": "2026-11-09T20:30:00Z",
+      "verification_level": "mock_tested",
+      "blocker_type": "environment"
     },
     {
       "id": "ORB-006",
@@ -239,7 +249,7 @@
       "dependencies": [
         "ORB-005"
       ],
-      "status": "blocked_external",
+      "status": "blocked",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -263,21 +273,22 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "none",
+      "blocker_type": "external"
     },
     {
       "id": "ORB-007",
       "epic": "Phase 1: Platform foundation",
       "title": "Implement idempotent installation preflight and first-admin bootstrap",
-      "description": "Detect supported environment, validate storage/DB/queue, securely initialize an administrator, write an install report, and recover from interruption.",
+      "description": "Implement idempotent, resumable preflight and first-admin bootstrap for the supported local SQLite prototype; production DB/queue configuration and upgrade gates are tracked separately in ORB-017.",
       "priority": "P1",
       "risk": "high",
       "phase": 1,
       "dependencies": [
-        "ORB-004",
         "ORB-005"
       ],
-      "status": "proposed",
+      "status": "ready",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -299,7 +310,9 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "none",
+      "blocker_type": null
     },
     {
       "id": "ORB-008",
@@ -340,7 +353,9 @@
       "started_at": "2026-11-09T18:50:00Z",
       "completed_at": "2026-11-09T19:00:00Z",
       "verified_at": "2026-11-09T19:00:00Z",
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "docs_reviewed",
+      "blocker_type": null
     },
     {
       "id": "ORB-009",
@@ -353,7 +368,7 @@
       "dependencies": [
         "ORB-002"
       ],
-      "status": "blocked_environment",
+      "status": "blocked",
       "owner_agent": "codex",
       "assumptions": [
         "A supported browser can access the local app"
@@ -378,33 +393,34 @@
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md"
       ],
       "blockers": [
-        "Shared Chrome cannot reach the isolated loopback server; Playwright Chromium download returned a truncated 0 MiB archive from the official CDN"
+        "Shared browser could not reach isolated loopback and Chromium CDN returned an empty archive; GitHub-hosted browser-runner feasibility remains untested."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z"
+      "last_updated": "2026-11-09T19:00:00Z",
+      "verification_level": "none",
+      "blocker_type": "environment"
     },
     {
       "id": "ORB-010",
       "epic": "Phase 1: Platform foundation",
-      "title": "Add threat-model security suite and dependency/SBOM scanning",
-      "description": "Automate high-risk negative security cases and dependency/license/SBOM checks as tooling becomes available.",
+      "title": "Security and supply-chain verification umbrella",
+      "description": "Parent for runnable threat-model tests and reproducible secret/dependency/SBOM/license gates tracked in ORB-015.",
       "priority": "P1",
       "risk": "high",
       "phase": 1,
       "dependencies": [
         "ORB-005"
       ],
-      "status": "proposed",
+      "status": "in_progress",
       "owner_agent": "codex",
       "assumptions": [
         "No real provider credentials are added before auth and tenant isolation gates pass"
       ],
       "acceptance_criteria": [
-        "SSRF, path traversal, injection, replay, tenant, and secret exposure cases tested",
-        "Dependency audit and software bill of materials are reproducible",
-        "License gate is documented and reproducible"
+        "High-risk threat-model cases map to runnable tests",
+        "CI security and supply-chain checks have reproducible evidence"
       ],
       "test_ids": [
         "SEC-SSRF-001",
@@ -424,13 +440,15 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:10:00Z"
+      "last_updated": "2026-11-09T19:10:00Z",
+      "verification_level": "none",
+      "blocker_type": null
     },
     {
       "id": "ORB-011",
       "epic": "Phase 1: Platform foundation",
-      "title": "Implement MFA enrollment, verification, recovery, and notifications",
-      "description": "Implement the ADR-0002 WebAuthn-first MFA policy, controlled TOTP fallback if needed, single-use recovery codes, session revocation, and recovery notifications before provider credentials are accepted.",
+      "title": "Complete MFA/passkey lifecycle and recovery-notification gates",
+      "description": "Umbrella task: TOTP fallback, WebAuthn server/UI, passkey inventory/revocation and password-reauthenticated rebinding are implemented and CI-tested. Browser E2E, verified-contact delivery and production key/restore controls remain open.",
       "priority": "P1",
       "risk": "high",
       "phase": 1,
@@ -444,11 +462,12 @@
         "MFA secret encryption uses a separately stored key or approved secret manager"
       ],
       "acceptance_criteria": [
-        "Owners/admins enroll and verify MFA; recovery methods are bound to authenticated owner session",
-        "WebAuthn/passkeys are offered as phishing-resistant option; any OTP fallback is labeled correctly",
-        "Recovery codes are random, shown once, stored only as hashes, and consumed once",
-        "MFA recovery revokes sessions, emits audit event, and notifies verified contacts",
-        "Rate, replay, lockout, recovery, and authenticator revocation tests pass"
+        "WebAuthn/passkeys offered; server validates challenge, origin and RP ID, with CI evidence",
+        "TOTP fallback is labeled non-phishing-resistant; recovery codes are single-use",
+        "Passkey inventory, revocation and password-reauthenticated rebinding are implemented",
+        "Virtual-authenticator E2E passes (ORB-012)",
+        "Recovery notices deliver only to verified contacts (ORB-013)",
+        "Key rotation and backup/restore preserve recovery access (ORB-014)"
       ],
       "test_ids": [
         "AUTH-MFA-001",
@@ -460,7 +479,7 @@
         "docs/RESEARCH/PHASE-0-RESEARCH.md",
         "AI_Native_Multi_Hosting_Master_Prompt.md#12"
       ],
-      "commit_hash": null,
+      "commit_hash": "c4cdab76a82578fc4db698b04098e0234e5570a2",
       "evidence_paths": [
         "docs/DECISIONS/ADR-0002-authentication.md",
         "docs/SECURITY_THREAT_MODEL.md",
@@ -468,17 +487,337 @@
         "apps/api/server.mjs",
         "apps/web/src/ui/App.tsx",
         "tests/mfa.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md"
+        "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
+        "docs/TEST_EVIDENCE/2026-11-10-github-ci.md",
+        "docs/AUTHENTICATOR_OPERATIONS.md"
       ],
       "blockers": [
-        "WebAuthn/passkey enrollment and login challenge are not implemented; TOTP fallback is explicitly not phishing-resistant",
-        "Notification outbox is recorded as blocked because this build has no verified notification contact or delivery adapter",
-        "No production secret manager/key rotation or multi-process throttling; do not use for provider credentials"
+        "Browser passkey E2E, verified-contact delivery, tested key rotation/restore, distributed throttling and production identity controls remain open."
       ],
       "started_at": "2026-11-09T23:10:00+05:00",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T23:41:00+05:00"
+      "last_updated": "2026-11-09T23:41:00+05:00",
+      "verification_level": "unit",
+      "blocker_type": "environment"
+    },
+    {
+      "id": "ORB-012",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Browser passkey end-to-end verification",
+      "description": "Use GitHub-hosted Chromium and WebAuthn virtual authenticator for registration, assertion, counter update, replay rejection, RP/origin binding and challenge expiry.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-011"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Registration and assertion succeed in virtual authenticator",
+        "Counter updates and replay is rejected",
+        "Wrong origin/RP and expired/reused challenge fail",
+        "CI evidence records runtime and artifacts"
+      ],
+      "test_ids": [
+        "AUTH-WEBAUTHN-E2E-001",
+        "AUTH-WEBAUTHN-REPLAY-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-013",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Verified recovery contact and notification delivery",
+      "description": "Build a fake notification adapter and deterministic failure/retry/idempotency tests; real delivery remains gated on an authorized provider and verified contact.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-011"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Unverified contact cannot be marked delivered",
+        "Fake adapter tests success/failure/retry/idempotency",
+        "Recovery events are redacted and auditable",
+        "No live-delivery claim without provider evidence"
+      ],
+      "test_ids": [
+        "AUTH-NOTIFY-001",
+        "AUTH-NOTIFY-RETRY-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-014",
+      "epic": "Phase 1: Platform foundation",
+      "title": "MFA key rotation and backup/restore drill",
+      "description": "Implement versioned TOTP key rotation and consistent database backup/restore; prove existing authenticators remain usable and restore is recoverable.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-011"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Rotation supports staged old/new keys and rollback",
+        "Backup integrity is checked and secret handling documented",
+        "Restore drill recovers expected auth state",
+        "Failures are fail-closed without silent data loss"
+      ],
+      "test_ids": [
+        "AUTH-KEY-ROTATE-001",
+        "AUTH-RESTORE-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-015",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Threat-model tests and supply-chain CI gates",
+      "description": "Add executable SSRF, traversal, injection, replay, tenant, secret-scan, dependency, SBOM and license checks.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-005"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Threat cases map to tests and CI",
+        "Secret scan and dependency audit run on PRs",
+        "SBOM is reproducible and uploaded",
+        "License policy/exceptions documented"
+      ],
+      "test_ids": [
+        "SEC-SSRF-001",
+        "SEC-PATH-001",
+        "SEC-INJECTION-001",
+        "SEC-REPLAY-001",
+        "SEC-SUPPLY-CHAIN-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-016",
+      "epic": "Phase 1: Platform foundation",
+      "title": "PostgreSQL/Redis Compose and CI integration",
+      "description": "Add production-shaped services and GitHub Actions service containers; test migration persistence, retries and worker restart recovery.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-002"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Compose readiness passes",
+        "Service-backed CI passes",
+        "Migration and job recovery survive restart/retry",
+        "Evidence is linked from task"
+      ],
+      "test_ids": [
+        "INFRA-DB-001",
+        "INFRA-QUEUE-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-017",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Production install and upgrade gates",
+      "description": "Implement supported deployment configuration, PostgreSQL/Redis checks, migration/upgrade and recovery after the local preflight slice.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-004",
+        "ORB-005",
+        "ORB-007"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Local preflight runs independently",
+        "Production wizard reports exact missing services",
+        "Upgrade/rollback/restore paths pass before GA"
+      ],
+      "test_ids": [
+        "INSTALL-FRESH-001",
+        "INSTALL-RECOVERY-001",
+        "INSTALL-UPGRADE-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-018",
+      "epic": "Phase 1: Platform foundation",
+      "title": "Browser accessibility and dashboard verification",
+      "description": "Run GitHub-hosted browser checks and review keyboard, focus, names, contrast, and empty/error/stale/permission states.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 1,
+      "dependencies": [
+        "ORB-002"
+      ],
+      "status": "ready",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Desktop browser workflow exercises core states",
+        "Keyboard and accessible names are asserted",
+        "Screenshots and findings are attached to CI"
+      ],
+      "test_ids": [
+        "A11Y-KEYBOARD-001",
+        "AUTH-UI-001",
+        "INV-UI-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-019",
+      "epic": "Phase 2: Platform foundation",
+      "title": "Live cPanel sandbox verification",
+      "description": "Run read-only UAPI against owner-authorized disposable account after credential controls pass.",
+      "priority": "P1",
+      "risk": "high",
+      "phase": 2,
+      "dependencies": [
+        "ORB-005",
+        "ORB-011"
+      ],
+      "status": "blocked",
+      "owner_agent": "codex",
+      "assumptions": [],
+      "acceptance_criteria": [
+        "Authorized disposable account and scoped token exist",
+        "Read-only discovery and revoked-token denial pass",
+        "Evidence is redacted and timestamped"
+      ],
+      "test_ids": [
+        "CPANEL-LIVE-001"
+      ],
+      "source_references": [
+        "docs/NEXT_ACTION.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/SECURITY_THREAT_MODEL.md"
+      ],
+      "commit_hash": null,
+      "evidence_paths": [],
+      "blockers": [
+        "No owner-authorized sandbox account or scoped token supplied"
+      ],
+      "blocker_type": "external",
+      "verification_level": "none",
+      "started_at": null,
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-10"
     }
   ]
 }

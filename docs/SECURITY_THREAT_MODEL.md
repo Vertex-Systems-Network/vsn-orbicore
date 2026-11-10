@@ -29,11 +29,11 @@ Assets: hosting credentials/tokens, customer site/database/email data, migration
 
 ## Current blockers
 
-The local proof now has an encrypted TOTP compatibility fallback and one-time recovery-code flow, but still lacks WebAuthn/passkeys, verified contact delivery, authenticator rebinding, SSO, a vault, provider egress control, distributed rate limiting, production TLS/proxy guarantees and real audit integrity. It is loopback-only and synthetic-data-only. Do not add real hosting secrets/data or expose it as a production service. Remaining security work is tracked in ORB-011 and ORB-010.
+The local proof now has an encrypted TOTP compatibility fallback and one-time recovery-code flow, but includes WebAuthn/passkey enrollment/login, inventory, revocation and password-reauthenticated rebinding, but browser flow remains unverified. Verified contact delivery, SSO, a vault, provider egress control, distributed rate limiting, production TLS/proxy guarantees and tamper-evident audit remain open. It is loopback-only and synthetic-data-only. Do not add real hosting secrets/data or expose it as a production service. Remaining security work is tracked in ORB-011 and ORB-010.
 
 ## MFA-specific local controls (mock-tested)
 
 - Require an external 32-byte key to encrypt TOTP seeds with AES-256-GCM; never generate or persist this key automatically.
 - TOTP uses a 30-second step, accepts at most the immediately previous step for delay, and stores the highest accepted step to reject replay. Failed login/enrollment/challenge attempts share the local per-IP throttle.
 - Recovery codes use 128 bits of randomness, are hashed at rest and consumed once. MFA enrollment and recovery revoke pre-existing sessions; only newly issued factor-verified sessions remain valid when MFA is enabled. Disable requires password plus an unused TOTP, removes authenticators/codes, revokes all sessions and emits an audit record. Recovery creates an outbox record marked `blocked_unverified_contact`. This is not successful notification delivery.
-- Tests cover an RFC 6238 vector, encryption/authentication, enrollment, login challenge, TOTP replay, recovery-code consumption and session revocation. No WebAuthn cryptographic flow or browser verification is covered.
+- Tests cover an RFC 6238 vector, encryption/authentication, enrollment, login challenge, TOTP replay, recovery-code consumption and session revocation. WebAuthn server validation has unit/CI coverage; virtual-authenticator browser registration/assertion, counter update/replay and physical-device behavior are not verified.

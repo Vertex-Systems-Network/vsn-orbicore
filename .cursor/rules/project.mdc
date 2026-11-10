@@ -3,6 +3,6 @@ description: Canonical VSN ORBICORE product, security, and resume rules
 alwaysApply: true
 ---
 
-Follow [`AGENTS.md`](../../AGENTS.md) as canonical policy and read `docs/PROJECT_STATE.md`, `docs/NEXT_ACTION.md`, `docs/BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/KNOWN_ISSUES.md`, and `docs/HANDOFF.md` before changes. `AI_Native_Multi_Hosting_Master_Prompt.md` is the governing product charter.
+Follow [`AGENTS.md`](../../AGENTS.md) as canonical policy and read `docs/PROJECT_STATE.md`, `docs/NEXT_ACTION.md`, `docs/BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/KNOWN_ISSUES.md`, and `docs/HANDOFF.md` before changes. `AI_Native_Multi_Hosting_Master_Prompt.md` is the governing charter.
 
-Choose one highest-priority unblocked backlog task, implement locally, run relevant checks, review the diff, then update project state/evidence and checkpoint on the authorized branch. Never claim mock tests prove live provider behavior. Never infer WHM/root access, store credentials in source/logs, cross tenant boundaries, or perform destructive/production operations without a scoped policy and authorization. Follow truthful status labels and UX/security requirements in `AGENTS.md`.
+All work stays in `Vertex-Systems-Network/vsn-orbicore` via GitHub. Create a feature branch from current `main`, edit remotely, verify with GitHub Actions, inspect the PR diff/checks, and merge only after success. Do not clone or create local-only changes. If a required remote operation is unavailable, record the exact blocker and stop at the last remote checkpoint. Never claim mock data proves live provider behavior or perform production actions without scoped authorization.

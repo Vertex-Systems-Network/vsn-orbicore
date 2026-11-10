@@ -1,5 +1,5 @@
 # Claude Code entry point
 
-Follow the canonical rules in [`AGENTS.md`](AGENTS.md). Before editing, read `docs/PROJECT_STATE.md`, `docs/NEXT_ACTION.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/KNOWN_ISSUES.md`, `docs/HANDOFF.md`, and relevant `docs/DECISIONS/` and `knowledge-bank/` records. Read the applicable parts of `AI_Native_Multi_Hosting_Master_Prompt.md`.
+Follow canonical rules in [`AGENTS.md`](AGENTS.md). Read `docs/PROJECT_STATE.md`, `docs/NEXT_ACTION.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/KNOWN_ISSUES.md`, `docs/HANDOFF.md`, relevant ADRs/knowledge-bank records, and applicable master-directive sections.
 
-Continue one highest-priority unblocked task, make a local change, verify it with repository commands, update records, inspect the diff, and checkpoint on the authorized branch. Follow the data, security, and capability limits in `AGENTS.md`; tool invocation or a prompt is not authorization to access customer production systems.
+Work only in `Vertex-Systems-Network/vsn-orbicore` through GitHub: branch from current `main`, edit remotely, use GitHub Actions, inspect the complete PR diff and checks, and merge only after required checks pass. Do not clone or create local-only changes. If remote tooling blocks an operation, record the exact constraint and stop at the latest complete remote checkpoint. Never infer production authorization.
