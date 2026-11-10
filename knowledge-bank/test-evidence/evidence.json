@@ -356,6 +356,116 @@
         "Test clock is injected",
         "Does not verify WebAuthn challenge/replay behavior"
       ]
+    },
+    {
+      "id": "AUTH-WEBAUTHN-E2E-001",
+      "test": "Virtual authenticator registration and assertion browser flow",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "AUTH-WEBAUTHN-REPLAY-001",
+      "test": "WebAuthn wrong RP/origin, challenge expiry and credential replay rejection",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "AUTH-NOTIFY-001",
+      "test": "Verified-contact recovery notification delivery behavior",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "AUTH-NOTIFY-RETRY-001",
+      "test": "Notification failure, retry and idempotency behavior",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "AUTH-KEY-ROTATE-001",
+      "test": "TOTP encryption-key rotation preserves existing authenticator access",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "AUTH-RESTORE-001",
+      "test": "Encrypted consistent database backup and authentication restore drill",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "SEC-PATH-001",
+      "test": "Path traversal inputs are contained or rejected",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "SEC-INJECTION-001",
+      "test": "Untrusted data cannot reach SQL, command or template injection sinks",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "SEC-REPLAY-001",
+      "test": "Signed/scoped operations reject repeated replay tokens",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "SEC-SUPPLY-CHAIN-001",
+      "test": "Secret, dependency, SBOM and license checks run in pull-request CI",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
+    },
+    {
+      "id": "INSTALL-UPGRADE-001",
+      "test": "Installer upgrade and rollback recover database state safely",
+      "status": "DESIGNED",
+      "command": "Not yet implemented",
+      "evidence_path": "docs/TEST_STRATEGY.md",
+      "limitations": [
+        "Acceptance target only; no execution evidence yet"
+      ]
     }
   ],
   "status_note": "Contains 18 passing local tests, including fixture API/auth/audit, MFA fallback, recovery-code, replay, challenge lockout/expiry and authenticator revocation coverage, plus the Vite proxy smoke. TOTP is a compatibility fallback only; WebAuthn/passkeys, verified-contact notification delivery, external production key management, browser-rendered accessibility, live provider, PostgreSQL/Redis, and production deployment remain unverified."
