@@ -192,7 +192,7 @@
         "ORB-001",
         "ORB-002"
       ],
-      "status": "testing",
+      "status": "in_progress",
       "owner_agent": "codex",
       "assumptions": [
         "Synthetic fixture only before completion"
@@ -229,14 +229,14 @@
         "tests/inventory-api.test.mjs"
       ],
       "blockers": [
-        "MFA enrollment/recovery implementation and production-grade identity controls are separate follow-up work before any provider credentials"
+        "Production-grade identity controls remain open: browser passkey E2E, verified-contact delivery, external secret management, distributed throttling, and production deployment hardening. Implemented MFA/passkey controls have CI or mock evidence only; see ORB-012–015."
       ],
       "started_at": null,
       "completed_at": "2026-11-09T20:30:00Z",
       "verified_at": "2026-11-09T20:30:00Z",
-      "last_updated": "2026-11-09T20:30:00Z",
+      "last_updated": "2026-11-10",
       "verification_level": "mock_tested",
-      "blocker_type": "environment"
+      "blocker_type": "technical"
     },
     {
       "id": "ORB-006",
