@@ -75,7 +75,7 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
       const optionsResponse = await fetch("/api/auth/passkeys/login/options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
       const optionsData = await optionsResponse.json() as { challengeHandle?: string; options?: WebAuthnRequestOptions; error?: string };
       if (!optionsResponse.ok || !optionsData.challengeHandle || !optionsData.options) throw new Error("No passkey is available for this account.");
-      const credential = await navigator.credentials.get({ publicKey: publicKeyOptions(optionsData.options) as PublicKeyCredentialRequestOptions });
+      const credential = await navigator.credentials.get({ publicKey: publicKeyOptions(optionsData.options) as unknown as PublicKeyCredentialRequestOptions });
       if (!(credential instanceof PublicKeyCredential)) throw new Error("Passkey sign-in was cancelled.");
       const verification = await fetch("/api/auth/passkeys/login/verify", {
         method: "POST", headers: { "content-type": "application/json" },
@@ -121,7 +121,7 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
       const optionsResponse = await fetch("/api/auth/passkeys/register/options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: passkeyPassword }) });
       const optionsData = await optionsResponse.json() as { challengeHandle?: string; options?: WebAuthnRequestOptions; error?: string };
       if (!optionsResponse.ok || !optionsData.challengeHandle || !optionsData.options) throw new Error(optionsData.error === "reauthentication_required" ? "Enter your current password to confirm this passkey enrollment." : "Could not start passkey enrollment.");
-      const credential = await navigator.credentials.create({ publicKey: publicKeyOptions(optionsData.options) as PublicKeyCredentialCreationOptions });
+      const credential = await navigator.credentials.create({ publicKey: publicKeyOptions(optionsData.options) as unknown as PublicKeyCredentialCreationOptions });
       if (!(credential instanceof PublicKeyCredential)) throw new Error("Passkey enrollment was cancelled.");
       const verify = await fetch("/api/auth/passkeys/register/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ challengeHandle: optionsData.challengeHandle, response: serializeCredential(credential) }) });
       const result = await verify.json() as { enrolled?: boolean };
