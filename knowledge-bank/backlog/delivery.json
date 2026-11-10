@@ -21,18 +21,26 @@
         "ORB-007",
         "ORB-009",
         "ORB-010",
-        "ORB-011"
+        "ORB-011",
+        "ORB-012",
+        "ORB-013",
+        "ORB-014",
+        "ORB-015",
+        "ORB-016",
+        "ORB-017",
+        "ORB-018"
       ]
     },
     {
       "id": "EPIC-PHASE-2",
       "name": "cPanel/WHM inventory",
       "task_ids": [
-        "ORB-006"
+        "ORB-006",
+        "ORB-019"
       ]
     }
   ],
   "commit_to_test_evidence_mapping": [],
   "release_ids": [],
-  "updated_at": "2026-11-09"
+  "updated_at": "2026-11-10"
 }
