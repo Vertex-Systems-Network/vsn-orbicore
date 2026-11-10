@@ -29,7 +29,7 @@ Assets: hosting credentials/tokens, customer site/database/email data, migration
 
 ## Current blockers
 
-The local proof now has an encrypted TOTP compatibility fallback and one-time recovery-code flow, but includes WebAuthn/passkey enrollment/login, inventory, revocation and password-reauthenticated rebinding, but browser flow remains unverified. Verified contact delivery, SSO, a vault, provider egress control, distributed rate limiting, production TLS/proxy guarantees and tamper-evident audit remain open. It is loopback-only and synthetic-data-only. Do not add real hosting secrets/data or expose it as a production service. Remaining security work is tracked in ORB-011 and ORB-010.
+The local proof now has an encrypted TOTP compatibility fallback and one-time recovery-code flow, includes WebAuthn/passkey enrollment/login, inventory, revocation and password-reauthenticated rebinding, but browser flow remains unverified. Verified contact delivery, SSO, a vault, provider egress control, distributed rate limiting, production TLS/proxy guarantees and tamper-evident audit remain open. It is loopback-only and synthetic-data-only. Do not add real hosting secrets/data or expose it as a production service. Remaining security work is tracked in ORB-011 and ORB-010.
 
 ## MFA-specific local controls (mock-tested)
 
