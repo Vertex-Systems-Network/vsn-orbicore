@@ -9,6 +9,9 @@ on:
       - "scripts/verify-leased-jobs.sh"
       - "scripts/verify-postgres-job-repository.mjs"
       - "apps/api/postgres-jobs.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/verify-runtime-clients.mjs"
       - "apps/api/server.mjs"
       - "scripts/verify-postgres-job-http.mjs"
       - "tests/postgres-http.test.mjs"
@@ -66,10 +69,25 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install pinned test-only PostgreSQL client
-        run: |
-          npm ci
-          npm install --no-save --package-lock=false --ignore-scripts --no-audit pg@8.16.3
+      - name: Install locked runtime clients
+        run: npm ci
+      - name: Verify pinned Node PostgreSQL/Redis runtime clients
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: orbicore
+          PGDATABASE: orbicore
+          PGPASSWORD: ci-test-password
+          ORBICORE_CI_REDIS_URL: redis://127.0.0.1:6379
+        run: node scripts/verify-runtime-clients.mjs > .data/ci/orb-004-runtime-clients.json
+      - name: Upload pinned runtime client proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-004-runtime-clients
+          path: .data/ci/orb-004-runtime-clients.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Verify real Node PostgreSQL job repository and independent reconnect
         env:
           PGHOST: 127.0.0.1
