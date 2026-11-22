@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-010 Git-tracked source secrets and SPDX license expressions](2026-11-23-orb-010-tracked-source-secret-license-gate.md): 241 source files inspected with 112 passing hosted tests; no full historical or live deployed security claim.
+
 - [2026-11-23 ORB-009 auth field error accessibility](2026-11-23-orb-009-auth-form-accessible-errors.md): browser `aria-invalid` and `aria-describedby` checks for wrong bootstrap token and missing passkey email; manual WCAG not proven.
 
 - [2026-11-23 ORB-018 cross-tenant delayed response and missing account browser verification](2026-11-23-orb-018-cross-tenant-snapshot-races.md): hosted Chromium two synthetic tenants, stale GET discard, 404 cross-tenant site/refresh and snapshot-reconciled account selection.
