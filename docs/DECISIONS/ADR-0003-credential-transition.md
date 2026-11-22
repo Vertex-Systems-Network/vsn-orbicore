@@ -1,0 +1,68 @@
+# ADR-0003: Reversible SQLite scrypt → PostgreSQL credential transition
+
+**Status:** proposed design only; implementation and production cutover **not approved**  
+**Date:** 2026-11-22  
+**Owner task:** ORB-005 (dependent ORB-004 / ORB-016 / ORB-017)
+
+## Context and observed boundary
+
+The default HTTP application in `apps/api/server.mjs` authenticates against SQLite. It currently computes `scryptSync(password, salt, 64)` and stores a 16-random-byte salt encoded as 32 hexadecimal characters plus a 64-byte derived key encoded as 128 hexadecimal characters. Its `scryptSync` call uses implicit Node parameters: the parameters must be explicitly pinned and independently regression-tested **before** any migration verifier is accepted.
+
+The existing `db/migrations/008_postgres_ci_auth_lifecycle.sql` and `009_postgres_ci_auth_audit.sql` accept **only** records tagged `ci_pg_bcrypt_only` and require the CI-only PostgreSQL adapter flag. Their bcrypt fixture accounts, loopback cookies, recovery-code flow and atomic tenant audit are **not** a production-ready SQLite scrypt verification path. The synthetic offline identity snapshot currently copies fixture verifier fields, but this must not be taken as authorization to export real verifiers or flip runtime reads.
+
+There is no cross-database atomic transaction between SQLite and PostgreSQL. Production TLS/cookie, MFA key custody, entire SQLite v7 jobs/secrets/audit migration, tenant-scoped write roles, and off-host restore evidence are not complete. **SQLite remains the only authority** until every cutover gate below is independently verified.
+
+## Decision and non-goals
+
+1. **No plaintext export, bulk rehash, or verifier exposure.** Never export a password or recovery code in an API, job, CSV, log, audit, migration artifact, browser response, test fixture or AI context. Do not copy production SQLite password hashes into public PostgreSQL tables, read-only tenant roles, backup examples or the CI bcrypt fixture namespace. A legacy verifier may be read only by the existing authorized local authentication boundary and must not become an ordinary application result.
+2. **Use a verified successful password reauthentication or an independently verified reset.** Before a PostgreSQL verifier is provisioned, authenticate the user with the existing SQLite verifier in a trusted server-side flow. The cleartext password is transient request input only: derive a fresh salt and versioned destination verifier in process memory and discard request material at the end of the request. Do not convert a stored scrypt output to a new password verifier, treat possession of a legacy hash as a login, or accept a previously authenticated cookie as sufficient to re-key a password without explicit reauthentication. For users who cannot reauthenticate, use a separately approved, non-enumerating recovery/reset flow rather than transferring a verifier.
+3. **Version the destination verifier and fence reads.** A proposed private credential table must bind `organization_id`, immutable `user_id`, `credential_version`, `kdf`, reviewed `kdf_parameters`, `salt`, `verifier`, `source_version`, `verified_at`, and a monotonic credential epoch. The table must be unreadable by tenant readers and runtime job roles. Select a reviewed password KDF/parameter profile only after independent cryptographic and performance review; do not silently use the CI-only bcrypt marker for migrated credentials. RLS, SECURITY DEFINER ownership, default grants, schema search path and credential-access separation need negative tests against a real non-owner connection.
+4. **Shadow writes are not an authority switch.** In an explicitly opted-in migration pilot, a successful **SQLite-authoritative** password reauthentication may write a private versioned PostgreSQL verifier, using a transaction and unique idempotency key. If this write fails, the user remains on SQLite; the request must not claim a migrated account. A PostgreSQL shadow record is *not* a second login authority and does not permit producing a PostgreSQL session. No automatic fallback from PostgreSQL to SQLite is allowed after cutover.
+5. **Fence changes and sessions.** A password change, reset, disable, tenant move, role revocation or MFA enrollment/recovery during shadowing invalidates or increments the credential epoch and blocks the target verifier until reauthenticated. Before cutover, freeze or reconcile changes with audited change replay and equality proofs. Never migrate or replay existing SQLite session cookies as PostgreSQL sessions. Issue new TLS-only session cookies after target-side password *and* MFA verification; revoke the old session family under a documented transaction/revocation protocol.
+6. **Tenant and anti-enumeration controls apply across both stores.** Resolve tenant/user identity from trusted server-side records, never a client-provided tenant. Do not reveal whether an email exists, whether the account has migrated, or which verifier rejected a login. A future cross-tenant login-failure stream needs keyed pseudonymous identifiers with externally held/rotatable HMAC key, not unsalted SHA-256(email), and bounded distributed attempt limits. Do not label unknown-user events as authenticated tenant audit events.
+7. **Keep full audit and MFA barriers.** A successful target authentication must atomically write the redacted, hash-chained tenant audit event with session changes; failure must roll back the session. TOTP encrypted key custody, WebAuthn assertion/challenge state, recovery-code one-time use, verified notification channels and emergency recovery must have separate migration tests. Recovering the password alone must not bypass MFA or authorize hosting operations.
+8. **No production toggle in this ADR.** New runtime wiring, feature flags, SQL roles, migrations, data copies, deployments, account recovery and external provider operations require separate PRs and explicit environment-specific approval. Nothing in this document grants permission to import real accounts.
+
+## Proposed reversible migration lifecycle
+
+| State | Authority for login | Entry condition | Failure / rollback |
+|---|---|---|---|
+| `legacy_only` | SQLite only | Existing active user | Continue current SQLite login |
+| `shadow_reverified` | SQLite only | Fresh legacy password verified; guarded PG credential write committed at matching epoch | Discard/disable shadow verifier on mismatch or failure |
+| `shadow_proven` | SQLite only | Identical identity/tenant/MFA mapping, revocation and audit replay proven; cross-store reconciliation complete | Stop pilot and return to legacy-only |
+| `cutover_eligible` | SQLite only | Recoverable off-host backups, restore tests, full jobs/secrets/history migration, distributed throttle, trusted PG roles, TLS/CSRF and MFA verified | No switch; repair blockers |
+| `pg_authoritative` | PostgreSQL only | Explicit operator-approved cutover at a fenced epoch, target health and credential proofs, new PG sessions issued | Follow tested rollback playbook; no silent SQLite fallback |
+| `rollback_pending` | Fail closed to new auth until explicit authority selection | A target incident or failed consistency gate | Restore verified snapshot and reconcile epoch/revocations without reactivating revoked credentials |
+
+Transitions must be durable, monotonic, tenant-scoped and observable. Retain a read-only migration journal and an audit sequence for reconciliation; avoid exposing plaintext verifiers in the journal. Rollback must not reenable a disabled user, consumed recovery code, revoked session, or old password. If equivalent revocation state cannot be proven, require the affected user's reauthentication/reset and invalidate both session families rather than guessing.
+
+## Required implementation slices (ordered)
+
+**Slice A — verifier contract and threat tests (no writes):** pin/test the exact legacy scrypt parameters and salt/hash encoding; reject malformed and unsupported verifier formats *before* expensive KDF work; validate user/tenant mapping; prove no API/SQL/log verifier disclosure. No production SQL auth function changes.
+
+**Slice B — restricted shadow credential storage:** add a versioned private table, least-privilege non-owner writer/read-verifier roles, tenant FK and credential epoch; exercise rerunnable DDL, no public EXECUTE, negative role/tenant access and deliberate transaction faults in hosted PostgreSQL 16.
+
+**Slice C — explicit reauthentication pilot:** only synthetic identities, explicitly opted in and GitHub-hosted at first. Verify SQLite password before generating a *new* PG verifier using a vetted profile; fresh salt, no raw password persistence, idempotency, race fencing for reset/disable/MFA changes; test shadow-write failures without changing SQLite login.
+
+**Slice D — complete runtime authority cutover:** blocked until SQLite v7 jobs, secrets, audit, key provenance/decryptability, MFA/recovery/passkey, notifications, production HTTPS cookies, distributed throttling, full write RLS, off-host backup/restore and explicit rollback drills pass. Do not put `pg_authoritative` into ordinary API routing earlier.
+
+## Acceptance and adversarial evidence gate
+
+- [ ] Exact legacy KDF outputs are reproduced using non-secret fixtures for Unicode passwords and differing salt encodings, with fixed parameters and timing-safe comparison.
+- [ ] Malformed salt/verifier, unsupported versions, oversized input, disabled user and wrong tenant fail closed without stack traces or verifier exposure.
+- [ ] Wrong-password and unknown-user responses are indistinguishable at the API contract level; attempt throttling and keyed pseudonymization have independent negative tests.
+- [ ] Fresh successful reauthentication produces a new versioned PG verifier; bulk hash-copy and hash-as-password attempts are explicitly rejected.
+- [ ] Real non-owner SQL credentials cannot select verifier/salt, use old fixture login grants, bypass tenant scope or create unaudited sessions.
+- [ ] Simulated PG outage, interleaved password reset/disable, duplicate reauth and crash between SQLite verification and PG shadow write preserve SQLite authority.
+- [ ] Target session creation and audit event remain atomic; forced audit failure yields no authenticated session.
+- [ ] MFA/TOTP/passkey, recovery-code use and key rotation continuity are proven across cutover; no old cookie works after promotion.
+- [ ] Reproducible off-host backup/restore and loss/recovery drills include users, jobs, secrets, migrations, audit history and credential epochs.
+- [ ] Two-tenant isolation, authorization revocation, roll-forward and rollback drills complete on separate deployments with consistent epochs.
+- [ ] A human/operator explicitly approves the actual production migration plan, blast radius, maintenance mode, rollback window, dependencies and secret custody.
+- [ ] All test results cite exact head SHA, CI workflow, executed commands, artifacts and limitations in `docs/TEST_EVIDENCE/`; no assertion of production success from synthetic tests.
+
+## Consequences and checkpoints
+
+This approach requires users to reauthenticate or reset; dormant accounts cannot silently become PostgreSQL-ready. That cost is intentional: the project must not expand access to legacy password hashes, claim a bcrypt fixture proves scrypt compatibility, or cross an unverified security boundary. Inactive accounts should remain disabled for target login pending verified recovery, not become inaccessible without a recovery path.
+
+**Current checkpoint:** design only. No schema or authentication code changes, no new security test execution, no migration proof, no real credentials, no authority cutover. ORB-005 stays `in_progress / integration_tested` based on earlier fixture CI evidence, not on this ADR.
