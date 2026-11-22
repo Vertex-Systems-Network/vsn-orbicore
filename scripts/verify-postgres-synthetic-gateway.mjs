@@ -276,6 +276,26 @@ try {
   assert.equal(audits.filter(x=>x.organization_id===orgA
     && x.prev_hash===seedHead).length, 1);
 
+  // Monotonic audit_sequence must make *every* event's predecessor exact,
+  // even under concurrent submissions that may share a timestamp.
+  const allAudits = (await pool.query(
+    "SELECT organization_id,actor,action,target_id,outcome,created_at," +
+    "details_raw_json,prev_hash,entry_hash,audit_sequence FROM audit_events " +
+    "ORDER BY audit_sequence",
+  )).rows;
+  const currentHead = new Map();
+  for (const event of allAudits) {
+    const expectedPrev = currentHead.get(event.organization_id) ?? "GENESIS";
+    assert.equal(event.prev_hash, expectedPrev, "broken tenant audit order");
+    assert.equal(event.entry_hash, computeAuditEntryHash({
+      prevHash:expectedPrev,organizationId:event.organization_id,
+      actor:event.actor,action:event.action,targetId:event.target_id,
+      outcome:event.outcome,detailsJson:event.details_raw_json,
+      createdAt:event.created_at.toISOString(),
+    }), "broken chained SHA-256");
+    currentHead.set(event.organization_id,event.entry_hash);
+  }
+
   // Fresh session revocation and user disabling must revoke the *function*
   // itself, including a previously-created idempotency key.
   await pool.query("DELETE FROM sessions WHERE token_hash=$1", [TOKENS.ownerA]);
@@ -307,6 +327,25 @@ try {
   assert.equal(await readCount("audit_events"), beforeAudit);
   await pool.query("ALTER TABLE audit_events DROP CONSTRAINT ci_reject_new_submission");
 
+  // Never attach a new chained audit entry to an unverified legacy head:
+  // fail *before commit*, including when a job/outbox was already inserted.
+  const legacyId = randomUUID();
+  await pool.query(
+    "INSERT INTO audit_events(id,organization_id,actor,action,target_id," +
+    "outcome,details_json,details_raw_json) VALUES($1,$2,$3,'legacy.unverified'," +
+    "$3,'synthetic','{}'::jsonb,'{}')",
+    [legacyId,orgB,ownerB],
+  );
+  await pool.query("UPDATE users SET disabled=FALSE WHERE id=$1",[ownerB]);
+  const jobsBeforeLegacy = await readCount("jobs");
+  const outboxBeforeLegacy = await readCount("job_outbox");
+  await expectDenied(
+    submit(TOKENS.ownerB,orgB,acctB,"unverified-legacy-head"),"23514",
+  );
+  assert.equal(await readCount("jobs"),jobsBeforeLegacy);
+  assert.equal(await readCount("job_outbox"),outboxBeforeLegacy);
+  await pool.query("DELETE FROM audit_events WHERE id=$1",[legacyId]);
+
   // Idempotent migration rerun must not accidentally grant direct table DML.
   console.log(JSON.stringify({
     task:"ORB-005",type:"postgres-synthetic-session-authenticated-submission",
@@ -323,6 +362,8 @@ try {
     pgOutbox:await readCount("job_outbox"),
     pgNewAuditEvents:await readCount("audit_events","WHERE action='job.enqueue'"),
     nodeCompatibleAuditHash:true,
+    tenantAuditChainSequenceVerified:true,
+    unverifiedLegacyAuditHeadFailsClosed:true,
     concurrentIdempotency:true,
     revokedSessionCannotReplay:true,
     disabledAccountDenied:true,
