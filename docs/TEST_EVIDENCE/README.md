@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-009 auth field error accessibility](2026-11-23-orb-009-auth-form-accessible-errors.md): browser `aria-invalid` and `aria-describedby` checks for wrong bootstrap token and missing passkey email; manual WCAG not proven.
+
 - [2026-11-23 ORB-018 cross-tenant delayed response and missing account browser verification](2026-11-23-orb-018-cross-tenant-snapshot-races.md): hosted Chromium two synthetic tenants, stale GET discard, 404 cross-tenant site/refresh and snapshot-reconciled account selection.
 
 - [2026-11-23 ORB-018 account-bound site UI and browser session reset](2026-11-23-orb-018-account-site-isolation.md): synthetic account-specific 503/retry and same-owner logout/login recovery; no real multi-tenant provider proof.
