@@ -6,6 +6,7 @@ on:
       - "docker-compose.yml"
       - "db/**"
       - "scripts/verify-service-containers.sh"
+      - "scripts/verify-leased-jobs.sh"
       - ".github/workflows/ci-services.yml"
   workflow_dispatch:
 permissions:
@@ -48,6 +49,22 @@ jobs:
           PGDATABASE: orbicore
           PGPASSWORD: ci-test-password
         run: bash scripts/verify-service-containers.sh
+      - name: Verify leased PostgreSQL worker contract and Redis Streams redelivery
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: orbicore
+          PGDATABASE: orbicore
+          PGPASSWORD: ci-test-password
+        run: bash scripts/verify-leased-jobs.sh
+      - name: Upload job-lease recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-004-leased-job-evidence
+          path: .data/ci/orb-004-lease-evidence.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload scoped service-parity evidence
         if: always()
         uses: actions/upload-artifact@v4
