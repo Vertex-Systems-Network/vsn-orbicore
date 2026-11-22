@@ -954,13 +954,16 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "69dc14ce168707b0bff9eb193062a2fecea204b5",
+      "commit_hash": "deb5834818b2e0159e1098dfd7d54db490371e0c",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
+        "apps/web/src/ui/App.tsx",
+        "scripts/browser-verify.mjs",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-018-account-site-isolation.md"
       ],
       "blockers": [
-        "Hosted Chromium 320/390/640/768 CSS viewport, empty-filter, HTTP 503 POST/secondary GET and retry, reduced-motion and viewer-role permission checks passed at 69dc14ce. Remaining: actual 200%/400% zoom, full WCAG screen reader/contrast/touch targets, account-sites and cross-tenant session negative browser tests, wider device/state matrix."
+        "PR #40 hosted Chromium passes two synthetic-account site 503 and retry with old site rows/count suppressed, plus same-owner logout/login selected account reset at deb58348. Remain untested: distinct-tenant/session authorization browser matrix, account deletion reconciliation, 200%/400% real zoom and manual WCAG/screen reader/contrast/touch targets."
       ],
       "blocker_type": null,
       "verification_level": "browser_tested",

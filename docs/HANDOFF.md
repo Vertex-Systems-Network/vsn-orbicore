@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-018 account-bound site states and browser session reset (PR #40)
+
+- [PR #40](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/40) functional SHA `deb5834818b2e0159e1098dfd7d54db490371e0c` passed [PR CI #45081272511](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081272511), [branch CI #45081254705](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081254705), and [Chromium #45081272410](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081272410). [Evidence](TEST_EVIDENCE/2026-11-23-orb-018-account-site-isolation.md); browser artifact #14777034211.
+- Site rows and failure alerts now carry their source account ID and only render for that selected account. Chromium tests a two-account synthetic 503/retry without stale site rows or count, then signout/login selected-account reset; normal WebAuthn/replay/accessibility regressions pass.
+- ORB-018 remains `testing/browser_tested` until actual two-tenant session checks, account removal reconciliation, manual WCAG review and proper browser zoom/device coverage; no live hosting/production identity. Verify final docs-head and postmerge main CI.
+
+
 ## 2026-11-23 — ORB-010 official CycloneDX 1.5 JSON Schema gate (PR #39)
 
 - [PR #39](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/39) at functional SHA `bd6b2cdb0183e036838e8c9ab677e71812cbb7f9` passed [PR CI #45080916542](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080916542) and [branch CI #45080898373](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080898373): 109 Node tests, official schema validation of 189 components, three malformed SBOM rejection checks, npm audit zero high/critical findings at run time. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md).
