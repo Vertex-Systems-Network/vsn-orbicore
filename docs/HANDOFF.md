@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-22 — ORB-004 pinned PostgreSQL and Redis runtime clients (PR #13)
+
+- PR #13 feature SHA `3b7f26ee97e992427d5f0bad4cabc4c1a4f68e53`, [GitHub service CI #44998860302](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998860302): **success**. Declared `pg@8.23.1` and `redis@6.3.1` in package and lock; `npm ci` now provides both. Real Node clients connected to GitHub-hosted Postgres/Redis; existing leases, Redis Streams, Node repository, authenticated PostgreSQL HTTP tests also passed. [Artifact 14744408086](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998860302/artifacts/14744408086).
+- [Standard CI #44998860295](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998860295): **49 tests passed**, lint, build, smoke, doctor, license/secret scan, npm high/critical audit (0 reported), CycloneDX npm lockfile SBOM 189 components/0 unresolved. The package/lock were generated with a restricted GitHub-only temporary workflow and that workflow was **deleted** before PR review.
+- Full [evidence](TEST_EVIDENCE/2026-11-22-orb-004-runtime-packages.md). Do **not** claim production worker: HTTP PG mode is still injected/test-only, with SQLite auth/audit and `startWorker:false`. No transactional outbox, app Redis worker, real restart or Compose volume recovery yet; ORB-004/016 stay `testing`.
+- PR #12 merged as `c5267790a71cc8978b2c6101aeeafc64c21775b3`. PR #13 docs commit requires fresh head CI and confirmed merge.
+- **Next:** transactionally durable PostgreSQL outbox, Redis Streams app consumer, authorization and lease-fenced synthetic worker with process-level restart tests; complete PG identity migration afterwards.
+
 ## 2026-11-22 — ORB-004 authenticated PostgreSQL HTTP job slice (PR #12)
 
 - Tested feature SHA `04b396f05611594012a84998581e91172a5fcd6e`. [Hosted PostgreSQL/Redis #44998235408](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998235408), [49-test standard CI #44998235385](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998235385) and [virtual browser E2E #44998235393](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998235393) all passed.
