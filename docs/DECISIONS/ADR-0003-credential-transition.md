@@ -36,6 +36,10 @@ There is no cross-database atomic transaction between SQLite and PostgreSQL. Pro
 
 Transitions must be durable, monotonic, tenant-scoped and observable. Retain a read-only migration journal and an audit sequence for reconciliation; avoid exposing plaintext verifiers in the journal. Rollback must not reenable a disabled user, consumed recovery code, revoked session, or old password. If equivalent revocation state cannot be proven, require the affected user's reauthentication/reset and invalidate both session families rather than guessing.
 
+## CI-only invalidation follow-up (2026-11-23)
+
+[Migration 012](../../db/migrations/012_postgres_ci_shadow_epoch_fence.sql) and [file-backed SQLite epoch outbox / hosted replay proof](../TEST_EVIDENCE/2026-11-23-orb-005-ci-epoch-reconciliation.md) validate monotonic revoke-only synthetic shadow invalidation across SQLite rollback, PostgreSQL failures and post-PG-commit/pre-SQLite-ack interrupted delivery. The test also checks source password reset, disabled flags, MFA placeholder flags, role revoke, tenant mismatch, and out-of-order epoch replay. This reduces the CI-only gap but **does not solve the production cutover gate**: source event journal is test-only, not wired to real mutation handlers or actor audit; PG cannot attest event authenticity; there remains a cross-store window and no production reader/fail-closed epoch equality check. No new PG authentication authority.
+
 ## Required implementation slices (ordered)
 
 **Slice A — verifier contract and threat tests (no writes):** the separate [compatibility verifier](../../apps/api/legacy-scrypt-verifier.mjs) and [six unit cases](../../tests/legacy-scrypt-verifier.test.mjs) now pin the historical Node scrypt format with [hosted CI evidence](../TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md). **Remaining:** tenant/user provenance and end-to-end HTTP/SQL/log confidentiality controls; do not wire the helper into normal login. No production SQL auth functions were changed.
