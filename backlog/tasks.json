@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T07:17:02Z",
+  "updated_at": "2026-11-22T07:27:00Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -168,7 +168,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#6",
         "AI_Native_Multi_Hosting_Master_Prompt.md#16"
       ],
-      "commit_hash": "57dec33e52c64e9c4bf5ea00a6382eb725512983",
+      "commit_hash": "04b396f05611594012a84998581e91172a5fcd6e",
       "evidence_paths": [
         "db/migrations/001_postgres_job_leases.sql",
         "scripts/verify-leased-jobs.sh",
@@ -177,15 +177,19 @@
         "apps/api/postgres-jobs.mjs",
         "scripts/verify-postgres-job-repository.mjs",
         "tests/postgres-jobs.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-004-node-postgres-repository.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-node-postgres-repository.md",
+        "apps/api/server.mjs",
+        "scripts/verify-postgres-job-http.mjs",
+        "tests/postgres-http.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-postgres-http-ci.md"
       ],
       "blockers": [
-        "Real Node PostgreSQL job repository passed injected pg.Pool service integration tests (47 project tests). Still not wired into createApp or Redis worker; pg is test-only, transactional outbox and full process/container restart recovery remain unverified."
+        "Authenticated HTTP job routes were tested against injected PostgreSQL on GitHub Actions (49 tests). The hybrid integration still uses SQLite for identity/account/audit, is test-only with worker disabled, has no runtime pg dependency, Redis worker, transactional outbox, production schema, real crash/Compose recovery, or provider integration."
       ],
       "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T07:17:02Z",
+      "last_updated": "2026-11-22T07:27:00Z",
       "verification_level": "integration_tested",
       "blocker_type": "technical"
     },
@@ -741,14 +745,14 @@
         "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md"
       ],
       "blockers": [
-        "Hosted PostgreSQL lease claims and Redis Streams redelivery have passed test-only scripts. Production API adapter/worker, transactional outbox, complete schema, actual service restart and Compose-volume persistence remain outstanding."
+        "GitHub-hosted Postgres/Redis service and HTTP job tests passed. Full PostgreSQL identity/account schema and transactional audit/outbox, Redis-backed application worker, runtime dependency lockfile, process/container restart and Compose persistence remain outstanding."
       ],
       "blocker_type": "technical",
       "verification_level": "integration_tested",
       "started_at": "2026-11-22T07:01:30Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T07:11:12Z"
+      "last_updated": "2026-11-22T07:27:00Z"
     },
     {
       "id": "ORB-017",
