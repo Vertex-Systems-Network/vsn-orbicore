@@ -12,6 +12,9 @@ on:
       - "apps/api/transactional-outbox.mjs"
       - "apps/api/synthetic-redis-worker.mjs"
       - "apps/api/synthetic-worker-runner.mjs"
+      - "apps/api/postgres-identity-core.mjs"
+      - "scripts/verify-postgres-identity-core.mjs"
+      - "tests/postgres-identity-core.test.mjs"
       - "scripts/verify-pg-redis-outbox.mjs"
       - "scripts/verify-compose-restart.sh"
       - "scripts/verify-compose-redis-aof.mjs"
@@ -194,5 +197,57 @@ jobs:
             .data/ci/orb-016-compose-aof-before.json
             .data/ci/orb-016-compose-worker.json
             .data/ci/orb-016-compose-recovery.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  postgres-identity-scope:
+    name: Disposable PostgreSQL identity snapshot and RLS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-identity-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-identity-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked runtime dependencies
+        run: npm ci
+      - name: Initialize isolated PostgreSQL and rerunnable identity migration
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+      - name: Verify synthetic offline snapshot, PostgreSQL session policy, and non-bypass tenant role
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-identity-core.mjs > .data/ci/orb-005-identity-core.json
+      - name: Upload read-scoped PostgreSQL identity migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-005-postgres-identity-core
+          path: .data/ci/orb-005-identity-core.json
           if-no-files-found: ignore
           retention-days: 14
