@@ -94,7 +94,7 @@ try {
   const list = await call("/api/jobs", { cookie: owner });
   assert.equal(list.code, 200);
   assert.equal(list.body.jobs.length, 1);
-  assert.equal(list.body.jobs[0].accountLabel, "Copperline Hosting");
+  assert.equal(list.body.jobs[0].accountLabel, "Copperline Commerce");
   assert.equal(list.body.jobs[0].status, "queued");
   const detail = await call("/api/jobs/" + encodeURIComponent(jobId), { cookie: owner });
   assert.equal(detail.code, 200);
