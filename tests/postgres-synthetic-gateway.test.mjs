@@ -73,7 +73,7 @@ test("ORB-005: invalid request fields fail before opening database connection", 
     {...VALID,accountId:42},
     {...VALID,idempotencyKey:""},
     {...VALID,idempotencyKey:"x".repeat(257)},
-  ]) await assert.rejects(gateway.enqueue(bad),/must be/);
+  ]) await assert.rejects(gateway.enqueue(bad),/must (?:be|contain)/);
   assert.equal(connects,0);
 });
 
