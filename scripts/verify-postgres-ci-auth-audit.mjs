@@ -101,8 +101,10 @@ try{
   await pool.query(
     "INSERT INTO audit_events(id,organization_id,actor,action,target_id,outcome," +
     "created_at,details_json,details_raw_json,prev_hash,entry_hash) " +
-    "VALUES($1,$2,$3,'fixture.seed',$3,'completed',$4,$5::jsonb,$5,'GENESIS',$6)",
-    [randomUUID(),tenant,user,seedTime,seedDetails,seedHash],
+    // The raw JSON input must have a distinct bind parameter from JSONB:
+    // sharing a parameter coerces it to JSONB and reorders the hash input.
+    "VALUES($1,$2,$3,'fixture.seed',$3,'completed',$4,$5::jsonb,$6::text,'GENESIS',$7)",
+    [randomUUID(),tenant,user,seedTime,seedDetails,seedDetails,seedHash],
   );
 
   // The untrusted limited login cannot call original 008 functions, the
