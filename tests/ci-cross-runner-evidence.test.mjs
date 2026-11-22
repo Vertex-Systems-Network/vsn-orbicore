@@ -129,7 +129,7 @@ test("ORB-005 archive completeness denies gaps, duplicates, orphan witness",()=>
   }),/ci_evidence_epoch_gap/);
   assert.throws(()=>createCiCrossRunnerEvidence({
    snapshot:{...f,witnessRows:[
-    {...f.witnessRows[0],event_id:randomBytes(32).toString("hex"),
+    {...f.witnessRows[0],event_id:randomBytes(32).toString("hex")},
    ]},
   }),/ci_evidence_witness_mismatch/);
  });
