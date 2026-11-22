@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {createCiScopedWorkerGateway} from "../apps/api/ci-scoped-worker-gateway.mjs";
 
-function withGate(fn){
+async function withGate(fn){
   const saved={
     GITHUB_ACTIONS:process.env.GITHUB_ACTIONS,
     ORBICORE_CI_SYNTHETIC_FULL_WORKER:process.env.ORBICORE_CI_SYNTHETIC_FULL_WORKER,
@@ -10,7 +10,7 @@ function withGate(fn){
   try{
     process.env.GITHUB_ACTIONS="true";
     process.env.ORBICORE_CI_SYNTHETIC_FULL_WORKER="1";
-    return fn();
+    return await fn();
   }finally{
     for(const [k,v] of Object.entries(saved)){
       if(v===undefined)delete process.env[k];
