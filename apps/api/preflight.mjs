@@ -274,13 +274,45 @@ export function buildDeploymentReadiness({ mfaKeyring, webauthnOrigin, webauthnR
     },
   ];
 
-  const missingCount = gates.filter((g) => g.status === "missing").length;
+  // Configuration is NOT runtime capability. Default HTTP authentication,
+  // persistent users and sessions still use SQLite. Never advertise production
+  // readiness merely because URLs, SMTP and an encryption key were supplied.
+  // This only reports an inventory of configured inputs, not connected services.
+  const productionBlockers = [
+    {
+      id: "authority.postgres",
+      service: "Verified PostgreSQL runtime authentication authority",
+      status: "blocked",
+      detail: "Default HTTP login and sessions remain SQLite-authoritative; CI shadow tables cannot authenticate users.",
+    },
+    {
+      id: "migration.complete",
+      service: "Full SQLite v7 identity, jobs, secret and audit migration with rollback",
+      status: "blocked",
+      detail: "Backfill equality, session revocation and fail-closed cutover are not verified.",
+    },
+    {
+      id: "audit.custody",
+      service: "Independently custodied immutable security audit and keys",
+      status: "blocked",
+      detail: "CI artifacts and fixture signatures do not prove production WORM or separate key custody.",
+    },
+    {
+      id: "recovery.offhost",
+      service: "Full encrypted off-host restore and disaster recovery",
+      status: "blocked",
+      detail: "No full production database, queue, secrets, and MFA key recovery proof exists.",
+    },
+  ];
+  const configuredInputs = gates.every((g) => g.status === "configured");
   return {
     checkedAt: new Date().toISOString(),
-    profile: missingCount === 0 && secureCookie && httpsOrigin ? "production_ready" : "local_sqlite_prototype",
-    productionReady: missingCount === 0 && secureCookie && httpsOrigin,
-    missingRequiredServices: gates.filter((g) => g.status !== "configured").map((g) => g.service),
-    gates,
+    profile: "local_sqlite_prototype",
+    runtimeAuthAuthority: "sqlite",
+    configurationComplete: configuredInputs,
+    productionReady: false,
+    missingRequiredServices: [...gates.filter((g) => g.status !== "configured"), ...productionBlockers].map((g) => g.service),
+    gates: [...gates, ...productionBlockers],
   };
 }
 
