@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes, scryptSync } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createApp } from "../apps/api/server.mjs";
 
@@ -364,6 +364,108 @@ try {
   await page.locator(".primary-nav").getByRole("button", { name: "Overview", exact: true }).waitFor();
   await page.locator(".account-row.selected").getByText(firstAccount.label, { exact: true }).waitFor();
 
+  // ORB-018: account deletion/removal reconciliation is tested as a mocked
+  // changed overview; no irreversible fixture deletion or live provider call.
+  await page.locator(".account-rows .account-row").nth(1).click();
+  await page.locator(".account-row.selected").getByText(secondAccount.label, { exact: true }).waitFor();
+  await page.route("**/api/overview", async (route) => {
+    const response = await route.fetch();
+    const snapshot = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...snapshot,
+        accounts: snapshot.accounts.filter((account) => account.id !== secondAccount.id),
+        counts: { ...snapshot.counts, accounts: snapshot.counts.accounts - 1 },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "Load extended demo data" }).click();
+  await page.locator(".account-row.selected").getByText(firstAccount.label, { exact: true }).waitFor();
+  await page.unroute("**/api/overview");
+
+  // Set up a second independently authenticated synthetic tenant and keep a
+  // verified snapshot from the first tenant's cookie deliberately delayed.
+  // This tests that a late response from the signed-out tenant cannot replace
+  // the second tenant's inventory, even though the promise was in flight.
+  const foreignOrganization = "org-browser-other";
+  const foreignAccountId = "acct-browser-other-only";
+  const foreignLabel = "Independent Tenant Sandbox";
+  const foreignEmail = "other-browser@example.test";
+  const foreignPassword = "another-browser-local-passphrase-77";
+  const foreignSalt = randomBytes(16).toString("hex");
+  const now = new Date().toISOString();
+  app.db.prepare("INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)")
+    .run(foreignOrganization, "Independent Browser Tenant", now);
+  app.db.prepare(`INSERT INTO accounts (id, organization_id, label, provider, host, username, health, used_bytes, quota_bytes, last_synced_at, source)
+    VALUES (?, ?, ?, 'cPanel', 'tenant-isolated.test', 'otherbrowser', 'healthy', 10, 100, ?, 'mock_fixture')`)
+    .run(foreignAccountId, foreignOrganization, foreignLabel, now);
+  app.db.prepare(`INSERT INTO sites (id, account_id, domain, kind, document_root, php_version, status)
+    VALUES ('site-browser-other-only', ?, 'isolated.tenant.test', 'wordpress', '/home/otherbrowser/public_html', '8.3', 'active')`)
+    .run(foreignAccountId);
+  app.db.prepare(`INSERT INTO users (id, organization_id, email, password_salt, password_hash, role, created_at)
+    VALUES ('user-browser-other', ?, ?, ?, ?, 'owner', ?)`)
+    .run(foreignOrganization, foreignEmail, foreignSalt, scryptSync(foreignPassword, foreignSalt, 64).toString("hex"), now);
+
+  let allowLateOverview;
+  const delayed = new Promise((resolve) => { allowLateOverview = resolve; });
+  let markIntercepted;
+  const intercepted = new Promise((resolve) => { markIntercepted = resolve; });
+  let heldFirstOverview = false;
+  await page.route("**/api/overview", async (route) => {
+    if (heldFirstOverview) return route.continue();
+    heldFirstOverview = true;
+    const response = await route.fetch();
+    const priorSessionSnapshot = await response.json();
+    markIntercepted();
+    await delayed;
+    await route.fulfill({ response, json: priorSessionSnapshot });
+  });
+  await page.getByRole("button", { name: "Refresh inventory" }).click();
+  await intercepted;
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.locator("form.auth-card input[type='email']").fill(foreignEmail);
+  await page.locator("form.auth-card input[type='password']").fill(foreignPassword);
+  await page.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.locator(".primary-nav").getByRole("button", { name: "Overview", exact: true }).waitFor();
+  await page.locator(".account-row.selected").getByText(foreignLabel, { exact: true }).waitFor();
+  assert.equal(await page.locator(".account-rows .account-row").count(), 1,
+    "the second tenant must see only its own account");
+  await page.locator(".site-panel .site-row").getByText("isolated.tenant.test").waitFor();
+
+  const unauthorized = await page.evaluate(async (priorAccountId) => {
+    const site = await fetch("/api/accounts/" + encodeURIComponent(priorAccountId) + "/sites");
+    const refresh = await fetch("/api/jobs/refresh", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ accountId: priorAccountId }),
+    });
+    return { site: site.status, refresh: refresh.status };
+  }, firstAccount.id);
+  assert.deepEqual(unauthorized, { site: 404, refresh: 404 },
+    "a separately logged-in tenant cannot inspect or refresh the previous tenant's account");
+
+  const oldRequestCompleted = page.waitForResponse((response) =>
+    response.url().endsWith("/api/overview") && response.status() === 200);
+  allowLateOverview();
+  await oldRequestCompleted;
+  // Wait for the post-fetch React promise continuation, not just the transport.
+  await page.waitForTimeout(150);
+  assert.equal(await page.locator(".account-rows .account-row").count(), 1,
+    "late owner response must not add other-tenant accounts after the switch");
+  await page.locator(".account-row.selected").getByText(foreignLabel, { exact: true }).waitFor();
+  assert.equal(await page.locator(".site-panel .site-row").getByText("isolated.tenant.test").count(), 1,
+    "late owner response must not displace the second tenant's sites");
+  await page.unroute("**/api/overview");
+
+  // Repeat the boundary in the reverse direction for session-state reset.
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.locator("form.auth-card input[type='email']").fill("owner@example.test");
+  await page.locator("form.auth-card input[type='password']").fill("owner-browser-passphrase-99");
+  await page.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.locator(".account-row.selected").getByText(firstAccount.label, { exact: true }).waitFor();
+  assert.equal(await page.locator(".account-rows .account-row").getByText(foreignLabel).count(), 0,
+    "the restored first tenant must not see the other tenant's account");
+
   const runtime = {
     testIds: ["AUTH-WEBAUTHN-E2E-001", "AUTH-WEBAUTHN-REPLAY-001",
       "ORB-009-KEYBOARD", "ORB-018-RESPONSIVE"],
@@ -377,6 +479,8 @@ try {
     responsive320pxReflow: "passed", reducedMotionPreference: "passed",
     emptyFilterAndFailedNetworkStates: "passed", readOnlyRoleRefreshControl: "passed",
     accountSiteFailureAndRetry: "passed", crossSessionSelectionReset: "passed",
+    missingAccountSelectionReconciled: "passed",
+    distinctTenantSessionScope: "passed", delayedOldTenantResponseDiscarded: "passed",
     physicalAuthenticator: "not_tested", liveProvider: "not_tested",
     manualScreenReaderAudit: "not_tested", fullWcagContrastAudit: "not_tested",
   };

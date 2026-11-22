@@ -1,5 +1,11 @@
 # Handoff
 
+## 2026-11-23 — ORB-018 cross-tenant stale snapshot race browser gate (PR #41)
+
+- [PR #41](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/41) functional SHA `573dda09e716ef6d5ab290df262bf7bb24879d64` passed [PR CI #45081987366](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081987366), [branch CI #45081970426](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081970426) and [Chromium #45081987542](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081987542). 109 Node tests; separate synthetic tenant accounts, 404 cross-tenant site/refresh denial, late prior-login response discard and mocked account-removal reconciliation passed. [Evidence](TEST_EVIDENCE/2026-11-23-orb-018-cross-tenant-snapshot-races.md).
+- The UI now discards older out-of-order `loadOverview` responses and invalidates pending workspace requests before logout, resets tenant data on login and does not present a failed logout as successful. ORB-018 remains `testing/browser_tested`: no deployed multi-node security validation, manual WCAG or actual browser zoom. Final docs-head and postmerge CI still require observation.
+
+
 ## 2026-11-23 — ORB-018 account-bound site states and browser session reset (PR #40)
 
 - [PR #40](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/40) functional SHA `deb5834818b2e0159e1098dfd7d54db490371e0c` passed [PR CI #45081272511](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081272511), [branch CI #45081254705](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081254705), and [Chromium #45081272410](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081272410). [Evidence](TEST_EVIDENCE/2026-11-23-orb-018-account-site-isolation.md); browser artifact #14777034211.

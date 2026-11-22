@@ -954,16 +954,17 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "deb5834818b2e0159e1098dfd7d54db490371e0c",
+      "commit_hash": "573dda09e716ef6d5ab290df262bf7bb24879d64",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
         "apps/web/src/ui/App.tsx",
         "scripts/browser-verify.mjs",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-018-account-site-isolation.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-018-account-site-isolation.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-018-cross-tenant-snapshot-races.md"
       ],
       "blockers": [
-        "PR #40 hosted Chromium passes two synthetic-account site 503 and retry with old site rows/count suppressed, plus same-owner logout/login selected account reset at deb58348. Remain untested: distinct-tenant/session authorization browser matrix, account deletion reconciliation, 200%/400% real zoom and manual WCAG/screen reader/contrast/touch targets."
+        "PR #41 109 Node tests + hosted Chromium prove second independently logged-in synthetic tenant, 404 prior-tenant account-site and refresh requests, late old-session overview ignored and account removal simulated by API snapshot at 573dda09. Remaining: actual 200%/400% browser zoom, manual WCAG screen-reader/contrast/touch targets, production multi-node security/session tests, real provider approvals."
       ],
       "blocker_type": null,
       "verification_level": "browser_tested",
