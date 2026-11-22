@@ -101,6 +101,12 @@ try {
     await page.getByRole("button", { name: "Websites", exact: true }).click();
     assert.equal(await page.getByRole("button", { name: "Websites", exact: true })
       .getAttribute("aria-current"), "page");
+    // Only synthetic fixture inventory and no secret-bearing security dialog.
+    mkdirSync(".data/browser-evidence", { recursive: true });
+    await page.screenshot({
+      path: `.data/browser-evidence/orb-018-responsive-${size.width}.png`,
+      fullPage: true,
+    });
   }
   await page.setViewportSize({ width: 1280, height: 800 });
 
