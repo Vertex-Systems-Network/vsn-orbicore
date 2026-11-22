@@ -22,6 +22,11 @@ on:
       - "scripts/verify-postgres-ci-credential-shadow.mjs"
       - "scripts/verify-postgres-ci-epoch-reconciliation.mjs"
       - "apps/api/postgres-ci-credential-invalidation.mjs"
+      - "apps/api/ci-source-event-attestation.mjs"
+      - "apps/api/ci-keyed-auth-failure-audit.mjs"
+      - "scripts/verify-postgres-ci-auth-privacy-provenance.mjs"
+      - "tests/ci-source-event-attestation.test.mjs"
+      - "tests/ci-keyed-auth-failure-audit.test.mjs"
       - "tests/postgres-ci-epoch-reconciliation.test.mjs"
       - "apps/api/postgres-ci-credential-shadow.mjs"
       - "tests/postgres-ci-credential-shadow.test.mjs"
@@ -818,5 +823,67 @@ jobs:
         with:
           name: orb-005-ci-epoch-reconciliation
           path: .data/ci/orb-005-ci-epoch-reconciliation.json
+          if-no-files-found: ignore
+          retention-days: 14
+  postgres-ci-auth-privacy-provenance:
+    name: Disposable CI source HMAC provenance and keyed auth-failure privacy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-mac-privacy-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-mac-privacy-only
+      PGOPTIONS: "-c orbicore.ci_shadow_fixture=enabled"
+      ORBICORE_CI_SYNTHETIC_SHADOW_SCHEMA: "1"
+      ORBICORE_CI_SYNTHETIC_REAUTH: "1"
+      ORBICORE_CI_SYNTHETIC_RECONCILE: "1"
+      ORBICORE_CI_SYNTHETIC_EVENT_ATTESTATION: "1"
+      ORBICORE_CI_SYNTHETIC_FAILURE_AUDIT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Apply opt-in synthetic identity, private shadow and epoch fencing
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/005_postgres_feature_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/006_postgres_synthetic_write_gateway.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/010_postgres_ci_shadow_schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/011_postgres_ci_reauth_shadow.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/012_postgres_ci_shadow_epoch_fence.sql
+      - name: Verify HMAC provenance, rotation, keyed failure audit and crash replay
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-ci-auth-privacy-provenance.mjs > .data/ci/orb-005-ci-mac-privacy.json
+      - name: Upload non-secret HMAC audit / provenance proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-005-ci-hmac-privacy-provenance
+          path: .data/ci/orb-005-ci-mac-privacy.json
           if-no-files-found: ignore
           retention-days: 14
