@@ -143,7 +143,13 @@ export async function copySyntheticIdentitySnapshot({
     inTransaction = true;
     await connection.query("SELECT pg_advisory_xact_lock(564221, 5)");
     const copiedTables = includeAuthState ? [...SQL_TABLES, ...AUTH_TABLES] : SQL_TABLES;
-    const guardedTables = includeAuthState ? [...copiedTables, "bootstrap_tokens"] : copiedTables;
+    // A synthetic auth snapshot must never land in a partially initialized
+    // production-shaped target whose jobs, secrets or WP state it would not
+    // migrate. This is stricter than the original core-only proof.
+    const guardedTables = includeAuthState
+      ? [...copiedTables, "bootstrap_tokens", "jobs", "job_outbox",
+        "secret_references", "wp_site_state"]
+      : copiedTables;
     const occupied = await connection.query(
       "SELECT " + guardedTables.map((table) =>
         "(SELECT COUNT(*) FROM " + table + ") AS " + table,
