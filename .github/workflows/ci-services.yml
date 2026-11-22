@@ -9,6 +9,10 @@ on:
       - "scripts/verify-leased-jobs.sh"
       - "scripts/verify-postgres-job-repository.mjs"
       - "apps/api/postgres-jobs.mjs"
+      - "apps/api/transactional-outbox.mjs"
+      - "apps/api/synthetic-redis-worker.mjs"
+      - "scripts/verify-pg-redis-outbox.mjs"
+      - "scripts/fixtures/hold-synthetic-worker.mjs"
       - "package.json"
       - "package-lock.json"
       - "scripts/verify-runtime-clients.mjs"
@@ -65,6 +69,16 @@ jobs:
           PGDATABASE: orbicore
           PGPASSWORD: ci-test-password
         run: bash scripts/verify-leased-jobs.sh
+      - name: Apply transactional PostgreSQL job outbox migration twice
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: orbicore
+          PGDATABASE: orbicore
+          PGPASSWORD: ci-test-password
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -104,6 +118,23 @@ jobs:
           PGDATABASE: orbicore
           PGPASSWORD: ci-test-password
         run: node scripts/verify-postgres-job-http.mjs > .data/ci/orb-004-postgres-http.json
+      - name: Verify transactional outbox and Redis synthetic worker process-crash recovery
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: orbicore
+          PGDATABASE: orbicore
+          PGPASSWORD: ci-test-password
+          ORBICORE_CI_REDIS_URL: redis://127.0.0.1:6379
+        run: node scripts/verify-pg-redis-outbox.mjs > .data/ci/orb-004-outbox-worker.json
+      - name: Upload outbox worker and SIGKILL recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-004-outbox-worker-recovery
+          path: .data/ci/orb-004-outbox-worker.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload HTTP PostgreSQL job integration evidence
         if: always()
         uses: actions/upload-artifact@v4
