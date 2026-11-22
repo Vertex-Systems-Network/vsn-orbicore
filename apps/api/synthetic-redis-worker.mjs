@@ -39,6 +39,7 @@ export function createSyntheticRedisJobRunner({
   leaseSeconds = 5,
   afterClaim = async () => {},
   rejectionRecorder = null,
+  jobGateway = null,
 }) {
   if (!pool || typeof pool.connect !== "function" || typeof pool.query !== "function") {
     throw new TypeError("A PostgreSQL Pool is required.");
@@ -57,6 +58,14 @@ export function createSyntheticRedisJobRunner({
        typeof rejectionRecorder.inspect !== "function")) {
     throw new TypeError("rejectionRecorder requires record and inspect methods");
   }
+  if (jobGateway !== null) {
+    for (const method of ["publishOne","reconcileUnfinished","getJob",
+      "claimSignaled","finalize","failExpired"]) {
+      if (typeof jobGateway[method] !== "function") {
+        throw new TypeError("jobGateway missing " + method);
+      }
+    }
+  }
   const stream = "orbicore:synthetic:jobs:v1:" + organizationId;
   const repository = createPostgresJobRepository(pool);
 
@@ -69,6 +78,9 @@ export function createSyntheticRedisJobRunner({
   }
 
   async function publishOne() {
+    if (jobGateway) {
+      return jobGateway.publishOne({ organizationId, redis, stream });
+    }
     const client = await pool.connect();
     let open = false;
     try {
@@ -114,6 +126,9 @@ export function createSyntheticRedisJobRunner({
   async function reconcileUnfinished({ olderThanSeconds = 60 } = {}) {
     if (!Number.isInteger(olderThanSeconds) || olderThanSeconds < 1 || olderThanSeconds > 86400) {
       throw new RangeError("olderThanSeconds must be an integer in [1, 86400]");
+    }
+    if (jobGateway) {
+      return jobGateway.reconcileUnfinished({organizationId,olderThanSeconds});
     }
     const result = await pool.query(
       "UPDATE job_outbox AS o SET published_at = NULL, redis_entry_id = NULL " +
@@ -184,7 +199,9 @@ export function createSyntheticRedisJobRunner({
       return { status: "rejected_invalid_signal" };
     }
     const jobId = fields.job_id;
-    let record = await repository.getJob({ organizationId, id: jobId });
+    let record = jobGateway ?
+      await jobGateway.getJob({ organizationId, jobId }) :
+      await repository.getJob({ organizationId, id: jobId });
     if (!record) {
       await recordRejectedSignal(redisId, "missing_job");
       await ack(redisId);
@@ -197,7 +214,11 @@ export function createSyntheticRedisJobRunner({
 
     // Claim ONLY the signaled job. A generic tenant-wide claim could process
     // the wrong job then lose the original Redis event.
-    const claim = await pool.query(
+    const claim = jobGateway
+      ? { rows: [(await jobGateway.claimSignaled({
+        organizationId,jobId,workerId,leaseSeconds,
+      }))].filter(Boolean).map((lease_token)=>({lease_token})) }
+      : await pool.query(
       "UPDATE jobs SET status = 'running', attempts = attempts + 1, " +
       "started_at = clock_timestamp(), lease_owner = $3, lease_token = gen_random_uuid(), " +
       "lease_expires_at = clock_timestamp() + make_interval(secs => $4) " +
@@ -208,8 +229,13 @@ export function createSyntheticRedisJobRunner({
       [organizationId, jobId, workerId, leaseSeconds],
     );
     if (!claim.rows[0]) {
-      await repository.failExpired({ organizationId });
-      record = await repository.getJob({ organizationId, id: jobId });
+      if (jobGateway) {
+        await jobGateway.failExpired({organizationId});
+        record = await jobGateway.getJob({organizationId,jobId});
+      } else {
+        await repository.failExpired({ organizationId });
+        record = await repository.getJob({ organizationId, id: jobId });
+      }
       if (!record || ["completed", "failed"].includes(record.status)) {
         await ack(redisId);
         return { status: "already_terminal", jobId };
@@ -219,6 +245,18 @@ export function createSyntheticRedisJobRunner({
     }
     const token = claim.rows[0].lease_token;
     await afterClaim({ organizationId, jobId, token, workerId });
+
+    // The CI-only, non-owner gateway locks the job, actor and account and
+    // performs policy check + completion in one SQL transaction. Redis
+    // payload never controls result JSON or authorizes a provider action.
+    if (jobGateway) {
+      const decision = await jobGateway.finalize({
+        organizationId,jobId,claimToken:token,
+      });
+      if (decision === "lost_lease") return {status:"lost_lease",jobId};
+      await ack(redisId);
+      return {status:decision,jobId};
+    }
 
     // Strictly fresh PG-side user/tenant/account checks. No SQLite-identity
     // fallback; absent or revoked users are denied. The fixture policy is
@@ -281,5 +319,8 @@ export function createSyntheticRedisJobRunner({
   return Object.freeze({
     stream, group: GROUP, ensureGroup, publishOne, reconcileUnfinished,
     consumeOne, inspectRejectedSignals,
+    failExpired: () => jobGateway ?
+      jobGateway.failExpired({organizationId}) :
+      repository.failExpired({organizationId}),
   });
 }

@@ -1,0 +1,13 @@
+# CI-only full-worker SQL gateway, PostgreSQL 16 and Redis Streams
+
+**Date:** 2026-11-23. **Scope:** Synthetic, unprivileged PG16 worker end-to-end only; not real live provider authorization.
+
+Official reference docs: [PostgreSQL 16 CREATE FUNCTION](https://www.postgresql.org/docs/16/sql-createfunction.html) covers `SECURITY DEFINER` and default public execution rights; [session_user vs current_user](https://www.postgresql.org/docs/16/functions-info.html) distinguishes authenticated login from current effective role; [PostgreSQL 16 advisory and row locking](https://www.postgresql.org/docs/16/explicit-locking.html) describes transaction row locks and `FOR UPDATE`; [Redis XADD](https://redis.io/docs/latest/commands/xadd/), [XACK](https://redis.io/docs/latest/commands/xack/) and [XAUTOCLAIM](https://redis.io/docs/latest/commands/xautoclaim/) distinguish streams, PEL acknowledgment, and redelivery.
+
+## Decision
+
+The last bounded 21-job milestone restricted only poison-signal rejection, while publish, claim, lease, fail-expired and finalize still used a privileged PostgreSQL client. New migration 016 exposes a *narrow fixed set* of functions behind an authenticated `session_user`→tenant mapping and a `NOLOGIN NOINHERIT NOBYPASSRLS` intermediary role, with direct table rights absent and insecure default PUBLIC EXECUTE revoked in the same SQL transaction. The test uses actual separate PG login sessions, **not** a superuser pretending to be a user.
+
+A signed-in PG tenant's job publication takes an outbox row lock within a caller transaction, sends the metadata-only Redis wakeup while holding it, confirms by Redis entry ID, then commits. Redis failures roll back the PG intent. This is a non-atomic two-system boundary: a Redis success before a PG rollback can produce duplicate notifications, so lease fencing/idempotent actions remain mandatory. Completion now performs a server-side, hardcoded mock-only policy read and job mutation in **one SQL transaction**, locking the job, account and actor before synthetic `live:false` result construction.
+
+The gateway is explicitly gated to disposable GitHub Actions integration fixtures; it is NOT automatically installed into the existing standalone worker process or deployed authentication code. It depends on trusted schema-owner function bodies, database login provisioning and tenant mappings, still housed within the same CI administrative trust perimeter. Production needs a verified owner-controlled rollout, signed event provenance, audited least-privilege lifecycle, real remote provider consent and migration/recovery controls before using this contract for real jobs.

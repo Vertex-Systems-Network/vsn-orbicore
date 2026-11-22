@@ -168,7 +168,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#6",
         "AI_Native_Multi_Hosting_Master_Prompt.md#16"
       ],
-      "commit_hash": "797eb708b807c9c5a1e7c2d8d52497f7a3db7b22",
+      "commit_hash": "aa13769395402b933f8b1bde196c20b6bb79824c",
       "evidence_paths": [
         "db/migrations/001_postgres_job_leases.sql",
         "scripts/verify-leased-jobs.sh",
@@ -195,12 +195,14 @@
         "tests/transactional-outbox.test.mjs",
         "docs/TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-poison-signal-quarantine.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-scoped-signal-writer.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-scoped-signal-writer.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-full-worker-gateway.md"
       ],
       "blockers": [
         "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification.",
         "PR #34 20-job hosted PostgreSQL16/Redis7 synthetic signal rejection-before-XACK, DB-fault PEL recovery and failed-ACK replay passed at 77c8d33d; full signed producer identity, durable low-privilege worker role, real DLQ inspection/redrive policy, off-host audit and live provider authorization still not verified.",
-        "PR #35 verified nonowner tenant-bound PostgreSQL rejection-only role on actual two PG logins and Redis stream, write-before-XACK and privilege-loss PEL recovery (21 hosted service jobs at 797eb708). Existing synthetic job publish/claim/complete still uses privileged CI pool; live identity migration, signed publisher and production worker supervision/permissions remain unverified."
+        "PR #35 verified nonowner tenant-bound PostgreSQL rejection-only role on actual two PG logins and Redis stream, write-before-XACK and privilege-loss PEL recovery (21 hosted service jobs at 797eb708). Existing synthetic job publish/claim/complete still uses privileged CI pool; live identity migration, signed publisher and production worker supervision/permissions remain unverified.",
+        "PR #36 22-job real PG16/Redis7 CI verified tenant-bound full synthetic job outbox publish, claim, atomic actor/account policy finalization and expiry with restricted authenticated login, SQL privilege revocation/Redis PEL recovery and cross-tenant denial on aa137693. Only CI-injected worker adapter; default standalone still privileged, publisher provenance and production role/key provisioning, live identity/provider permissions, DLQ/multiinstance/off-host restore and auth cutover not implemented."
       ],
       "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
