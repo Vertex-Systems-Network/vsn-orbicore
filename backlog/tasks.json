@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T07:35:11Z",
+  "updated_at": "2026-11-22T08:17:00Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -168,7 +168,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#6",
         "AI_Native_Multi_Hosting_Master_Prompt.md#16"
       ],
-      "commit_hash": "3b7f26ee97e992427d5f0bad4cabc4c1a4f68e53",
+      "commit_hash": "037e7bd9e00067db6a3f5474099e9598f2472102",
       "evidence_paths": [
         "db/migrations/001_postgres_job_leases.sql",
         "scripts/verify-leased-jobs.sh",
@@ -185,15 +185,23 @@
         "package.json",
         "package-lock.json",
         "scripts/verify-runtime-clients.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-004-runtime-packages.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-runtime-packages.md",
+        "db/migrations/002_postgres_job_outbox.sql",
+        "apps/api/transactional-outbox.mjs",
+        "apps/api/synthetic-redis-worker.mjs",
+        "apps/api/synthetic-worker-runner.mjs",
+        "scripts/verify-pg-redis-outbox.mjs",
+        "scripts/fixtures/hold-synthetic-worker.mjs",
+        "tests/transactional-outbox.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md"
       ],
       "blockers": [
-        "Pinned pg@8.23.1 and redis@6.3.1 are now runtime dependencies; real Node client and authenticated Postgres HTTP slice pass CI (49 tests). Hybrid SQLite identity/audit still requires explicit injection with worker disabled; transactional outbox, Redis application consumer, production tenant schema, and real restart/recovery are not yet implemented."
+        "PostgreSQL transactional job/outbox + separate Redis Streams synthetic worker passed hosted CI with a real SIGKILL/reclaim test, duplicate handling, actor revocation and lost-signal reconciliation (52 tests). Still missing PostgreSQL identity/account/audit migration and RLS, atomic cross-store audit, real PG/Redis container/Compose persistence and failover, supervised production worker and authorized live provider integration."
       ],
       "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T07:35:11Z",
+      "last_updated": "2026-11-22T08:17:00Z",
       "verification_level": "integration_tested",
       "blocker_type": "technical"
     },
@@ -749,14 +757,14 @@
         "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md"
       ],
       "blockers": [
-        "Installed pinned production PostgreSQL/Redis driver packages are verified against hosted services. Actual application Redis worker/outbox, full PostgreSQL tenant and account migration, service/process crash recovery and Compose persistence still outstanding."
+        "Service-level Postgres/Redis and synthetic app outbox/worker integration pass. Full PostgreSQL v7 identity/account/audit parity, DB tenant RLS/roles, cross-store policy consistency, Compose volume restart, real database/Redis crash recovery, production supervision remain unverified."
       ],
       "blocker_type": "technical",
       "verification_level": "integration_tested",
       "started_at": "2026-11-22T07:01:30Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T07:35:11Z"
+      "last_updated": "2026-11-22T08:17:00Z"
     },
     {
       "id": "ORB-017",
