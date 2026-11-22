@@ -130,6 +130,14 @@ try {
   app.db.prepare("UPDATE passkeys SET public_key='ci-fixture-credential:owner-public-only' WHERE credential_id=?")
     .run(passkey1);
 
+  // Even a pending bootstrap token in PostgreSQL blocks an offline import.
+  await pool.query(
+    "INSERT INTO bootstrap_tokens(token_hash,created_at) VALUES($1,NOW())",
+    [hash("unrelated-postgres-bootstrap")],
+  );
+  await assert.rejects(run(),/nonempty_postgres_target_refused/);
+  await pool.query("DELETE FROM bootstrap_tokens");
+
   app.db.prepare("UPDATE passkeys SET counter=-1 WHERE credential_id=?").run(passkey1);
   await assert.rejects(run(),(error)=>error.code==="23514");
   // PostgreSQL failure halfway through the copy must leave *all* tables empty.
@@ -207,6 +215,7 @@ try {
     testedWith:"hosted-postgres-16",source:"synthetic-fixture",
     atomicRollbackAfterPasskeyConstraintFailure:true,
     idempotentEmptyTargetGuard:true,
+    postgresBootstrapTargetCollisionRejected:true,
     passkeysAndTotpAndRecoveryAndOutboxCopied:true,
     counts:result.counts,
     mfaSessionDeniedUntilVerified:true,
