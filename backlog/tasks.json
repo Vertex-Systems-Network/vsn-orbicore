@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T07:02:49Z",
+  "updated_at": "2026-11-22T07:11:12Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -149,7 +149,7 @@
       "dependencies": [
         "ORB-002"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [
         "Docker or installable local PostgreSQL/Redis will be available in a later environment"
@@ -168,15 +168,22 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#6",
         "AI_Native_Multi_Hosting_Master_Prompt.md#16"
       ],
-      "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
-      "started_at": null,
+      "commit_hash": "33eaebafb6aee7eac133700f75e764a771089c18",
+      "evidence_paths": [
+        "db/migrations/001_postgres_job_leases.sql",
+        "scripts/verify-leased-jobs.sh",
+        ".github/workflows/ci-services.yml",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md"
+      ],
+      "blockers": [
+        "Tested PostgreSQL lease/fencing/concurrent claim and Redis Streams pending-message redelivery on disposable CI services, but the ORBICORE API still uses SQLite; live app database adapter, Redis worker, transactional outbox, full tenant policy and container restart drills are not implemented."
+      ],
+      "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T07:02:49Z",
-      "verification_level": "none",
-      "blocker_type": null
+      "last_updated": "2026-11-22T07:11:12Z",
+      "verification_level": "integration_tested",
+      "blocker_type": "technical"
     },
     {
       "id": "ORB-005",
@@ -725,17 +732,19 @@
         "scripts/verify-service-containers.sh",
         "db/postgres-schema.sql",
         "docker-compose.yml",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md",
+        "db/migrations/001_postgres_job_leases.sql",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md"
       ],
       "blockers": [
-        "Hosted Postgres/Redis service-level checks passed. Complete PostgreSQL v7 schema/application adapter, durable Redis worker, migration/restart recovery and Docker Compose persistence remain unverified."
+        "Hosted PostgreSQL lease claims and Redis Streams redelivery have passed test-only scripts. Production API adapter/worker, transactional outbox, complete schema, actual service restart and Compose-volume persistence remain outstanding."
       ],
       "blocker_type": "technical",
       "verification_level": "integration_tested",
       "started_at": "2026-11-22T07:01:30Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T07:02:49Z"
+      "last_updated": "2026-11-22T07:11:12Z"
     },
     {
       "id": "ORB-017",

@@ -15,7 +15,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 | ORB-001 | Phase 0 research and architecture | P0 | verified | docs_reviewed | Sources, permission matrix, unknowns and ADR recorded |
 | ORB-002 | Mock inventory vertical slice | P0 | testing | mock_tested | API/SQLite/worker tests pass; browser/live gaps stay open |
 | ORB-003 | AI rules, docs, diagrams and knowledge banks | P0 | verified | docs_reviewed | Populated and cross-linked; no empty compliance files |
-| ORB-004 | PostgreSQL/Redis and durable worker | P1 | ready | none | Service-container feasibility passed; build app DB/queue adapters and worker recovery |
+| ORB-004 | PostgreSQL job lease / Redis contract | P1 | testing | integration_tested | [Lease fencing/recovery contract CI passed](TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md); API adapter and worker not wired |
 | ORB-005 | Local auth, tenant policy and audit | P1 | testing | mock_tested | Synthetic-data controls only; production gates remain |
 | ORB-006 | Authorized live cPanel UAPI | P1 | blocked | none | Requires owner-authorized disposable account/token |
 | ORB-007 | Local installer preflight/bootstrap | P1 | testing | mock_tested | Preflight & SQLite backup/verify pass locally; prod upgrade tracked in ORB-017 |
@@ -27,7 +27,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 | ORB-014 | MFA key rotation & backup verify | P1 | testing | unit | Versioned keyring rotation & backup integrity tested locally |
 | ORB-015 | Threat-model tests & CI gates | P1 | verified | unit | [CI audit, 45 tests, SBOM artifact](TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md); release/compliance review still separate |
 | ORB-012 | Virtual-authenticator browser E2E | P1 | verified | browser_tested | [Chromium run 44995181964](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md); physical authenticator remains separate |
-| ORB-016 | Hosted PostgreSQL/Redis services | P1 | testing | integration_tested | [CI service parity passed](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md); app adapters and restart recovery open |
+| ORB-016 | Hosted PostgreSQL/Redis services | P1 | testing | integration_tested | [Service parity](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md) and [lease/stream contract](TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md) passed; production app and restart remain open |
 | ORB-017–019 | Installer, accessibility and live provider | P1 | mixed | none / mock | Use exact task evidence contracts in machine backlog |
 
 ## Evidence-backed completion
@@ -39,7 +39,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 
 ## Blocker interpretation
 
-- ORB-004 is now ready: disposable hosted PostgreSQL/Redis service checks passed, but application adapters, durable worker recovery and Compose persistence still require implementation/testing.
+- ORB-004 now has integration-tested lease and stream redelivery **contracts** from hosted disposable services; the real application adapters, production worker, outbox and container restart drill still require implementation/testing.
 - ORB-006/019 require an authorized disposable provider account.
 - ORB-009 is now ready: hosted Chromium works; full browser accessibility/visual review remains to be implemented.
 - ORB-007 covers local preflight; ORB-017 gates production services and upgrade/recovery.

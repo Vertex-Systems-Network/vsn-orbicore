@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-22 — ORB-004 PostgreSQL lease fencing and Redis Streams contract (PR #10)
+
+- Branch `feat/orb-004-leased-job-contract`, tested commit `33eaebafb6aee7eac133700f75e764a771089c18`; [GitHub service CI 44997036564](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997036564) and [standard CI 44997036640](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997036640) passed. Artifacts: [lease evidence 14744076348](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997036564/artifacts/14744076348), service parity 14744276043.
+- `db/migrations/001_postgres_job_leases.sql`: additive/re-runnable tenant/account FK, job attempts/leases, atomic row-locked claims, ownership fencing token, terminal retry exhaustion. `scripts/verify-leased-jobs.sh`: tenant checks, two independent claim processes, forced expiry/reclaim and stale token refusal, expired retries, Redis Streams unacked `XAUTOCLAIM` and `XACK` verification.
+- This is an **isolated contract**, **not a Postgres API adapter or production Redis worker**. SQLite API remains unchanged. No application-level outbox, real worker kill/restart, service/container persistence/restore or full SQLite-v7 parity evidence. ORB-004 and ORB-016 remain testing, integration_tested at service-contract strength only; see `docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md`.
+- PR #9 merged into `main` as `4b9622fb3db0e81d5caf67d54210db3624e951fa`. PR #10 docs edits require final CI and merge confirmation before calling it merged. No live providers touched.
+- **Next:** genuine app job persistence + Redis stream worker and transactional outbox, followed by real process/container restart recovery tests; retain SQLite fixture mode.
+
 ## 2026-11-22 — ORB-016 hosted Postgres/Redis service parity (PR #9)
 
 - CI tested head `2d46a0bac12f7631476fb72ad69529465a181e2f` in [run 44996391832](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44996391832): passed PostgreSQL 16.16 and Redis 7.4.12 service container start, partial schema twice, synthetic job persistence across independent SQL sessions, FK/idempotency constraints and Redis SET/GET/TTL/DEL. Artifact [14743823737](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44996391832/artifacts/14743823737). Evidence `docs/TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md`.
