@@ -1,18 +1,18 @@
 # Next action
 
-1. **ORB-016 / ORB-004:** Execute `.github/workflows/ci-services.yml` on a GitHub-hosted runner with PostgreSQL 16 and Redis 7 services. Test PostgreSQL schema apply/re-apply, migrations, Redis ping and data round-trip, service restart/recovery where possible, and preserve exact CI URLs and versions. The currently defined workflow is schema/connection parity only; do not call it integrated production DB/queue recovery.
-2. Implement the missing production DB adapter and durable queue/worker recovery in an isolated, tested slice before claiming Phase 1 infrastructure complete. Keep existing SQLite synthetic mode and tests intact.
-3. **ORB-018 / ORB-009:** Extend hosted Chromium accessibility checks to focus order, keyboard, contrast, mobile/desktop layouts, loading, stale, error, permissions and empty states. ORB-012 basic DOM smoke does not close accessibility.
-4. **ORB-010:** Full security validation, upstream CycloneDX JSON schema validation, actual release BOM/build assets, secret scanning coverage, and production vault/identity review remain separate from completed ORB-015 CI gates.
-5. **ORB-011 / ORB-013 / ORB-014 / ORB-017:** Manual/physical authenticator and live verified-contact delivery, production key management, restore, installer and upgrade safeguards are still open.
-6. **ORB-006 / ORB-019:** Owner-authorized disposable cPanel account/token required before any read-only live test; do not perform live provider operations with current mock fixtures.
+1. **ORB-004 / ORB-016:** Implement a real versioned PostgreSQL data adapter and Redis-backed durable job worker behind existing application ports. Keep current SQLite synthetic development mode and existing 45 tests working. Provide a migration plan for SQLite v7 entities; current `db/postgres-schema.sql` is only a **partial** target schema.
+2. Write GitHub-hosted service-backed integration tests that exercise actual ORBICORE persistence/jobs, process restart, idempotent retry, rollback and recovery; verify Compose named-volume persistence after container recreation in a disposable environment. Do **not** treat schema/Redis CLI tests as production app integration.
+3. **ORB-018 / ORB-009:** Expand browser accessibility QA to keyboard/focus, contrast, desktop/mobile, loading, stale, empty, error and permission states.
+4. **ORB-010:** Review release SBOM official-schema validation, full deployed-system inventory and production identity/secret controls.
+5. **ORB-011 / ORB-013 / ORB-014 / ORB-017:** Physical authenticator, verified contact live notification, key restore and production installer/upgrade gates stay open.
+6. **ORB-006 / ORB-019:** Live cPanel requires owner-authorized disposable account/token. Maintain synthetic-only provider boundaries.
 
 ## Verified checkpoints
 
-- **ORB-012:** Chromium CTAP2 virtual-authenticator E2E verified, PR [#7](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/7) merged in `main` as `1f8dec9446089dd38a4eb723e278467d7106484d`. [Run 44995181964](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995181964), detailed [evidence](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md).
-- **ORB-015:** PR [#8](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/8) initial implementation SHA `5e0cf94130e36c803a94c61b8d9f8a1828d13670`; later 45-test fix SHA `011317d2be346868356e2956e95676a6bea347c6` passed [CI 44995965598](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995965598) and [browser 44995965552](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995965552) passed [GitHub CI 44995631637](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995631637) (45 tests after multi-hyphen recovery-code regression fix, npm audit zero findings, lockfile BOM with 169 components and an uploaded artifact). See [evidence](TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md); confirm final PR head checks and merged main SHA separately.
-- ORB-012/015 evidence does not imply physical authenticator, complete accessibility, external SBOM schema validation, production distributed databases/jobs or live hosting verification.
+- ORB-012 Chromium virtual-authenticator E2E merged in PR #7, `main` SHA `1f8dec9446089dd38a4eb723e278467d7106484d` ([evidence](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md)).
+- ORB-015 npm audit / lockfile SBOM CI and multi-hyphen recovery-code fix merged in PR #8, `main` SHA `2944dda70a332ece1a43225a904c58a5012fb421` ([evidence](TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md)).
+- **ORB-016 partial service evidence:** PR [#9](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/9), tested SHA `2d46a0bac12f7631476fb72ad69529465a181e2f`, [GitHub Actions 44996391832](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44996391832) passed hosted PostgreSQL 16 + Redis 7 tests; [artifact](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44996391832/artifacts/14743823737). Task stays `testing` / `integration_tested` for **service level only**, pending production app adapter, restart and Compose tests. Confirm final PR/merge result independently.
 
 ## Evidence contract
 
-Record task ID, GitHub Actions run URL, tested SHA, jobs/commands, runtime, outcome, artifacts, and limitations in `docs/TEST_EVIDENCE/`. Never claim a passed external gate based on mock/local evidence alone.
+Store exact tested SHA, Actions run, commands/jobs, runtime, exit result, artifacts and limitations in `docs/TEST_EVIDENCE/`; never infer production, live provider, physical authenticator or full accessibility success from synthetic service tests.
