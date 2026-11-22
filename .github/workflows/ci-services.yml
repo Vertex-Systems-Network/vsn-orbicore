@@ -38,6 +38,8 @@ jobs:
           --health-retries=10
     steps:
       - uses: actions/checkout@v4
+      - name: Install Redis CLI for hosted service checks
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-tools
       - name: Verify hosted service schema, constraints and Redis I/O
         env:
           PGHOST: 127.0.0.1
