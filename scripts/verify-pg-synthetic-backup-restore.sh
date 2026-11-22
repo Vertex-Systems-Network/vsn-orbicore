@@ -12,7 +12,7 @@ if [[ "${GITHUB_ACTIONS:-}" != "true" ||
   exit 2
 fi
 export PATH="/usr/lib/postgresql/16/bin:$PATH"
-if ! pg_dump --version | grep -qE 'PostgreSQL\\) 16\\.'; then
+if ! pg_dump --version | grep -qE 'PostgreSQL[)] 16[.]'; then
   echo "PostgreSQL 16 client must be used for schema-compatible dump" >&2
   exit 2
 fi
@@ -73,12 +73,7 @@ same "SELECT id,organization_id,health,used_bytes,quota_bytes FROM accounts ORDE
 same "SELECT id,account_id,domain,status FROM sites ORDER BY id"
 same "SELECT id,organization_id,status,result_json FROM jobs ORDER BY id"
 same "SELECT id,organization_id,actor,action,outcome,details_json FROM audit_events ORDER BY id"
-same "SELECT version FROM schema_migrations ORDER BY version" 2>/dev/null || {
-  # Older PostgreSQL schema migrations are file-based and may have no
-  # schema_migrations tracking table; never claim migration ledger parity.
-  true
-}
-
+# SQL-file migrations are not a portable, fully proven migration ledger.
 [[ "$(pg_query "$recovered" 'SELECT COUNT(*) FROM organizations')" == "2" ]]
 [[ "$(pg_query "$recovered" 'SELECT COUNT(*) FROM users')" == "2" ]]
 [[ "$(pg_query "$recovered" 'SELECT COUNT(*) FROM sites')" == "1" ]]
