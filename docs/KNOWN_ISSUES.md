@@ -3,7 +3,7 @@
 | ID | Severity | State | Detail | Next action |
 |---|---|---|---|---|
 | KI-001 | High | Partial | Bootstrap/login, tenant scopes, TOTP/recovery, WebAuthn enrollment/login, passkey inventory/revocation, password-reauthenticated rebinding, and local SHA-256 tamper-evident audit chaining (`/api/audit/verify`) are implemented. Virtual-authenticator browser E2E passed on 2026-11-22. Physical authenticator, verified live contact delivery, production key/restore lifecycle, SSO, vault, distributed throttling, and external WORM audit archiving remain open. | Loopback/synthetic-only; physical/production identity gates remain before provider credentials. |
-| KI-002 | Medium | Environment blocked | Docker/PostgreSQL/Redis absent in earlier environment; hosted service-container feasibility unknown. | Attempt ORB-016 in GitHub Actions. |
+| KI-002 | High | Technical open | GitHub-hosted PostgreSQL/Redis service checks passed (schema, constraints, Redis round-trip), but app production DB/queue adapters, complete schema, worker recovery and Compose persistence remain unverified. | Implement ORB-004/016/017 app-backed integration and recovery drills. |
 | KI-003 | High | External blocked | No authorized cPanel/WHM sandbox account or scoped token. | Keep fixture-only until owner supplies disposable least-privilege access. |
 | KI-004 | Medium | Open | VPS minimums and performance baselines not measured. | Benchmark after production-shaped stack is available. |
 | KI-005 | Low | Open | Main branch-protection state from earlier inspection may be stale. | Continue PR flow; recheck governance state when scheduled. |
