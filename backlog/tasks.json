@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T06:46:19Z",
+  "updated_at": "2026-11-22T06:56:59Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -440,11 +440,13 @@
         "docs/TEST_STRATEGY.md",
         "tests/"
       ],
-      "blockers": [],
+      "blockers": [
+        "ORB-015 npm audit, lockfile SBOM and scoped secret/license gates passed CI. Full production security review, complete secrets scanning, and external CycloneDX schema validation remain outside the completed subtask."
+      ],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:10:00Z",
+      "last_updated": "2026-11-22T06:52:11Z",
       "verification_level": "none",
       "blocker_type": null
     },
@@ -493,7 +495,8 @@
         "tests/mfa.test.mjs",
         "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
         "docs/TEST_EVIDENCE/2026-11-10-github-ci.md",
-        "docs/AUTHENTICATOR_OPERATIONS.md"
+        "docs/AUTHENTICATOR_OPERATIONS.md",
+        "tests/recovery-code-edge.test.mjs"
       ],
       "blockers": [
         "verified-contact delivery, tested key rotation/restore, distributed throttling and production identity controls remain open."
@@ -501,7 +504,7 @@
       "started_at": "2026-11-09T23:10:00+05:00",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T06:46:19Z",
+      "last_updated": "2026-11-22T06:56:59Z",
       "verification_level": "unit",
       "blocker_type": "environment"
     },
@@ -649,7 +652,7 @@
       "dependencies": [
         "ORB-005"
       ],
-      "status": "testing",
+      "status": "verified",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -670,23 +673,24 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": null,
+      "commit_hash": "011317d2be346868356e2956e95676a6bea347c6",
       "evidence_paths": [
         "apps/api/security.mjs",
         "scripts/security-gate.mjs",
+        "scripts/generate-sbom.mjs",
         "tests/security.test.mjs",
+        "tests/sbom.test.mjs",
         ".github/workflows/ci.yml",
-        "docs/TEST_EVIDENCE/2026-11-21-local-slices.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md",
+        "docs/THIRD_PARTY_NOTICES.md"
       ],
-      "blockers": [
-        "Local SSRF/path/redaction/supply-chain checks pass; GitHub Actions runner execution remains pending"
-      ],
-      "blocker_type": "environment",
-      "verification_level": "mock_tested",
+      "blockers": [],
+      "blocker_type": null,
+      "verification_level": "unit",
       "started_at": "2026-11-21T00:00:00Z",
-      "completed_at": null,
-      "verified_at": null,
-      "last_updated": "2026-11-21"
+      "completed_at": "2026-11-22T06:52:11Z",
+      "verified_at": "2026-11-22T06:52:11Z",
+      "last_updated": "2026-11-22T06:56:59Z"
     },
     {
       "id": "ORB-016",

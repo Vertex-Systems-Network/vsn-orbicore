@@ -1083,7 +1083,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         let recovery = false;
         let acceptedStep = null;
         const normalized = body.code.replaceAll("-", "").toUpperCase();
-        if (/^[A-Z0-9_-]{20,32}$/.test(normalized)) {
+        if (body.code.length >= 20 && /^[A-Z0-9_]{16,32}$/.test(normalized)) {
           const codeRow = db.prepare("SELECT code_hash FROM recovery_codes WHERE user_id = ? AND code_hash = ? AND used_at IS NULL")
             .get(challenge.user_id, recoveryCodeHash(normalized));
           if (codeRow) recovery = true;
