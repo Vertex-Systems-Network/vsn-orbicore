@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-010 official CycloneDX 1.5 JSON Schema gate (PR #39)
+
+- [PR #39](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/39) at functional SHA `bd6b2cdb0183e036838e8c9ab677e71812cbb7f9` passed [PR CI #45080916542](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080916542) and [branch CI #45080898373](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080898373): 109 Node tests, official schema validation of 189 components, three malformed SBOM rejection checks, npm audit zero high/critical findings at run time. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md).
+- CI validates against official upstream commit-pinned CycloneDX 1.5, SPDX and JSF schemas, with strict per-file Git blob validation before export; failed checks prevent SBOM artifact publishing. This is only an npm lockfile BOM; external production supply chain, full secret scanner and release attestation still unproven. ORB-010 remains `in_progress/unit`.
+- Re-check final docs-head CI and postmerge main CI before claiming final merge.
+
+
 ## 2026-11-23 — ORB-009/018 truthful workspace states and 320px Chromium QA (PR #38)
 
 - [PR #38](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/38) functional SHA `69dc14ce168707b0bff9eb193062a2fecea204b5` passed [PR CI #45080158115](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080158115), [branch CI #45080153068](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080153068) and [Chromium #45080158093](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080158093). [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md); synthetic browser artifact #14777235381.
