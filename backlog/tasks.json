@@ -514,14 +514,15 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": "69dc14ce168707b0bff9eb193062a2fecea204b5",
+      "commit_hash": "c169e199db4c57496b35485614c59b87d923bb28",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-auth-form-accessible-errors.md"
       ],
       "blockers": [
-        "Hosted Chromium 320/390/640/768 CSS viewport, empty-filter, HTTP 503 POST/secondary GET and retry, reduced-motion and viewer-role permission checks passed at 69dc14ce. Remaining: actual 200%/400% zoom, full WCAG screen reader/contrast/touch targets, account-sites and cross-tenant session negative browser tests, wider device/state matrix."
+        "PR #42 Chromium verified wrong bootstrap token aria-invalid/aria-describedby without blaming email, and missing passkey email association; all existing two-tenant/site/WebAuthn browser gates passed at c169e199. Remaining: manual WCAG screen reader/contrast/touch targets, actual 200/400% browser zoom, MFA-code and password-policy browser negative cases, complete field/error/device matrix."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,

@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-009 accessible sign-in field-error association (PR #42)
+
+- [PR #42](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/42) functional SHA `c169e199db4c57496b35485614c59b87d923bb28` passed [PR CI #45082301543](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45082301543), [branch CI #45082287276](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45082287276), and [Chromium #45082301534](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45082301534). [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-auth-form-accessible-errors.md) covers wrong bootstrap token and absent passkey email input-specific `aria-invalid/aria-describedby` checks, with all previous browser gates green.
+- Auth form marks only known-invalid input fields, uses a stable alert ID, does not mistakenly blame email/password for a generic bad credential response. ORB-009 remains `testing/browser_tested`: actual zoom, manual WCAG contrast/touch/screen-reader audit, MFA/password policy browser negatives and full form matrix remain.
+- Verify final docs-head and postmerge main CI separately.
+
+
 ## 2026-11-23 — ORB-018 cross-tenant stale snapshot race browser gate (PR #41)
 
 - [PR #41](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/41) functional SHA `573dda09e716ef6d5ab290df262bf7bb24879d64` passed [PR CI #45081987366](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081987366), [branch CI #45081970426](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081970426) and [Chromium #45081987542](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45081987542). 109 Node tests; separate synthetic tenant accounts, 404 cross-tenant site/refresh denial, late prior-login response discard and mocked account-removal reconciliation passed. [Evidence](TEST_EVIDENCE/2026-11-23-orb-018-cross-tenant-snapshot-races.md).

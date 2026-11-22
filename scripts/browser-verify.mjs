@@ -46,6 +46,13 @@ try {
   await inputs.nth(2).fill("owner-browser-passphrase-99");
   await page.getByRole("button", { name: /create workspace|sign in|complete/i }).click();
   await page.locator("[role='alert'], .error-banner").first().waitFor({ timeout: 5_000 });
+  assert.equal(await inputs.nth(0).getAttribute("aria-invalid"), "true",
+    "incorrect bootstrap token must mark the specifically invalid input");
+  assert.equal(await inputs.nth(0).getAttribute("aria-describedby"), "auth-error",
+    "incorrect bootstrap token must be programmatically linked to its error");
+  assert.match(await page.locator("#auth-error").textContent(), /setup token is incorrect/i);
+  assert.equal(await inputs.nth(1).getAttribute("aria-invalid"), "false",
+    "unrelated email must not be marked invalid for a bootstrap-token failure");
 
   await inputs.nth(0).fill(bootstrapToken);
   await page.getByRole("button", { name: /create workspace|sign in|complete/i }).click();
@@ -186,6 +193,12 @@ try {
   const initialCounter = registered.counter;
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+  await page.locator("#auth-error").getByText(/enter your email first/i).waitFor();
+  assert.equal(await page.locator("form.auth-card input[type='email']").getAttribute("aria-invalid"), "true",
+    "passkey sign-in without email must mark the email input");
+  assert.equal(await page.locator("form.auth-card input[type='email']").getAttribute("aria-describedby"), "auth-error",
+    "passkey missing-email error must be associated with the email input");
   await page.locator("form.auth-card input[type='email']").fill("owner@example.test");
   const assertionRequestPromise = page.waitForRequest((request) =>
     request.method() === "POST" && request.url().endsWith("/api/auth/passkeys/login/verify"));
@@ -478,6 +491,7 @@ try {
     mobileNarrowNavigation: "passed", viewportChecks: [320, 390, 640, 768],
     responsive320pxReflow: "passed", reducedMotionPreference: "passed",
     emptyFilterAndFailedNetworkStates: "passed", readOnlyRoleRefreshControl: "passed",
+    authBootstrapTokenErrorAssociation: "passed", passkeyMissingEmailErrorAssociation: "passed",
     accountSiteFailureAndRetry: "passed", crossSessionSelectionReset: "passed",
     missingAccountSelectionReconciled: "passed",
     distinctTenantSessionScope: "passed", delayedOldTenantResponseDiscarded: "passed",

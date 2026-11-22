@@ -20,7 +20,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 | ORB-006 | Authorized live cPanel UAPI | P1 | blocked | none | Requires owner-authorized disposable account/token |
 | ORB-007 | Local installer preflight/bootstrap | P1 | testing | mock_tested | Preflight & SQLite backup/verify pass locally; prod upgrade tracked in ORB-017 |
 | ORB-008 | Bank validation/schema tooling | P0 | verified | docs_reviewed | Preserve reproducible validator evidence |
-| ORB-009 | Browser UX/accessibility | P1 | testing | browser_tested | [320px, failed API/retry, viewer and reduced-motion browser evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md); actual zoom, manual WCAG/screen reader/contrast and full state/device matrix pending |
+| ORB-009 | Browser UX/accessibility | P1 | testing | browser_tested | [Chromium bootstrap token and passkey email field-error association](TEST_EVIDENCE/2026-11-23-orb-009-auth-form-accessible-errors.md); manual WCAG/screen reader/contrast/touch, actual zoom and broader form matrix pending |
 | ORB-010 | Security/supply-chain umbrella | P1 | in_progress | unit | [Official CycloneDX 1.5 schema validation, 189 lockfile components, 109 passing tests](TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md); deployed-system inventory, release attestation, external security review and broad secret scanning remain |
 | ORB-011 | MFA/passkey and recovery gates | P1 | in_progress | unit | Browser E2E passed; multi-hyphen recovery code regression fixed; physical/live notifications remain |
 | ORB-013 | Verified recovery contacts & outbox | P1 | testing | mock_tested | Simulated outbox & retry tracking tested; live SMTP provider gated |
