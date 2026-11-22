@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-010 expanded tracked-source secret / SPDX license gate (PR #43)
+
+- [PR #43](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/43) functional SHA `8bf76afb0ff26e7d953a7b1492cef506e2aa7358`: [PR CI #45084282639](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084282639) and [branch CI #45084279286](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084279286) **success**, 112 Node tests, 241 tracked text files scanned, zero high-confidence secret findings, zero disallowed license entries and zero npm audit findings at run time. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-tracked-source-secret-license-gate.md).
+- Expanded source scanning includes docs, workflows, root configs/dotenv; patterns report file/rule only. SPDX AND/OR/parentheses parsing now disallows mixed licenses that previously passed via `some()`. Initial fixture-head CI failed due to incorrect npm auth syntax and passed after correction; keep that honest in evidence.
+- ORB-010 remains `in_progress/unit`, not full historical/binary/deployed secrets or release licensing compliance. Inspect final docs-head and postmerge CI before claiming final completion.
+
+
 ## 2026-11-23 — ORB-009 accessible sign-in field-error association (PR #42)
 
 - [PR #42](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/42) functional SHA `c169e199db4c57496b35485614c59b87d923bb28` passed [PR CI #45082301543](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45082301543), [branch CI #45082287276](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45082287276), and [Chromium #45082301534](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45082301534). [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-auth-form-accessible-errors.md) covers wrong bootstrap token and absent passkey email input-specific `aria-invalid/aria-describedby` checks, with all previous browser gates green.

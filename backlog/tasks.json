@@ -559,7 +559,7 @@
         "docs/SECURITY_THREAT_MODEL.md",
         "AI_Native_Multi_Hosting_Master_Prompt.md#12"
       ],
-      "commit_hash": "bd6b2cdb0183e036838e8c9ab677e71812cbb7f9",
+      "commit_hash": "8bf76afb0ff26e7d953a7b1492cef506e2aa7358",
       "evidence_paths": [
         "docs/SECURITY_THREAT_MODEL.md",
         "docs/TEST_STRATEGY.md",
@@ -567,10 +567,13 @@
         "scripts/verify-cyclonedx-schema.py",
         ".github/workflows/ci.yml",
         "tests/sbom.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-010-tracked-source-secret-license-gate.md",
+        "tests/security-gate-expansion.test.mjs",
+        "scripts/security-gate.mjs"
       ],
       "blockers": [
-        "PR #39 official CycloneDX 1.5 schema and SPDX/JSF reference validation passed 109 Node tests and hosted CI for 189 npm-lockfile components at bd6b2cdb, with 3 malformed fixture denials. Still open: deployed-system SBOM/attestations, fully locked CI validator transitive packages, complete secrets scanning, full production security review and external provider/audit/restore gates."
+        "PR #43 GitHub Actions 112 Node tests, 241 Git-tracked recognized text files scanned (zero high-confidence findings), SPDX AND/OR fail-close tests, npm audit zero at run time and full CI passed at 8bf76afb. Remaining: historical/untracked/binary/entropy secrets investigation, external runtime/license reviews, deployed-system SBOM/attestation, full production identity/DB/security and provider/restore approvals."
       ],
       "started_at": null,
       "completed_at": null,
