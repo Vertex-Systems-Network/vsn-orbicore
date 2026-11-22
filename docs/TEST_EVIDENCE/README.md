@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-010 unknown license and npm lockfile denial](2026-11-23-orb-010-unknown-license-lockfile-denial.md): 113 tests, denied missing/UNKNOWN license, missing lockfile and root mismatch; release legal signoff not proven.
+
 - [2026-11-23 ORB-010 Git-tracked source secrets and SPDX license expressions](2026-11-23-orb-010-tracked-source-secret-license-gate.md): 241 source files inspected with 112 passing hosted tests; no full historical or live deployed security claim.
 
 - [2026-11-23 ORB-009 auth field error accessibility](2026-11-23-orb-009-auth-form-accessible-errors.md): browser `aria-invalid` and `aria-describedby` checks for wrong bootstrap token and missing passkey email; manual WCAG not proven.
