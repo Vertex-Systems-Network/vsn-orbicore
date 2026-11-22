@@ -1,4 +1,5 @@
 import { verifyAuditChain } from "./audit.mjs";
+import { FEATURE_TABLES, insertSyntheticFeatureState } from "./postgres-feature-state.mjs";
 
 // Deliberately limited offline copy of a synthetic SQLite identity snapshot.
 // It does not switch HTTP authentication, migrate MFA/passkeys, or write to an
@@ -54,9 +55,13 @@ export function createPostgresIdentityCoreReader(database) {
   });
 }
 
-function verifySyntheticSource(sqlite, includeAuthState = false) {
+function verifySyntheticSource(sqlite, includeAuthState = false, includeFeatureState = false) {
   const scoped = {};
-  for (const table of includeAuthState ? [...SQL_TABLES, ...AUTH_TABLES] : SQL_TABLES) {
+  for (const table of [
+    ...SQL_TABLES,
+    ...(includeAuthState ? AUTH_TABLES : []),
+    ...(includeFeatureState ? FEATURE_TABLES : []),
+  ]) {
     scoped[table] = sqlite.prepare("SELECT * FROM " + table).all();
   }
 
@@ -120,10 +125,15 @@ function verifySyntheticSource(sqlite, includeAuthState = false) {
 
 export async function copySyntheticIdentitySnapshot({
   sqlite, postgres, consent = null, includeAuthState = false,
+  includeFeatureState = false,
 }) {
-  if (includeAuthState
-    ? consent !== "fixture_only_auth_offline_copy"
-    : consent !== "fixture_only_offline_copy") {
+  if (includeFeatureState && !includeAuthState) {
+    throw new Error("feature_snapshot_requires_auth_snapshot");
+  }
+  const requiredConsent = includeFeatureState ? "fixture_only_features_offline_copy"
+    : includeAuthState ? "fixture_only_auth_offline_copy"
+      : "fixture_only_offline_copy";
+  if (consent !== requiredConsent) {
     throw new Error("explicit_synthetic_offline_copy_required");
   }
   if (!sqlite || typeof sqlite.prepare !== "function" || typeof sqlite.exec !== "function") {
@@ -137,18 +147,22 @@ export async function copySyntheticIdentitySnapshot({
   let connection;
   let inTransaction = false;
   try {
-    const source = verifySyntheticSource(sqlite, includeAuthState);
+    const source = verifySyntheticSource(sqlite, includeAuthState, includeFeatureState);
     connection = await postgres.connect();
     await connection.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
     inTransaction = true;
     await connection.query("SELECT pg_advisory_xact_lock(564221, 5)");
-    const copiedTables = includeAuthState ? [...SQL_TABLES, ...AUTH_TABLES] : SQL_TABLES;
+    const copiedTables = [
+      ...SQL_TABLES,
+      ...(includeAuthState ? AUTH_TABLES : []),
+      ...(includeFeatureState ? FEATURE_TABLES : []),
+    ];
     // A synthetic auth snapshot must never land in a partially initialized
     // production-shaped target whose jobs, secrets or WP state it would not
     // migrate. This is stricter than the original core-only proof.
     const guardedTables = includeAuthState
       ? [...copiedTables, "bootstrap_tokens", "jobs", "job_outbox",
-        "secret_references", "wp_site_state"]
+        "secret_references", ...(includeFeatureState ? [] : ["wp_site_state"])]
       : copiedTables;
     const occupied = await connection.query(
       "SELECT " + guardedTables.map((table) =>
@@ -183,11 +197,22 @@ export async function copySyntheticIdentitySnapshot({
       );
     }
     for (const row of source.sites) {
-      await connection.query(
-        "INSERT INTO sites(id, account_id, domain, kind, document_root, php_version, status) " +
-        "VALUES ($1,$2,$3,$4,$5,$6,$7)",
-        [row.id, row.account_id, row.domain, row.kind, row.document_root, row.php_version, row.status],
-      );
+      const account = source.accounts.find((entry) => entry.id === row.account_id);
+      if (!account) throw new Error("orphaned_source_site_refused");
+      if (includeFeatureState) {
+        await connection.query(
+          "INSERT INTO sites(id, account_id, organization_id, domain, kind, document_root, php_version, status) " +
+          "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+          [row.id, row.account_id, account.organization_id, row.domain,
+            row.kind, row.document_root, row.php_version, row.status],
+        );
+      } else {
+        await connection.query(
+          "INSERT INTO sites(id, account_id, domain, kind, document_root, php_version, status) " +
+          "VALUES ($1,$2,$3,$4,$5,$6,$7)",
+          [row.id, row.account_id, row.domain, row.kind, row.document_root, row.php_version, row.status],
+        );
+      }
     }
     for (const row of source.sessions) {
       const user = source.users.find((entry) => entry.id === row.user_id);
@@ -273,6 +298,9 @@ export async function copySyntheticIdentitySnapshot({
           row.created_at]);
       }
     }
+    if (includeFeatureState) {
+      await insertSyntheticFeatureState({ client: connection, source });
+    }
     const result = await connection.query(
       "SELECT " + copiedTables.map((table) =>
         "(SELECT COUNT(*) FROM " + table + ") AS " + table,
@@ -296,7 +324,8 @@ export async function copySyntheticIdentitySnapshot({
     await connection.query("COMMIT");
     inTransaction = false;
     return Object.freeze({
-      scope: includeAuthState ? "synthetic_auth_state_only" : "synthetic_core_only",
+      scope: includeFeatureState ? "synthetic_feature_state_only"
+        : includeAuthState ? "synthetic_auth_state_only" : "synthetic_core_only",
       counts, target: "postgres",
     });
   } catch (error) {
@@ -313,4 +342,16 @@ export async function copySyntheticIdentitySnapshot({
 /** Fixture-gated atomic offline import of core + MFA/passkey/recovery state. */
 export function copySyntheticIdentityWithAuthSnapshot({ sqlite, postgres, consent = null }) {
   return copySyntheticIdentitySnapshot({ sqlite, postgres, consent, includeAuthState: true });
+}
+
+/**
+ * Explicitly gated CI-only offline copy of identity, MFA/recovery and the
+ * seven operational feature tables. Still refuses jobs, secret refs and live
+ * credentials; it is NOT a production database cutover.
+ */
+export function copySyntheticFullFeatureSnapshot({ sqlite, postgres, consent = null }) {
+  return copySyntheticIdentitySnapshot({
+    sqlite, postgres, consent,
+    includeAuthState: true, includeFeatureState: true,
+  });
 }
