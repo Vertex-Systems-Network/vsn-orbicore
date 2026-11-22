@@ -47,7 +47,11 @@ CREATE TABLE IF NOT EXISTS capability_snapshots (
   account_id TEXT NOT NULL,
   organization_id TEXT NOT NULL REFERENCES organizations(id),
   profile_name TEXT NOT NULL,
-  capabilities_json TEXT NOT NULL CHECK (jsonb_typeof(capabilities_json::jsonb) = 'object'),
+  -- SQLite capability profiles are lists of declared capabilities, not maps.
+  -- Preserve the exact source text and accept array/object JSON shapes only.
+  capabilities_json TEXT NOT NULL CHECK (
+    jsonb_typeof(capabilities_json::jsonb) IN ('array', 'object')
+  ),
   source TEXT NOT NULL,
   fetched_at TIMESTAMPTZ NOT NULL,
   CONSTRAINT capabilities_account_tenant_fk FOREIGN KEY(account_id, organization_id)
