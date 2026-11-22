@@ -310,7 +310,8 @@ export function App() {
       setOverview(data);
       setAllSites(sitesData.sites);
       setError(null);
-      setSelectedAccountId((current) => current ?? data.accounts[0]?.id ?? null);
+      setSelectedAccountId((current) => data.accounts.some((account) => account.id === current)
+        ? current : data.accounts[0]?.id ?? null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load the overview.");
     } finally {
@@ -438,10 +439,15 @@ export function App() {
     await fetch("/api/auth/logout", { method: "POST" });
     setActor(null);
     setOverview(null);
+    setSelectedAccountId(null);
+    setActiveNav("Overview");
+    setQuery("");
     setSites([]);
     setAllSites([]);
+    setSiteRequestVersion(0);
     setSiteError(null);
     setError(null);
+    setDemoNotice(null);
   };
 
   const activeAccount = overview?.accounts.find((account) => account.id === selectedAccountId);
