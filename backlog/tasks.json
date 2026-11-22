@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T08:17:00Z",
+  "updated_at": "2026-11-22T08:24:00Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -196,12 +196,12 @@
         "docs/TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md"
       ],
       "blockers": [
-        "PostgreSQL transactional job/outbox + separate Redis Streams synthetic worker passed hosted CI with a real SIGKILL/reclaim test, duplicate handling, actor revocation and lost-signal reconciliation (52 tests). Still missing PostgreSQL identity/account/audit migration and RLS, atomic cross-store audit, real PG/Redis container/Compose persistence and failover, supervised production worker and authorized live provider integration."
+        "PostgreSQL atomic job/outbox plus separate Redis synthetic worker, real worker SIGKILL/reclaim and disposable Compose named-volume/AOF container recreation passed. Full PostgreSQL SQLite-v7 identity/account/audit migration, tenant authorization/RLS, production supervision, host crash/failover and live provider integration remain open."
       ],
       "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T08:17:00Z",
+      "last_updated": "2026-11-22T08:24:00Z",
       "verification_level": "integration_tested",
       "blocker_type": "technical"
     },
@@ -746,7 +746,7 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "2d46a0bac12f7631476fb72ad69529465a181e2f",
+      "commit_hash": "93b9b763c36bbb4082235fc403083f4b9d62922e",
       "evidence_paths": [
         ".github/workflows/ci-services.yml",
         "scripts/verify-service-containers.sh",
@@ -754,17 +754,20 @@
         "docker-compose.yml",
         "docs/TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md",
         "db/migrations/001_postgres_job_leases.sql",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md",
+        "scripts/verify-compose-restart.sh",
+        "scripts/verify-compose-redis-aof.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-016-compose-recreation.md"
       ],
       "blockers": [
-        "Service-level Postgres/Redis and synthetic app outbox/worker integration pass. Full PostgreSQL v7 identity/account/audit parity, DB tenant RLS/roles, cross-store policy consistency, Compose volume restart, real database/Redis crash recovery, production supervision remain unverified."
+        "Disposable GitHub Compose named-volume persistence, Redis AOF fsync and stream PEL restoration, synthetic worker natural-lease recovery and actual service-container recreation passed. Full PostgreSQL v7 identity/account/audit migration, tenant DB roles/RLS, cross-store audit atomicity, production backup/restore, host-disk crash and multi-node failover remain unverified."
       ],
       "blocker_type": "technical",
       "verification_level": "integration_tested",
       "started_at": "2026-11-22T07:01:30Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T08:17:00Z"
+      "last_updated": "2026-11-22T08:24:00Z"
     },
     {
       "id": "ORB-017",

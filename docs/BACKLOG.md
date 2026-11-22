@@ -27,7 +27,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 | ORB-014 | MFA key rotation & backup verify | P1 | testing | unit | Versioned keyring rotation & backup integrity tested locally |
 | ORB-015 | Threat-model tests & CI gates | P1 | verified | unit | [CI audit, 45 tests, SBOM artifact](TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md); release/compliance review still separate |
 | ORB-012 | Virtual-authenticator browser E2E | P1 | verified | browser_tested | [Chromium run 44995181964](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md); physical authenticator remains separate |
-| ORB-016 | Hosted PostgreSQL/Redis services | P1 | testing | integration_tested | [Service parity](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md) and [synthetic outbox/worker integration](TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md) passed; full PG identity and Compose service restart remain open |
+| ORB-016 | Hosted PostgreSQL/Redis services | P1 | testing | integration_tested | [Service parity](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md) and [synthetic outbox/worker integration](TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md) passed; full PG identity, off-host backup, real host crash and HA failover remain open |
 | ORB-017–019 | Installer, accessibility and live provider | P1 | mixed | none / mock | Use exact task evidence contracts in machine backlog |
 
 ## Evidence-backed completion
@@ -39,7 +39,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 
 ## Blocker interpretation
 
-- ORB-004 now includes a hosted, explicitly opted-in **synthetic** PostgreSQL job/outbox and Redis Streams worker with real child-process SIGKILL/lease recovery evidence. SQLite identity/account/audit remain a hybrid test fixture; production PostgreSQL migration, database role isolation, whole-service/Compose durability and live provider verification remain open.
+- ORB-004 now includes a hosted, explicitly opted-in **synthetic** PostgreSQL job/outbox and Redis Streams worker with real child-process SIGKILL/lease recovery evidence. SQLite identity/account/audit remain a hybrid test fixture; production PostgreSQL migration, database role isolation, host-crash/off-host durability and live provider verification remain open. Disposable Compose named-volume and Redis AOF recreation have passed [ORB-016](TEST_EVIDENCE/2026-11-22-orb-016-compose-recreation.md).
 - ORB-006/019 require an authorized disposable provider account.
 - ORB-009 is now ready: hosted Chromium works; full browser accessibility/visual review remains to be implemented.
 - ORB-007 covers local preflight; ORB-017 gates production services and upgrade/recovery.
