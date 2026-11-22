@@ -1,6 +1,7 @@
 # Project state
 
 **Updated:** 2026-11-22
+**Latest ORB-005 checkpoint:** [CI-only SQLite reauthentication shadow staging](TEST_EVIDENCE/2026-11-22-orb-005-ci-reauth-shadow.md) passed 11 hosted service jobs plus PR CI/Chromium at functional SHA `91d00a8`. Synthetic-only source epoch, restricted PG stage and injected rollback were tested; no actual account migration, runtime login change or production cutover.
 **Current migration addendum:** [CI-only PostgreSQL shadow schema / actual non-owner denial](TEST_EVIDENCE/2026-11-22-orb-005-pg-ci-shadow-schema.md) passed ten-job hosted integration at functional SHA `f41f78c5`; it stores **placeholder data only** and does not expose runtime auth or verifier writes.  [ADR-0003](DECISIONS/ADR-0003-credential-transition.md) proposes a reversible SQLite scrypt → PostgreSQL credential transition. A separate, **not-runtime-wired** legacy verifier and six synthetic regression cases passed [hosted CI and browser verification](TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md) at functional SHA `1ac44ad8`. Current runtime remains SQLite/scrypt; PostgreSQL bcrypt login remains CI-only. No actual credential migration, production authorization or cutover security assurance is implied.
 **Product:** VSN ORBICORE — AI-assisted hosting control plane
 **Canonical repository:** [Vertex-Systems-Network/vsn-orbicore](https://github.com/Vertex-Systems-Network/vsn-orbicore)

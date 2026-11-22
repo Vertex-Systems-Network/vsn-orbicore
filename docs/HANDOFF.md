@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-22 — ORB-005 CI-only password reauthentication → restricted PostgreSQL shadow (PR #25)
+
+- [PR #25](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/25), functional SHA `91d00a8867f434cdea15e48af506b0b62959e527` passed [11-job hosted service integration #45057460264](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45057460264), [PR CI #45057460320](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45057460320), [branch CI #45057456940](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45057456940) and [Chromium #45057460255](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45057460255). [Artifact #14767508793](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45057460264/artifacts/14767508793). [Evidence](TEST_EVIDENCE/2026-11-22-orb-005-ci-reauth-shadow.md).
+- Added gated migration 011 private reauthentication-shadow table with enforced tenant mapping, source epoch, only one pending draft and a restricted non-owner EXECUTE-only staging function. A dedicated CI adapter checks a synthetic SQLite source password first, then computes a separate test-only KDF. Tested wrong-password, tenant mismatches, source epoch/disabled/MFA rejection, duplicate writes and forced transaction rollback. Normal SQLite login unchanged.
+- **Not production security closure:** source epoch is test-only; no real password mutation hooks, source/PG distributed atomicity, target login, key custody, production SQL role provisioning, recovery or TLS/Secure-cookie proof. A compromised SQL staging role could still forge a fixture draft; it cannot authenticate. ORB-005 remains `in_progress/integration_tested`.
+- **Next:** synthetic cross-store epoch/invalidation journal and crash/recovery consistency drills before considering an authority cutover. Final docs-head and postmerge main checks must be separately verified.
+
+
 ## 2026-11-22 — ORB-005 CI-only PostgreSQL shadow schema and RLS denial (PR #24)
 
 - [PR #24](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/24) functional SHA `f41f78c509d76bff1643eeb3c44c2f887f007b83` passed [10-job PostgreSQL/Redis/Compose service integration #45055972375](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055972375), [standard CI #45055972363](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055972363) and [branch CI #45055953186](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055953186). [Machine-readable shadow artifact #14766933040](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055972375/artifacts/14766933040), [detailed evidence](TEST_EVIDENCE/2026-11-22-orb-005-pg-ci-shadow-schema.md).

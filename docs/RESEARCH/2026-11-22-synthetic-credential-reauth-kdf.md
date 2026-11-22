@@ -1,0 +1,9 @@
+# ORB-005 — bounded synthetic credential reauthentication / KDF review
+
+**Date:** 2026-11-22. **Scope:** CI-only integration fixture, NOT production-ready identity migration.
+
+The [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) recommends Argon2id for new password storage and, if it is unavailable, scrypt. It lists a minimum scrypt tradeoff `N=2^15, r=8, p=3` (approx. 32 MiB). [Node.js 24 crypto.scryptSync documentation](https://nodejs.org/download/release/v24.22.1/docs/api/crypto.html#cryptoscryptsyncpassword-salt-keylen-options) documents `N`, `r`, `p` and `maxmem`; here the new pilot uses a 24-byte random *binary* salt, 64-byte derived key, `N=32768,r=8,p=3,maxmem=64MiB`.
+
+The current app's historical SQLite scrypt uses Node defaults (`N=16384,r=8,p=1`) with a 32-character ASCII hex *text* salt. The new test KDF profile is not a cast or transfer of the existing hash. **A new verifier can only be produced after successful explicit source-password reauthentication.** The source synthetic fixture creates the password at CI runtime; it is not logged, committed or sent to PostgreSQL. The new PG schema stores only its separately derived verifier. No API returns the new hash.
+
+Gaps before production: benchmark memory/latency and DoS resistance; independently select/review Argon2id or suitably provisioned scrypt; version/upgrade and Unicode normalization policy; email/tenant ownership evidence, trusted SQL principal and revocation propagation; distributed throttling and HMAC login-failure privacy; key custody/MFA; production role ownership and SSL; off-host restore and fenced cutover. The CI-only source-epoch sidecar is NOT wired to production password/disable/MFA mutations, so it cannot prove atomic source+target consistency or prevent a stale target record after a later source change. No staging record is used to authenticate.

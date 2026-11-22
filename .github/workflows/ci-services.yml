@@ -19,6 +19,9 @@ on:
       - "scripts/verify-postgres-ci-login.mjs"
       - "scripts/verify-postgres-ci-auth-audit.mjs"
       - "scripts/verify-postgres-ci-shadow-schema.mjs"
+      - "scripts/verify-postgres-ci-credential-shadow.mjs"
+      - "apps/api/postgres-ci-credential-shadow.mjs"
+      - "tests/postgres-ci-credential-shadow.test.mjs"
       - "tests/postgres-ci-login.test.mjs"
       - "scripts/verify-postgres-synthetic-http.mjs"
       - "tests/postgres-synthetic-http.test.mjs"
@@ -690,5 +693,65 @@ jobs:
         with:
           name: orb-005-postgres-ci-shadow-schema
           path: .data/ci/orb-005-ci-shadow-schema.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  postgres-ci-reauth-shadow:
+    name: Disposable SQLite reauthentication to restricted PostgreSQL shadow draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-reauth-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-reauth-only-password
+      PGOPTIONS: "-c orbicore.ci_shadow_fixture=enabled"
+      ORBICORE_CI_SYNTHETIC_SHADOW_SCHEMA: "1"
+      ORBICORE_CI_SYNTHETIC_REAUTH: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Apply PostgreSQL identity and 010–011 CI shadow schemas twice
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/005_postgres_feature_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/006_postgres_synthetic_write_gateway.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/010_postgres_ci_shadow_schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/011_postgres_ci_reauth_shadow.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/011_postgres_ci_reauth_shadow.sql
+      - name: Verify source password, tenant scope, epoch and fault rollback
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-ci-credential-shadow.mjs > .data/ci/orb-005-ci-reauth-shadow.json
+      - name: Upload non-secret synthetic reauthentication evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-005-ci-reauth-shadow
+          path: .data/ci/orb-005-ci-reauth-shadow.json
           if-no-files-found: ignore
           retention-days: 14
