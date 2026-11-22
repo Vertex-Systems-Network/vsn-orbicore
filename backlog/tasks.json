@@ -243,7 +243,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#12",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "35a55883cf24999e7f891f9b1583a9f4d622a6f7",
+      "commit_hash": "21629439c95e143e46d3b7368fdfaae1fca6afb0",
       "evidence_paths": [
         "docs/DATA_MODEL.md",
         "docs/DECISIONS/ADR-0002-authentication.md",
@@ -280,10 +280,13 @@
         "apps/api/postgres-ci-login.mjs",
         "scripts/verify-postgres-ci-login.mjs",
         "tests/postgres-ci-login.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-ci-login.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-ci-login.md",
+        "db/migrations/009_postgres_ci_auth_audit.sql",
+        "scripts/verify-postgres-ci-auth-audit.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-atomic-auth-audit.md"
       ],
       "blockers": [
-        "Migration 008 plus CI-only loopback PostgreSQL credential/session flow passed on a real disposable non-owner DB login: explicitly tagged fixture bcrypt password verification, database-backed 5-attempt throttle, actual HttpOnly SameSite=Strict cookie issuance (without Secure only on HTTP loopback), five-minute MFA-pending session, one-use recovery-code rotation, replay/exhaustion denial, CSRF logout, scoped mock-only jobs; 73 automated tests, all eight service jobs and Chromium green. Normal application login still uses SQLite scrypt; no compatible production credential migration, real TOTP/passkey/key provenance, TLS proxy cookie/CSRF lifecycle, hashed login/logout audits, production write-role governance, SQLite v7 historical job/audit/secret migration, reversible cutover, off-host backup/restore or live provider authorization."
+        "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent."
       ],
       "started_at": null,
       "completed_at": null,
