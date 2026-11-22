@@ -8,6 +8,10 @@ Use a TypeScript modular monolith for the web API and worker, with a React/TypeS
 
 UI -> authenticated API -> identity/tenant/policy -> domain modules -> transaction/audit/outbox -> queue -> isolated workers -> provider adapters. Secrets are vault references. Workers re-check tenant/action policy immediately before remote work. Providers are ports/adapters and expose a capability snapshot; UI never assumes a capability from a product name or username.
 
+## Synthetic recovery integration (2026-11-23)
+
+[CI-only isolated PostgreSQL 16 recovery proof](TEST_EVIDENCE/2026-11-23-orb-016-isolated-encrypted-restore.md) exercises authenticated fixture archive encryption and an entirely separate Docker PostgreSQL cluster, retaining owner/GRANT/RLS restrictions and testing actual nonowner tenant reads. **This is not the deployment architecture or production backup subsystem**: both clusters run on one disposable Actions runner with no independent vault, object lock, recoverable key escrow or full SQLite/Redis/MFA state. Default HTTP authentication remains SQLite; no automatic Postgres promotion.
+
 ## Initial implementation slice
 
 Local PoC: React UI -> local HTTP API -> SQLite -> persistent refresh-job row/worker -> fixture-backed cPanel adapter. This intentionally uses no live endpoint. It validates data contracts and user-visible operation states. It does not prove production Postgres/Redis scale or authentication.
