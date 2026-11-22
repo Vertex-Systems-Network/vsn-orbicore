@@ -25,6 +25,10 @@ on:
       - "apps/api/ci-source-event-attestation.mjs"
       - "apps/api/ci-source-witness.mjs"
       - "apps/api/ci-detached-witness-checkpoint.mjs"
+      - "apps/api/ci-cross-runner-evidence.mjs"
+      - "scripts/ci-export-witness-evidence.mjs"
+      - "scripts/ci-restore-witness-evidence.mjs"
+      - "tests/ci-cross-runner-evidence.test.mjs"
       - "apps/api/ci-shadow-readiness-probe.mjs"
       - "scripts/verify-postgres-ci-detached-readiness.mjs"
       - "tests/ci-detached-readiness.test.mjs"
@@ -1025,3 +1029,64 @@ jobs:
           path: .data/ci/orb-005-ci-detached-readiness.json
           if-no-files-found: ignore
           retention-days: 14
+  ci-cross-runner-evidence-export:
+    name: CI-only synthetic metadata evidence signer (runner A)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      public_key_fingerprint: ${{ steps.signed.outputs.public_key_fingerprint }}
+      envelope_sha256: ${{ steps.signed.outputs.envelope_sha256 }}
+      sequence: ${{ steps.signed.outputs.sequence }}
+    env:
+      ORBICORE_CI_SYNTHETIC_CROSS_RUNNER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Sign and serialize synthetic witness-only metadata
+        id: signed
+        run: node scripts/ci-export-witness-evidence.mjs
+      - name: Upload non-secret signed metadata (no private key)
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-005-ci-cross-runner-metadata
+          path: .data/ci/cross-runner/evidence.json
+          if-no-files-found: error
+          retention-days: 7
+  ci-cross-runner-evidence-restore:
+    name: CI-only verify and reconstruct metadata (runner B)
+    needs: ci-cross-runner-evidence-export
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      ORBICORE_CI_SYNTHETIC_CROSS_RUNNER: "1"
+      EXPECTED_PUBLIC_KEY_SHA256: ${{ needs.ci-cross-runner-evidence-export.outputs.public_key_fingerprint }}
+      EXPECTED_ENVELOPE_SHA256: ${{ needs.ci-cross-runner-evidence-export.outputs.envelope_sha256 }}
+      EXPECTED_SEQUENCE: ${{ needs.ci-cross-runner-evidence-export.outputs.sequence }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Fetch signed metadata from producer job artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: orb-005-ci-cross-runner-metadata
+          path: .data/ci/cross-runner
+      - name: Verify separated public pin, signature and atomic metadata restore
+        run: |
+          mkdir -p .data/ci
+          node scripts/ci-restore-witness-evidence.mjs > .data/ci/orb-005-ci-cross-runner-restore.json
+      - name: Upload non-secret fresh-runner restore proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-005-ci-cross-runner-restore-proof
+          path: .data/ci/orb-005-ci-cross-runner-restore.json
+          if-no-files-found: ignore
+          retention-days: 7
