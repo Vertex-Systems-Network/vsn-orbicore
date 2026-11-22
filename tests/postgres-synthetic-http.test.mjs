@@ -84,6 +84,14 @@ test("ORB-005: loopback HTTP rejects unauthenticated and cross-origin requests b
       assert.equal(csrfResponse.headers.get("set-cookie"),null);
       const {csrfToken}=await csrfResponse.json();
       assert.match(csrfToken,/^[a-f0-9]{64}$/);
+      assert.equal(csrfResponse.headers.get("cache-control"),"no-store");
+      assert.equal((await fetch(base+"/__ci/pg/jobs/refresh",{headers:{cookie}})).status,405);
+      assert.equal((await fetch(base+"/__ci/pg/session/csrf",{
+        method:"POST",headers:{cookie,origin:base},
+      })).status,405);
+      assert.equal((await fetch(base+"/__ci/pg/session/csrf",{
+        headers:{cookie:"orbicore_session="+randomBytes(32).toString("base64url")},
+      })).status,401);
       const post=({origin=base,headers={},body={accountId:"account-ci-fixture"}}={})=>
         fetch(base+"/__ci/pg/jobs/refresh",{
           method:"POST",
