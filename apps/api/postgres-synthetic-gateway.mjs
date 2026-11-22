@@ -11,6 +11,37 @@ export function createPostgresSyntheticSubmissionGateway(pool) {
   }
 
   return Object.freeze({
+    async sessionTenant({ tokenHash }) {
+      if (typeof tokenHash !== "string" || !SHA256.test(tokenHash)) {
+        throw new TypeError("tokenHash must be a lowercase SHA-256 hex digest");
+      }
+      const connection = await pool.connect();
+      let open = false;
+      try {
+        await connection.query("BEGIN");
+        open = true;
+        await connection.query("SET LOCAL ROLE orbicore_synthetic_submitter");
+        const result = await connection.query(
+          "SELECT organization_id FROM public.orbicore_probe_synthetic_session($1)",
+          [tokenHash],
+        );
+        const org = result.rows?.[0]?.organization_id ?? null;
+        if (org !== null && (typeof org !== "string" || !ID.test(org))) {
+          throw new Error("synthetic_gateway_invalid_session_scope");
+        }
+        await connection.query("COMMIT");
+        open = false;
+        return org;
+      } catch (error) {
+        if (open) {
+          try { await connection.query("ROLLBACK"); } catch { /* preserve reason */ }
+        }
+        throw error;
+      } finally {
+        connection.release();
+      }
+    },
+
     async enqueue({ tokenHash, organizationId, accountId, idempotencyKey }) {
       if (typeof tokenHash !== "string" || !SHA256.test(tokenHash)) {
         throw new TypeError("tokenHash must be a lowercase SHA-256 hex digest");
