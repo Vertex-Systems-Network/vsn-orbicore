@@ -298,8 +298,12 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  // Only the newest read from the currently authenticated session may publish
+  // tenant data. A delayed response must not restore an old session's snapshot.
+  const overviewRequestId = useRef(0);
 
   const loadOverview = useCallback(async () => {
+    const requestId = ++overviewRequestId.current;
     try {
       const [overviewRes, sitesRes] = await Promise.all([fetch("/api/overview"), fetch("/api/sites")]);
       if (!overviewRes.ok || !sitesRes.ok) throw new Error("The local API could not load the complete workspace snapshot.");
@@ -309,15 +313,18 @@ export function App() {
         overviewRes.json() as Promise<Overview>,
         sitesRes.json() as Promise<{ sites: Site[] }>,
       ]);
+      if (requestId !== overviewRequestId.current) return;
       setOverview(data);
       setAllSites(sitesData.sites);
       setError(null);
       setSelectedAccountId((current) => data.accounts.some((account) => account.id === current)
         ? current : data.accounts[0]?.id ?? null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load the overview.");
+      if (requestId === overviewRequestId.current) {
+        setError(cause instanceof Error ? cause.message : "Could not load the overview.");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === overviewRequestId.current) setLoading(false);
     }
   }, []);
 
@@ -450,8 +457,16 @@ export function App() {
   };
 
   const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    // Invalidate any in-flight overview before network sign-out completes.
+    ++overviewRequestId.current;
+    const response = await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    if (!response?.ok) {
+      setError("Could not confirm sign-out. Retry before using another account.");
+      return;
+    }
     setActor(null);
+    setLoading(true);
+    setRefreshing(false);
     setOverview(null);
     setSelectedAccountId(null);
     setActiveNav("Overview");
@@ -475,7 +490,21 @@ export function App() {
   const utilization = overview?.storage.quotaBytes ? Math.round((overview.storage.usedBytes / overview.storage.quotaBytes) * 100) : 0;
 
   if (authLoading) return <main className="auth-screen"><div className="auth-card auth-loading"><span className="loader" /> Checking your local session...</div></main>;
-  if (!actor) return <AuthGate bootstrapRequired={bootstrapRequired} onAuthenticated={(user) => { setActor(user); setError(null); }} />;
+  if (!actor) return <AuthGate bootstrapRequired={bootstrapRequired} onAuthenticated={(user) => {
+    ++overviewRequestId.current;
+    // Never expose the prior identity's workspace during a new login.
+    setOverview(null);
+    setSelectedAccountId(null);
+    setSites([]);
+    setSiteAccountId(null);
+    setAllSites([]);
+    setSiteError(null);
+    setSiteErrorAccountId(null);
+    setError(null);
+    setDemoNotice(null);
+    setLoading(true);
+    setActor(user);
+  }} />;
 
   const isAdmin = ["owner", "admin"].includes(actor.role);
   const displayName = actor.email.split("@")[0];
