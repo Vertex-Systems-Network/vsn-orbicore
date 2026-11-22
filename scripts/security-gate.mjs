@@ -2,6 +2,12 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 
 const ALLOWED_LICENSES = new Set(["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0", "0BSD", "BlueOak-1.0.0"]);
+// Reviewed per-package/data-license exceptions, pinned to the inspected lockfile version.
+// Each exception must have a matching attribution notice in docs/THIRD_PARTY_NOTICES.md.
+const REVIEWED_LICENSE_EXCEPTIONS = new Map([
+  ["caniuse-lite@1.0.30001823", "CC-BY-4.0"],
+]);
+
 const SECRET_PATTERNS = [
   { name: "private_key_pem", regex: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
   { name: "aws_access_key", regex: /\bAKIA[0-9A-Z]{16}\b/ },
@@ -25,6 +31,7 @@ export function runSupplyChainGate(rootDir = resolve(".")) {
   const lockPath = join(rootDir, "package-lock.json");
   const components = [];
   const disallowedLicenses = [];
+  const reviewedLicenseExceptions = [];
 
   if (existsSync(lockPath)) {
     const lock = JSON.parse(readFileSync(lockPath, "utf8"));
@@ -33,7 +40,9 @@ export function runSupplyChainGate(rootDir = resolve(".")) {
       const name = pkgPath.replace(/^node_modules\//, "");
       const license = meta.license ?? "UNKNOWN";
       components.push({ name, version: meta.version ?? "unknown", license });
-      if (license !== "UNKNOWN" && !ALLOWED_LICENSES.has(license)) {
+      if (REVIEWED_LICENSE_EXCEPTIONS.get(`${name}@${meta.version}`) === license) {
+        reviewedLicenseExceptions.push({ name, version: meta.version, license });
+      } else if (license !== "UNKNOWN" && !ALLOWED_LICENSES.has(license)) {
         const parts = license.split(/\s+OR\s+|\s+AND\s+/).map((s) => s.replace(/[()]/g, "").trim());
         if (!parts.some((p) => ALLOWED_LICENSES.has(p))) {
           disallowedLicenses.push({ name, version: meta.version, license });
@@ -70,6 +79,7 @@ export function runSupplyChainGate(rootDir = resolve(".")) {
     passed: secretFindings.length === 0 && disallowedLicenses.length === 0,
     secretFindings,
     disallowedLicenses,
+    reviewedLicenseExceptions,
     sbomSummary: {
       bomFormat: sbom.bomFormat,
       specVersion: sbom.specVersion,
