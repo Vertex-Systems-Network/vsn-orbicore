@@ -1,11 +1,19 @@
 # Handoff
 
+## 2026-11-22 — ORB-015 supply-chain gates verified (PR #8)
+
+- Commit tested: `5e0cf94130e36c803a94c61b8d9f8a1828d13670`. GitHub [PR CI 44995631637](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995631637) and [branch CI 44995614820](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995614820) succeeded, including `npm test` (44 passing), `npm run lint`, `npm run security:check`, `npm audit --audit-level=high` (0 vulnerabilities reported), build, smoke and doctor.
+- Lockfile-based CycloneDX 1.5 file included 169 components, 170 dependency entries, 0 missing required entries; exported JSON SHA-256 `8ae1c1ff0fc692ff926c965d196b92321dab9de2ab078e1430ce3f49e6f94bd8`. Artifact [14743787636](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995631637/artifacts/14743787636). See `docs/TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md` and `docs/RESEARCH/2026-11-22-supply-chain-ci.md`.
+- **Limitations:** npm lockfile only; no independent official JSON-schema validation, container/OS inventory, comprehensive secret-detection or live provider access. Keep ORB-010 umbrella open.
+- PR [#7](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/7) merged successfully into `main` as `1f8dec9446089dd38a4eb723e278467d7106484d`. PR #8 still requires final CI check and confirmed merge after docs updates.
+- **Next:** ORB-016 PostgreSQL/Redis hosted service containers. Avoid conflating schema/Redis ping with real production persistence/queue integration.
+
 ## 2026-11-22 — ORB-012 browser E2E verified (PR #7)
 
 - ORB-012 code/test SHA `8c7e9a2b3eaf952469a9f8882ab3e674f95b633f`, GitHub Actions [browser run 44995181964](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995181964), **success**; [standard CI 44995181961](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995181961), **success**. Chromium 159.0.8154.6, Node v24.22.3, localhost RP ID, synthetic fixtures. Artifact: [14743052654](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995181964/artifacts/14743052654).
 - Registered passkey with browser virtual CTAP2 authenticator, signed in, verified counter increment; replay, tampered origin/RP hash, expired challenge and stale counter were rejected. Basic auth/nav/audit DOM checks passed. See `docs/TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md`.
 - Earlier browser failures were due to localhost listener/`networkidle` and ambiguous `Overview` locator. Fixed on branch `feat/orb-012-browser-webauthn-e2e`; do not claim production or physical authenticator verification.
-- PR [#6](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/6) **merged**, SHA `6aa0629540525174cdf1ff88dc6bf74c56e9a048`. PR #7's final docs-only commits require checks before merging; browser run verifies the unchanged application/test script.
+- PR [#6](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/6) **merged**, SHA `6aa0629540525174cdf1ff88dc6bf74c56e9a048`. PR #7 merged after required browser and standard CI checks; browser run verifies the application/test script.
 - **Next:** ORB-015 full dependency audit/SBOM artifact CI, ORB-016 real hosted service-container integration, ORB-018 full accessibility and platform authenticator/manual gates. No real cPanel credentials supplied.
 
 ## 2026-11-22 — ORB-015 CI gate repair (PR #6)
