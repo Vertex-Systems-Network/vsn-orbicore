@@ -84,7 +84,7 @@ try{
   // entry for after database health returns.
   await pool.query(
     "ALTER TABLE job_signal_rejections ADD CONSTRAINT ci_poison_inject "+
-    "CHECK (reason <> 'invalid_job_id')",
+    "CHECK (reason <> 'invalid_job_id') NOT VALID",
   );
   const failedId=await send({org,job:"../retry"});
   try{
