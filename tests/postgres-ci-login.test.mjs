@@ -112,3 +112,39 @@ test("ORB-005: invalid credential response does not produce a session token",asy
     assert.equal(Object.hasOwn(out,"token"),false);
   });
 });
+
+
+test("ORB-005: 009 audited adapter selects only audited SQL entrypoints",async()=>{
+  await ci(async()=>{
+    const m=mocked();
+    const api=createPostgresCiLoginAdapter(m.pool,{audited:true});
+    assert.equal((await api.login({
+      email:"audited@example.test",password:"ci-only-random-password",
+    })).accepted,true);
+    const old="A".repeat(43);
+    const upgraded=await api.finishRecoveryMfa({
+      token:old,code:"VALIDRECOVERYCODE_123",
+    });
+    assert.equal(upgraded.accepted,true);
+    assert.equal(await api.revoke({token:upgraded.token}),true);
+    const sql=m.commands.map(c=>c.sql).filter(x=>x.startsWith("SELECT "));
+    assert.deepEqual(sql,[
+      "SELECT accepted, needs_mfa, tenant_id, rate_limited " +
+        "FROM public.orbicore_ci_password_login_audited($1,$2,$3)",
+      "SELECT public.orbicore_ci_finish_recovery_mfa_audited($1,$2,$3) AS accepted",
+      "SELECT public.orbicore_ci_revoke_session_audited($1) AS revoked",
+    ]);
+    assert.ok(m.commands.every(x=>!x.sql.includes("password_hash")));
+    assert.equal(m.released,3);
+  });
+});
+
+test("ORB-005: audited mode rejects invalid options without DB calls",async()=>{
+  await ci(async()=>{
+    const m=mocked();
+    assert.throws(()=>createPostgresCiLoginAdapter(m.pool,{
+      audited:"yes",
+    }),/audited must be a boolean/);
+    assert.equal(m.commands.length,0);
+  });
+});
