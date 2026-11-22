@@ -11,11 +11,8 @@ if [[ "${GITHUB_ACTIONS:-}" != "true" ||
   echo "ci_pg_restore_explicit_gate_required" >&2
   exit 2
 fi
-export PATH="/usr/lib/postgresql/16/bin:$PATH"
-if ! pg_dump --version | grep -qE 'PostgreSQL[)] 16[.]'; then
-  echo "PostgreSQL 16 client must be used for schema-compatible dump" >&2
-  exit 2
-fi
+# The runner's default pg_dump may be PostgreSQL 17/18. Always use the
+# *actual PostgreSQL 16* command-line tools from this service's pinned image.
 base="orbicore"
 recovered="orbicore_ci_restored"
 root=".data/ci/pg-restore-drill"
@@ -23,6 +20,14 @@ mkdir -p "$root"
 archive="$root/synthetic.dump"
 damaged="$root/corrupt.dump"
 summary="$root/evidence.json"
+pg16() {
+  docker run --rm --network host --env PGPASSWORD \
+    --volume "$(pwd)/$root:/archive" postgres:16-alpine "$@"
+}
+if ! pg16 pg_dump --version | grep -qE 'PostgreSQL[)] 16[.]'; then
+  echo "Pinned PostgreSQL 16 client is unavailable" >&2
+  exit 2
+fi
 
 pg_query() {
   local database="$1"; shift
@@ -56,11 +61,14 @@ SQL
 
 # Verify tool-created archive; do not upload the binary containing even fake
 # auth schema material. Custom archive is parsed and restored transactionally.
-pg_dump --format=custom --no-owner --no-acl --file="$archive" -d "$base"
-pg_restore --list "$archive" >/dev/null
-createdb "$recovered"
-pg_restore --exit-on-error --single-transaction --no-owner --no-acl \
-  --dbname="$recovered" "$archive" >/dev/null
+pg16 pg_dump --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
+  --format=custom --no-owner --no-acl --file="/archive/synthetic.dump" \
+  --dbname="$base"
+pg16 pg_restore --list "/archive/synthetic.dump" >/dev/null
+pg16 createdb --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" "$recovered"
+pg16 pg_restore --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
+  --exit-on-error --single-transaction --no-owner --no-acl \
+  --dbname="$recovered" "/archive/synthetic.dump" >/dev/null
 
 same() {
   local query="$1" left right
@@ -94,7 +102,7 @@ fi
 # Damaged custom archive must NOT be interpreted as a successful restore.
 cp "$archive" "$damaged"
 printf 'broken' | dd of="$damaged" bs=1 seek=0 conv=notrunc status=none
-if pg_restore --list "$damaged" >/dev/null 2>&1; then
+if pg16 pg_restore --list "/archive/corrupt.dump" >/dev/null 2>&1; then
  echo "corrupted dump passed integrity check" >&2
  exit 1
 fi
@@ -109,8 +117,9 @@ fi
 
 # Restore into the SAME target requires an empty/clean state. Replaying into
 # existing tables is not proof of a safe upgrade or migration rollback.
-if pg_restore --exit-on-error --single-transaction --no-owner --no-acl \
- --dbname="$recovered" "$archive" >/dev/null 2>&1; then
+if pg16 pg_restore --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
+ --exit-on-error --single-transaction --no-owner --no-acl \
+ --dbname="$recovered" "/archive/synthetic.dump" >/dev/null 2>&1; then
  echo "blind re-import into nonempty target unexpectedly succeeded" >&2
  exit 1
 fi
