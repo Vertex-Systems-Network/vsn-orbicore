@@ -303,6 +303,11 @@ try{
   assert.equal(await gatewayA.finalize({
     organizationId:tenantA,jobId:fencingJob,claimToken:current,
   }),"completed");
+  // Manual lease-fencing does not publish/ACK its durable outbox record.
+  // Drain the completed job's notification before the next order-sensitive
+  // publisher fault fixture; it must not execute the job twice.
+  assert.equal((await runnerA.publishOne()).jobId,fencingJob);
+  assert.equal((await runnerA.consumeOne()).status,"already_terminal");
 
   // Inject SQL permission loss DURING a real Redis consumer claim. The
   // XACK must not happen, and after regrant + expired lease, replay completes.
