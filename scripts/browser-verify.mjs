@@ -294,6 +294,31 @@ try {
   const evidenceDir = ".data/browser-evidence";
   mkdirSync(evidenceDir, { recursive: true });
   await page.screenshot({ path: evidenceDir + "/orb-012-dashboard.png", fullPage: true });
+
+  // The session resolves roles from the database on every request. Exercise a
+  // role downgrade using the same authenticated browser, then restore it.
+  // No provider request or cross-tenant data is involved.
+  const roleBefore = app.db.prepare("SELECT role FROM users WHERE email = ?")
+    .get("owner@example.test")?.role;
+  assert.equal(roleBefore, "owner", "browser fixture must start with its owner");
+  try {
+    app.db.prepare("UPDATE users SET role = 'viewer' WHERE email = ?")
+      .run("owner@example.test");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Overview", exact: true }).waitFor();
+    await page.locator(".user-profile small").getByText(/viewer/).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Refresh inventory" }).isDisabled(),
+      true, "a viewer must not be offered a working refresh enqueue control");
+    await page.getByRole("button", { name: "Hosting accounts", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: "Add sandbox account" }).count(), 0,
+      "a viewer must not see sandbox account creation controls");
+  } finally {
+    app.db.prepare("UPDATE users SET role = ? WHERE email = ?")
+      .run(roleBefore, "owner@example.test");
+    await page.reload({ waitUntil: "domcontentloaded" });
+  }
+  await page.getByRole("button", { name: "Overview", exact: true }).waitFor();
+
   const runtime = {
     testIds: ["AUTH-WEBAUTHN-E2E-001", "AUTH-WEBAUTHN-REPLAY-001",
       "ORB-009-KEYBOARD", "ORB-018-RESPONSIVE"],
@@ -305,7 +330,7 @@ try {
     keyboardSkipLink: "passed", modalFocusTrapAndReturn: "passed",
     mobileNarrowNavigation: "passed", viewportChecks: [320, 390, 640, 768],
     responsive320pxReflow: "passed", reducedMotionPreference: "passed",
-    emptyFilterAndFailedNetworkStates: "passed",
+    emptyFilterAndFailedNetworkStates: "passed", readOnlyRoleRefreshControl: "passed",
     physicalAuthenticator: "not_tested", liveProvider: "not_tested",
     manualScreenReaderAudit: "not_tested", fullWcagContrastAudit: "not_tested",
   };
