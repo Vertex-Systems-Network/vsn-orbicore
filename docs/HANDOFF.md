@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-004 redacted Redis poison-signal quarantine and backoff (PR #34)
+
+- [PR #34](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/34), functional SHA `77c8d33d2d606d977d7715423e6a1c5f44219152` passed [20/20 PostgreSQL/Redis/Compose hosted jobs #45069028344](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069028344), [PR standard CI #45069028334](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069028334), [branch standard CI #45069024193](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069024193), and [Chromium #45069028352](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069028352). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-poison-signal-quarantine.md); redacted proof artifact #14772243466.
+- Migration 014 stores **metadata-only** tenant-bound invalid Redis signal reasons, not untrusted job/payload fields. Synthetic worker records in PostgreSQL **before** Redis XACK, including foreign tenant, malformed/missing job; forced DB write failure leaves PEL pending for claim, failed ACK after PG commit replays idempotently with occurrence count. Internal tenant-bound inspection and bounded exponential jitter added. The early fixture-only CHECK constraint failure was corrected via `NOT VALID`.
+- Not full production dead-letter queue, trusted publisher provenance, low-privilege PG worker role, distributed atomicity, independent immutable audit, multi-instance supervision or live provider job execution. Worker stays opt-in and ordinary HTTP authentication remains SQLite. ORB-004 stays `testing/integration_tested`. Verify final docs-head and postmerge main CI separately.
+
+
 ## 2026-11-23 — ORB-016/017 encrypted archive to separate PostgreSQL 16 cluster (PR #33)
 
 - [PR #33](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/33) functional SHA `b1eb26ebe8b20de523367ef3a9a0ec2ae1280d48` passed [19/19 service jobs #45068100684](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068100684), [PR standard CI #45068100679](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068100679), [branch CI #45068073823](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068073823). [Evidence](TEST_EVIDENCE/2026-11-23-orb-016-isolated-encrypted-restore.md); synthetic redacted artifact #14771927541.
