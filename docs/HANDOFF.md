@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-23 — ORB-016/017 PostgreSQL 16 clean-database recovery regression (PR #32)
+
+- [PR #32](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/32) functional head `92a29d0924a3b47dc205bd8ea5c5553068e74f28` passed [all 18 hosted jobs #45067239990](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45067239990), [PR CI #45067240008](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45067240008) and [branch CI #45067235603](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45067235603). [Evidence](TEST_EVIDENCE/2026-11-23-orb-016-017-pg16-restore.md); redacted artifact #14771728320.
+- PostgreSQL 16 custom archive/restore now runs with a pinned Docker PG16 client, **actually creates a second database**, verifies 2-tenant fixture schema/data parity, RLS flag, FK denial, corrupt dump detection, changed-target drift detection and blind reimport denial. No archive uploaded, no real users or authentication transition.
+- This is **same-cluster, synthetic recovery only**; not off-host restoration, global roles/privileges, full SQLite v7 migrations, encrypted MFA/secret/job recovery, standalone rollout or approved production cutover. ORB-016 and ORB-017 remain `testing/integration_tested`, ORB-005 open.
+- Check final docs-head and merged main CI separately.
+
+
 ## 2026-11-23 — ORB-009/017/018 browser accessibility and production-readiness hardening (PR #31)
 
 - [PR #31](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/31) functional SHA `8080346bff39c7b18b4f6b6325582284c54b055d` passed [Chromium #45066525664](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45066525664), [PR CI #45066525660](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45066525660), and [branch CI #45066521998](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45066521998). [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md), synthetic screenshot artifact #14770739703.
