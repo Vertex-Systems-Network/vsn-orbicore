@@ -15,6 +15,9 @@ on:
       - "apps/api/postgres-identity-core.mjs"
       - "apps/api/postgres-synthetic-gateway.mjs"
       - "apps/api/postgres-synthetic-http-harness.mjs"
+      - "apps/api/postgres-ci-login.mjs"
+      - "scripts/verify-postgres-ci-login.mjs"
+      - "tests/postgres-ci-login.test.mjs"
       - "scripts/verify-postgres-synthetic-http.mjs"
       - "tests/postgres-synthetic-http.test.mjs"
       - "scripts/verify-postgres-synthetic-gateway.mjs"
@@ -507,5 +510,64 @@ jobs:
         with:
           name: orb-005-postgres-synthetic-http
           path: .data/ci/orb-005-postgres-http.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  postgres-ci-login-lifecycle:
+    name: Disposable PostgreSQL non-owner login, MFA recovery and cookie lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-pg-login-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-pg-login-only-password
+      ORBICORE_CI_SYNTHETIC_PG_HTTP: "1"
+      ORBICORE_CI_SYNTHETIC_PG_LOGIN: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Apply PostgreSQL schema and rerunnable CI auth lifecycle
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/005_postgres_feature_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/006_postgres_synthetic_write_gateway.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/007_postgres_http_session_probe.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/008_postgres_ci_auth_lifecycle.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/008_postgres_ci_auth_lifecycle.sql
+      - name: Verify real PostgreSQL scoped CI login, MFA token rotation and logout
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-ci-login.mjs > .data/ci/orb-005-ci-pg-login.json
+      - name: Upload bounded PostgreSQL login/MFA/cookie evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-005-postgres-ci-login-lifecycle
+          path: .data/ci/orb-005-ci-pg-login.json
           if-no-files-found: ignore
           retention-days: 14
