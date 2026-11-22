@@ -19,6 +19,18 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run security:check
+      - name: Export lockfile CycloneDX SBOM
+        run: node scripts/generate-sbom.mjs
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-015-cyclonedx-sbom
+          path: .data/ci/orbicore-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Audit high and critical dependency vulnerabilities
+        run: npm audit --audit-level=high
       - run: npm run build
       - run: npm run smoke
       - run: npm run doctor
