@@ -18,3 +18,13 @@
 - The regular security script scans a bounded set of credential patterns; it does not prove a comprehensive secrets investigation. Dependency advisories depend on npm registry visibility and time.
 - Static unit/security checks do not verify live cPanel, physical authenticator behavior, production DB/queue or an external SIEM/WORM audit.
 - Subsequent documentation/status commits and merged `main` SHA require their own CI observations. Do not infer a run tested files introduced after the head SHA above.
+
+## Final ORB-011 regression correction verified on the same PR
+
+An intermediate documentation-head CI intermittently rejected a valid generated recovery code during MFA login. Root cause: `apps/api/server.mjs` checked a minimum 20-character length **after** stripping base64url hyphens; a 22-character issued code with several hyphens can become shorter than 20. PR #8 updates the guard to accept normalized codes of at least 16 characters when the original input has at least 20, and adds a deterministic API regression test at `tests/recovery-code-edge.test.mjs`. The normal authentication rate limits, code hashes and single-use semantics remain in place.
+
+- **Fixed/tested SHA:** `011317d2be346868356e2956e95676a6bea347c6`.
+- [CI run 44995965598](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995965598): **success**, **45 tests passed / 0 failed**, `npm audit --audit-level=high` found **0 vulnerabilities**, 169-component deterministic SBOM reproduced unchanged.
+- [Browser run 44995965552](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995965552): **success** against the same SHA.
+- [Uploaded SBOM artifact 14743976054](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995965598/artifacts/14743976054); the exported JSON SHA-256 still equals `8ae1c1ff0fc692ff926c965d196b92321dab9de2ab078e1430ce3f49e6f94bd8`.
+- Existing real-world recovery contact delivery and physical authenticator verification remain untested.
