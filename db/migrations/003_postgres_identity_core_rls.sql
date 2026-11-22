@@ -80,4 +80,12 @@ BEGIN
 END
 $scopes$;
 
+-- Avoid granting credential material via the read-only tenant role. The
+-- policies above scope rows; column grants separately restrict disclosure.
+REVOKE ALL PRIVILEGES ON TABLE users, sessions FROM orbicore_tenant_readonly;
+GRANT SELECT (id, organization_id, email, role, disabled, mfa_enabled, created_at)
+  ON TABLE users TO orbicore_tenant_readonly;
+GRANT SELECT (organization_id, user_id, expires_at, mfa_verified, created_at)
+  ON TABLE sessions TO orbicore_tenant_readonly;
+
 COMMIT;
