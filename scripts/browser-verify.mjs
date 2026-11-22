@@ -14,7 +14,7 @@ const app = createApp({ dbPath: ":memory:", startWorker: true, bootstrapToken, m
 
 await new Promise((resolveListen, reject) => {
   app.server.once("error", reject);
-  app.server.listen(port, "0.0.0.0", resolveListen);
+  app.server.listen(port, resolveListen);
 });
 
 const browser = await chromium.launch();
@@ -34,7 +34,7 @@ try {
     },
   });
 
-  await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
 
   // Accessibility check on AuthGate landmark & labeled controls (ORB-018)
   const mainCount = await page.locator("main").count();
@@ -93,7 +93,7 @@ try {
   assert.ok(registered?.credential_id, "browser enrollment must persist a passkey");
   const initialCounter = registered.counter;
   await page.getByRole("button", { name: "Sign out" }).click();
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator("form.auth-card input[type='email']").fill("owner@example.test");
   const assertionRequestPromise = page.waitForRequest((request) =>
     request.method() === "POST" && request.url().endsWith("/api/auth/passkeys/login/verify"));
