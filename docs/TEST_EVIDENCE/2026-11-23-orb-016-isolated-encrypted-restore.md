@@ -1,0 +1,27 @@
+# ORB-016/017 — Authenticated encrypted archive and isolated PostgreSQL 16 cluster recovery
+
+**Date:** 2026-11-23  
+**PR:** [#33](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/33)  
+**Functionally tested SHA:** `b1eb26ebe8b20de523367ef3a9a0ec2ae1280d48`
+
+## Hosted evidence
+
+- [Service Integration #45068100684](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068100684) — **success, 19/19 jobs** on functional SHA. The new `CI-only encrypted PG16 archive to separate PG16 cluster with globals/RLS` job runs PostgreSQL 16 service and **a different PostgreSQL 16 Docker cluster** using a separate port, PGDATA, bootstrap superuser and role catalog, on the **same GitHub Actions host**. Existing 18 PostgreSQL/Redis/Compose/service regressions also passed.
+- [PR CI #45068100679](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068100679) and [branch CI #45068073823](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068073823) — **success** on functional SHA, including new Node encryption unit tests, locked install, lint/typecheck, security, SBOM, npm audit, build, smoke and doctor.
+- [Redacted boolean-only artifact #14771927541](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068100684/artifacts/14771927541) `orb-016-isolated-pg16-restore-summary`, GitHub-reported `sha256:8b4669d2f54585337f5a5f527f7da8b0205894274730b6b6127099b71e85861f`. Neither the actual archive, cluster role SQL, decoded file nor backup-key bytes are uploaded.
+- The evidence document follows functional test SHA; **all final documentation-head checks and post-merge main CI must be separately confirmed**.
+
+## Implementation and checked invariants
+
+1. A CI-gated `scripts/ci-pg-archive-envelope.mjs` authenticates bounded fixture archives with **AES-256-GCM**, a fresh cryptographic 12-byte nonce, explicit 16-byte authentication tag and distinct associated data for `database` and `globals`. The 32-byte key is generated fresh by the GitHub runner, passed only to short-lived local processes; no file, GitHub output, artifact or long-lived key custody is used. Wrong key, changed nonce/tag/ciphertext/header, truncated archive or swapped global-role/database context fail before plaintext destination creation. Encryption is not advertised as a user-configurable production backup provider.
+2. On the actual PostgreSQL 16 service, a two-tenant fixture inserts synthetic users with **non-authenticating placeholder** hash/salt values, accounts, site, job and audit. PostgreSQL 16 tools create a custom database archive (`pg_dump`) plus global roles SQL (`pg_dumpall --globals-only --no-role-passwords`); both are encrypted on the CI runner and the plaintext input copies removed.
+3. An entirely **separate PostgreSQL 16 container/cluster**, initialized with a different superuser and port and no pre-existing source roles/data, receives the authenticated archive. Before restoration, the script restores source role definitions and grants, creates a new database owned by the original source role and runs `pg_restore --single-transaction --exit-on-error` **with ownership and ACL restoration enabled** (unlike PR #32 which used `--no-owner --no-acl`).
+4. Tests compare sorted row digests across users/accounts/sites/jobs/audit, verify two tenant users, preserved user-table RLS, restored `orbicore_tenant_readonly` as NOLOGIN/NOBYPASSRLS, allowed email metadata SELECT, denied password_hash SELECT, proper actual per-tenant RLS visibility for tenant A, B and unknown tenant, composite session FK rejection on a cross-tenant insert, and rejection of blind second restore into a nonempty database.
+5. The workflow uploads **only** a non-sensitive JSON summary; temporary source archive, role SQL, encrypted/decrypted intermediates and isolated Docker cluster are cleaned in the CI process. Production HTTP authentication still uses SQLite, CI shadow verifiers cannot log in, and no real provider account is touched.
+
+## Remaining security and operational blockers
+
+- **Not independent off-host disaster recovery:** the target PostgreSQL cluster is a different container/data directory but remains on the **same GitHub runner/host**, administered by the same repo workflow. No independent immutable backup object store, IAM owner, geographic failover, power-loss, external restore/retention window, RTO/RPO, or offsite disaster recovery is demonstrated.
+- **No operational KMS/HSM or trustworthy external key escrow:** the ephemeral key exists only for the fixture run, and a real backup would be **unrecoverable** after the key is lost. Role password hashes are deliberately *not* exported. A production restore must securely re-establish role credentials, KMS access, grants and audit custody.
+- **No full application recovery/cutover:** SQLite v7 real identity/job/audit/secret migration, PostgreSQL deployed services, Redis stream/AOF and outbox state, encrypted MFA keyring/recovery contacts, WebAuthn/passkey semantics, active session invalidation, WAL/PITR, migration ledger parity and reversible upgrade remain open. This test is not a production deployment approval.
+- ORB-016/017 stay `testing/integration_tested`; ORB-005 stays `in_progress`. Next: operator-authorized separate-host/region encrypted restore and independently custodied audit/key retention, complete jobs/secret/MFA state, realistic failover and tested recovery instructions.

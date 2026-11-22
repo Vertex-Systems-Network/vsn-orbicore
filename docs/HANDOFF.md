@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-016/017 encrypted archive to separate PostgreSQL 16 cluster (PR #33)
+
+- [PR #33](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/33) functional SHA `b1eb26ebe8b20de523367ef3a9a0ec2ae1280d48` passed [19/19 service jobs #45068100684](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068100684), [PR standard CI #45068100679](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068100679), [branch CI #45068073823](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45068073823). [Evidence](TEST_EVIDENCE/2026-11-23-orb-016-isolated-encrypted-restore.md); synthetic redacted artifact #14771927541.
+- New CI-only AES-256-GCM authenticated archives (database vs globals domain-separated), ephemeral in-process test key, bad-key/tamper/replay-swap denial, and full PostgreSQL 16 custom dump plus password-free globals SQL restored on **different PG16 container/cluster** on the same GitHub runner. Role owner/ACL, NOLOGIN/NOBYPASSRLS, column restrictions, actual tenant RLS reads, composite FK, sorted data digests and duplicate-restore rejection passed.
+- **Limit:** same host/admin scope, no external immutable storage, no recoverable production KMS key or full SQLite v7/Redis/MFA/offsite recovery, no production cutover. ORB-016/017 stay `testing/integration_tested`, ORB-005 stays `in_progress`. Verify final docs-head checks and postmerge `main` separately.
+
+
 ## 2026-11-23 — ORB-016/017 PostgreSQL 16 clean-database recovery regression (PR #32)
 
 - [PR #32](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/32) functional head `92a29d0924a3b47dc205bd8ea5c5553068e74f28` passed [all 18 hosted jobs #45067239990](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45067239990), [PR CI #45067240008](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45067240008) and [branch CI #45067235603](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45067235603). [Evidence](TEST_EVIDENCE/2026-11-23-orb-016-017-pg16-restore.md); redacted artifact #14771728320.

@@ -9,6 +9,9 @@ on:
       - "scripts/verify-leased-jobs.sh"
       - "scripts/verify-postgres-job-repository.mjs"
       - "scripts/verify-pg-synthetic-backup-restore.sh"
+      - "scripts/verify-pg-isolated-cluster-restore.sh"
+      - "scripts/ci-pg-archive-envelope.mjs"
+      - "tests/ci-pg-archive-envelope.test.mjs"
       - "apps/api/postgres-jobs.mjs"
       - "apps/api/transactional-outbox.mjs"
       - "apps/api/synthetic-redis-worker.mjs"
@@ -1133,5 +1136,54 @@ jobs:
         with:
           name: orb-016-017-pg16-restore-summary
           path: .data/ci/pg-restore-drill/evidence.json
+          if-no-files-found: ignore
+          retention-days: 14
+  postgres-ci-isolated-cluster-recovery:
+    name: CI-only encrypted PG16 archive to separate PG16 cluster with globals/RLS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-isolated-source-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-isolated-source-only
+      ORBICORE_CI_PG_ISOLATED_RESTORE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply synthetic schema and tenant identity roles
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+      - name: Run AES-GCM archive and separate disposable PostgreSQL-cluster recovery
+        run: bash scripts/verify-pg-isolated-cluster-restore.sh
+      - name: Upload redacted CI proof only, never the DB/globals/key
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-016-isolated-pg16-restore-summary
+          path: .data/ci/pg-isolated-recovery/evidence.json
           if-no-files-found: ignore
           retention-days: 14
