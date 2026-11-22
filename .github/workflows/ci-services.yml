@@ -351,7 +351,32 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+          # A pre-migration site lacking organization_id must backfill from its
+          # owning account; clean up before the separate empty-target importer.
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO organizations(id, name) VALUES ('org-pre005-ci', 'Synthetic pre-migration tenant');
+          INSERT INTO accounts(id, organization_id, label, provider, host, username,
+            health, used_bytes, quota_bytes, source)
+            VALUES ('account-pre005-ci', 'org-pre005-ci', 'Only mock',
+              'mock', 'no-host.example.invalid', 'fixture', 'healthy', 0, 1, 'mock_fixture');
+          INSERT INTO sites(id, account_id, domain, kind, document_root, php_version, status)
+            VALUES ('site-pre005-ci', 'account-pre005-ci', 'pre005.example.invalid',
+              'static', '/tmp/ci-fixture', '8.3', 'active');
+          SQL
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/005_postgres_feature_state.sql
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          DO $proof$
+          BEGIN
+            IF (SELECT organization_id FROM sites WHERE id='site-pre005-ci')
+                IS DISTINCT FROM 'org-pre005-ci' THEN
+              RAISE EXCEPTION 'existing_site_tenant_backfill_failed';
+            END IF;
+          END
+          $proof$;
+          DELETE FROM sites WHERE id='site-pre005-ci';
+          DELETE FROM accounts WHERE id='account-pre005-ci';
+          DELETE FROM organizations WHERE id='org-pre005-ci';
+          SQL
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/005_postgres_feature_state.sql
       - name: Verify atomic synthetic feature copy, tenant FKs, safe RLS and rollback
         run: |
