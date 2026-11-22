@@ -1,5 +1,6 @@
--- VSN ORBICORE PostgreSQL Target Schema (Parity with SQLite v6)
--- Prepared for ORB-016 / ORB-017 container & migration verification.
+-- VSN ORBICORE PostgreSQL partial target schema (NOT SQLite v7 feature parity)
+-- ORB-016 verifies disposable service-level DDL and constraints only.
+-- Production adapter, complete migrations, durable queues and recovery remain ORB-004/017.
 
 CREATE TABLE IF NOT EXISTS organizations (
   id TEXT PRIMARY KEY,
