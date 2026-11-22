@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-004 nonowner tenant-scoped signal rejection gateway (PR #35)
+
+- [PR #35](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/35) functional SHA `797eb708b807c9c5a1e7c2d8d52497f7a3db7b22` passed [21/21 service jobs #45071162058](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071162058), [PR CI #45071161798](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071161798), [branch CI #45071093165](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071093165) and [Chromium #45071162057](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071162057). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-scoped-signal-writer.md), nonsecret artifact #14773591618.
+- CI-only migration 015 creates NOLOGIN/NOINHERIT signal recorder role and admin-owned session-login/tenant scope; fixed-search-path, PUBLIC-revoked SECURITY DEFINER functions accept only metadata-only records. Real restricted PG logins cannot query jobs/users/table, change tenant scope or escalate. A separately injected PG recorder on the existing Redis consumer persists before ACK; revoke EXECUTE leaves Redis PEL pending; restoring it permits safe reclaim.
+- This is **rejection suboperation only**, not a fully restricted worker pool, signed producer, production DLQ or live provider command. Default HTTP auth remains SQLite; ORB-004 stays `testing/integration_tested`. Final docs-head and postmerge main checks must be verified separately.
+
+
 ## 2026-11-23 — ORB-004 redacted Redis poison-signal quarantine and backoff (PR #34)
 
 - [PR #34](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/34), functional SHA `77c8d33d2d606d977d7715423e6a1c5f44219152` passed [20/20 PostgreSQL/Redis/Compose hosted jobs #45069028344](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069028344), [PR standard CI #45069028334](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069028334), [branch standard CI #45069024193](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069024193), and [Chromium #45069028352](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45069028352). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-poison-signal-quarantine.md); redacted proof artifact #14772243466.

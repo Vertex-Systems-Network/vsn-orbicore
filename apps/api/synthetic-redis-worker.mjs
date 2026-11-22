@@ -38,6 +38,7 @@ export function createSyntheticRedisJobRunner({
   workerId,
   leaseSeconds = 5,
   afterClaim = async () => {},
+  rejectionRecorder = null,
 }) {
   if (!pool || typeof pool.connect !== "function" || typeof pool.query !== "function") {
     throw new TypeError("A PostgreSQL Pool is required.");
@@ -51,6 +52,11 @@ export function createSyntheticRedisJobRunner({
     throw new RangeError("leaseSeconds must be an integer between 1 and 3600.");
   }
   if (typeof afterClaim !== "function") throw new TypeError("afterClaim must be a function.");
+  if (rejectionRecorder !== null &&
+      (typeof rejectionRecorder.record !== "function" ||
+       typeof rejectionRecorder.inspect !== "function")) {
+    throw new TypeError("rejectionRecorder requires record and inspect methods");
+  }
   const stream = "orbicore:synthetic:jobs:v1:" + organizationId;
   const repository = createPostgresJobRepository(pool);
 
@@ -127,6 +133,10 @@ export function createSyntheticRedisJobRunner({
   }
 
   async function recordRejectedSignal(redisId, reason) {
+    if (rejectionRecorder) {
+      await rejectionRecorder.record({organizationId,redisId,reason,workerId});
+      return;
+    }
     // Never store the untrusted raw Redis fields, job id, password, tenant
     // spoofing string or stream payload. The ID is server-generated metadata.
     const result = await pool.query(
@@ -146,6 +156,9 @@ export function createSyntheticRedisJobRunner({
   async function inspectRejectedSignals({ limit = 20 } = {}) {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
       throw new RangeError("rejection inspection limit must be in [1,100]");
+    }
+    if (rejectionRecorder) {
+      return rejectionRecorder.inspect({organizationId,limit});
     }
     const result = await pool.query(
       "SELECT reason, occurrences, first_seen_at, last_seen_at " +
