@@ -56,6 +56,7 @@ test("ORB-015: supply-chain gate verifies zero leaked secrets, allowed licenses,
   assert.equal(report.passed, true);
   assert.equal(report.secretFindings.length, 0);
   assert.equal(report.disallowedLicenses.length, 0);
+  assert.deepEqual(report.reviewedLicenseExceptions, [{ name: "caniuse-lite", version: "1.0.30001823", license: "CC-BY-4.0" }]);
   assert.equal(report.sbomSummary.bomFormat, "CycloneDX");
   assert.ok(report.sbomSummary.componentsCount >= 3);
 });
