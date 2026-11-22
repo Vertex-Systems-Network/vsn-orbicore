@@ -559,7 +559,7 @@
         "docs/SECURITY_THREAT_MODEL.md",
         "AI_Native_Multi_Hosting_Master_Prompt.md#12"
       ],
-      "commit_hash": "8bf76afb0ff26e7d953a7b1492cef506e2aa7358",
+      "commit_hash": "1ebcd9788a53a719180928be6d6161a073bfaf59",
       "evidence_paths": [
         "docs/SECURITY_THREAT_MODEL.md",
         "docs/TEST_STRATEGY.md",
@@ -570,10 +570,11 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-010-tracked-source-secret-license-gate.md",
         "tests/security-gate-expansion.test.mjs",
-        "scripts/security-gate.mjs"
+        "scripts/security-gate.mjs",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-010-unknown-license-lockfile-denial.md"
       ],
       "blockers": [
-        "PR #43 GitHub Actions 112 Node tests, 241 Git-tracked recognized text files scanned (zero high-confidence findings), SPDX AND/OR fail-close tests, npm audit zero at run time and full CI passed at 8bf76afb. Remaining: historical/untracked/binary/entropy secrets investigation, external runtime/license reviews, deployed-system SBOM/attestation, full production identity/DB/security and provider/restore approvals."
+        "PR #44 113 Node tests and 242-file Git-tracked recognized source check passed at 1ebcd978, including fail-closed license UNKNOWN/missing metadata and no/mismatched lockfile. Full historical/binary secrets discovery, deployed-system SBOM, release attestation, legal review, production service/identity, backup and provider gates remain open."
       ],
       "started_at": null,
       "completed_at": null,

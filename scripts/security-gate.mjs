@@ -110,10 +110,15 @@ export function runSupplyChainGate(rootDir = resolve(".")) {
   const lockPath = join(rootDir, "package-lock.json");
   const components = [];
   const disallowedLicenses = [];
+  const unreviewedLicenses = [];
   const reviewedLicenseExceptions = [];
+  const lockfilePresent = existsSync(lockPath);
+  let lockfileRootMatchesPackage = false;
 
-  if (existsSync(lockPath)) {
+  if (lockfilePresent) {
     const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+    lockfileRootMatchesPackage = lock.packages?.[""]?.name === pkg.name
+      && lock.packages[""].version === pkg.version;
     for (const [pkgPath, meta] of Object.entries(lock.packages ?? {})) {
       if (!pkgPath || !pkgPath.startsWith("node_modules/")) continue;
       const name = pkgPath.replace(/^node_modules\//, "");
@@ -121,7 +126,11 @@ export function runSupplyChainGate(rootDir = resolve(".")) {
       components.push({ name, version: meta.version ?? "unknown", license });
       if (REVIEWED_LICENSE_EXCEPTIONS.get(`${name}@${meta.version}`) === license) {
         reviewedLicenseExceptions.push({ name, version: meta.version, license });
-      } else if (license !== "UNKNOWN" && !isAllowedSpdxExpression(license)) {
+      } else if (license === "UNKNOWN") {
+        // Missing metadata is not proof of an allowed license. Require a
+        // reviewed, version-pinned exception before a dependency can ship.
+        unreviewedLicenses.push({ name, version: meta.version ?? "unknown", reason: "missing_license_metadata" });
+      } else if (!isAllowedSpdxExpression(license)) {
         disallowedLicenses.push({ name, version: meta.version, license });
       }
     }
@@ -165,11 +174,15 @@ export function runSupplyChainGate(rootDir = resolve(".")) {
   };
 
   return {
-    passed: secretFindings.length === 0 && disallowedLicenses.length === 0,
+    passed: lockfilePresent && lockfileRootMatchesPackage
+      && secretFindings.length === 0 && disallowedLicenses.length === 0 && unreviewedLicenses.length === 0,
+    lockfilePresent,
+    lockfileRootMatchesPackage,
     secretFindings,
     scannedFiles,
     scanScope: "git-tracked-recognized-text-files",
     disallowedLicenses,
+    unreviewedLicenses,
     reviewedLicenseExceptions,
     sbomSummary: {
       bomFormat: sbom.bomFormat,

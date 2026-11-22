@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-010 deny missing license/lockfile evidence (PR #44)
+
+- [PR #44](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/44) functional SHA `1ebcd9788a53a719180928be6d6161a073bfaf59` passed [PR CI #45084583870](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084583870) and [branch CI #45084568862](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084568862): 113 Node tests, 242 recognized Git-tracked text files scanned, no source signature findings, no unreviewed/disallowed licenses and npm audit 0 at time of run. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-unknown-license-lockfile-denial.md).
+- Previously missing `license`/UNKNOWN npm package metadata, absent lockfiles and mismatched lockfile root identities could survive the gate. They now fail closed, with synthetic negative test fixtures.
+- ORB-010 remains in_progress/unit; deployment inventory, external secrets and legal license review still pending. Recheck final docs-head and postmerge CI.
+
+
 ## 2026-11-23 — ORB-010 expanded tracked-source secret / SPDX license gate (PR #43)
 
 - [PR #43](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/43) functional SHA `8bf76afb0ff26e7d953a7b1492cef506e2aa7358`: [PR CI #45084282639](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084282639) and [branch CI #45084279286](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084279286) **success**, 112 Node tests, 241 tracked text files scanned, zero high-confidence secret findings, zero disallowed license entries and zero npm audit findings at run time. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-tracked-source-secret-license-gate.md).

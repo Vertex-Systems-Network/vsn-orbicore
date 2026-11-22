@@ -105,3 +105,39 @@ test("ORB-010: generated assets and symlinks are not recursively scanned; oversi
     ]);
   });
 });
+
+test("ORB-010: missing license metadata, absent or mismatched lockfile fail closed", () => {
+  fixture(({ root, write, setLicense }) => {
+    setLicense(undefined);
+    const absentLicense = runSupplyChainGate(root);
+    assert.equal(absentLicense.passed, false);
+    assert.deepEqual(absentLicense.unreviewedLicenses, [
+      { name: "dummy-lib", version: "1.0.0", reason: "missing_license_metadata" },
+    ]);
+    setLicense("UNKNOWN");
+    assert.deepEqual(runSupplyChainGate(root).unreviewedLicenses, absentLicense.unreviewedLicenses);
+    setLicense("MIT");
+    const approved = runSupplyChainGate(root);
+    assert.equal(approved.passed, true);
+    assert.deepEqual(approved.unreviewedLicenses, []);
+    assert.equal(approved.lockfileRootMatchesPackage, true);
+
+    const mismatch = {
+      name: "bad-root",
+      version: "0.1.0",
+      lockfileVersion: 3,
+      packages: { "": { name: "bad-root", version: "0.1.0" },
+        "node_modules/dummy-lib": { version: "1.0.0", license: "MIT" } },
+    };
+    write("package-lock.json", JSON.stringify(mismatch));
+    const wrongRoot = runSupplyChainGate(root);
+    assert.equal(wrongRoot.passed, false);
+    assert.equal(wrongRoot.lockfileRootMatchesPackage, false);
+
+    rmSync(join(root, "package-lock.json"));
+    const noLock = runSupplyChainGate(root);
+    assert.equal(noLock.passed, false);
+    assert.equal(noLock.lockfilePresent, false);
+    assert.equal(noLock.lockfileRootMatchesPackage, false);
+  });
+});
