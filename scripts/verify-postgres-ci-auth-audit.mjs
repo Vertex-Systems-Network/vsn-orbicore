@@ -185,7 +185,8 @@ try{
         actor:row.actor,action:row.action,targetId:row.target_id,
         outcome:row.outcome,detailsJson:row.details_raw_json,
         createdAt:row.created_at.toISOString(),
-      }),"Node and PostgreSQL audit SHA disagree");
+      }),"Node and PostgreSQL audit SHA disagree for "+row.action+
+        " tenant="+row.organization_id+" timestamp="+row.created_at.toISOString());
       for(const secret of [
         ...Object.values(passwords),...recoveryCodes,
       ]) assert.equal(row.details_raw_json.includes(secret),false,
