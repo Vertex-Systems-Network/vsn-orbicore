@@ -218,10 +218,6 @@ export function createSyntheticRedisJobRunner({
       : await redis.sendCommand([
         "XREADGROUP", "GROUP", GROUP, workerId, "COUNT", "1", "STREAMS", stream, ">",
       ]);
-    if (process.env.ORBICORE_CI_DEBUG_STREAMS === "1") {
-      // CI fixture streams contain only synthetic organization/job identifiers.
-      console.error("ORBICORE_CI_RAW_STREAM_REPLY", JSON.stringify(reply));
-    }
     const entry = parseStreamReply(reply, reclaim);
     return entry ? processEvent(entry) : null;
   }
