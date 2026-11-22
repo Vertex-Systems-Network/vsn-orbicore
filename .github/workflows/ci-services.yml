@@ -9,6 +9,9 @@ on:
       - "scripts/verify-leased-jobs.sh"
       - "scripts/verify-postgres-job-repository.mjs"
       - "apps/api/postgres-jobs.mjs"
+      - "apps/api/server.mjs"
+      - "scripts/verify-postgres-job-http.mjs"
+      - "tests/postgres-http.test.mjs"
       - ".github/workflows/ci-services.yml"
   workflow_dispatch:
 permissions:
@@ -75,6 +78,22 @@ jobs:
           PGDATABASE: orbicore
           PGPASSWORD: ci-test-password
         run: node scripts/verify-postgres-job-repository.mjs > .data/ci/orb-004-postgres-repository.json
+      - name: Verify authenticated HTTP job routes against PostgreSQL
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: orbicore
+          PGDATABASE: orbicore
+          PGPASSWORD: ci-test-password
+        run: node scripts/verify-postgres-job-http.mjs > .data/ci/orb-004-postgres-http.json
+      - name: Upload HTTP PostgreSQL job integration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-004-postgres-http-evidence
+          path: .data/ci/orb-004-postgres-http.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload Node repository integration evidence
         if: always()
         uses: actions/upload-artifact@v4
