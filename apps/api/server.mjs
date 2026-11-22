@@ -586,7 +586,17 @@ function jobFromRow(row) {
   };
 }
 
-export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaPreviousKeys = process.env.ORBICORE_MFA_PREVIOUS_KEYS, mfaKeyId = process.env.ORBICORE_MFA_KEY_ID ?? "k1", notificationAdapter = createLocalNotificationAdapter(), mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:3000" } = {}) {
+export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaPreviousKeys = process.env.ORBICORE_MFA_PREVIOUS_KEYS, mfaKeyId = process.env.ORBICORE_MFA_KEY_ID ?? "k1", notificationAdapter = createLocalNotificationAdapter(), mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:3000", jobRepository = null } = {}) {
+  // This is a test-only hybrid adapter: identity/accounts are still held in
+  // SQLite and cannot be atomically committed with PostgreSQL job/audit rows.
+  // Keep the legacy local worker disabled; this mode does not execute jobs.
+  if (jobRepository !== null && (
+    startWorker || typeof jobRepository.enqueue !== "function" ||
+    typeof jobRepository.getJob !== "function" ||
+    typeof jobRepository.listJobs !== "function"
+  )) {
+    throw new TypeError("An injected PostgreSQL job repository requires startWorker:false and enqueue/getJob/listJobs methods.");
+  }
   const fixture = readFixture(fixturePath);
   const db = createDatabase(dbPath, fixture);
   const orphanedJobs = db.prepare("SELECT id, organization_id, account_id, requested_by FROM jobs WHERE status = 'running'").all();
@@ -686,6 +696,21 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     const attempts = (authFailures.get(key) ?? []).filter((time) => now - time < AUTH_FAILURE_WINDOW_MS);
     attempts.push(now);
     authFailures.set(key, attempts);
+  }
+
+  function postgresJobForApi(job, organizationId) {
+    const account = db.prepare("SELECT label FROM accounts WHERE id = ? AND organization_id = ?").get(job.accountId, organizationId);
+    return {
+      id: job.id,
+      type: job.type,
+      accountId: job.accountId,
+      accountLabel: account?.label ?? null,
+      status: job.status,
+      createdAt: job.createdAt,
+      completedAt: job.completedAt,
+      result: job.result ?? null,
+      error: job.error ?? null,
+    };
   }
 
   function getOverview(organizationId) {
@@ -1212,7 +1237,16 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     }
     const actor = actorFor(request);
     if (!actor) return json(response, 401, { error: "authentication_required" });
-    if (request.method === "GET" && url.pathname === "/api/overview") return json(response, 200, getOverview(actor.organizationId));
+    if (request.method === "GET" && url.pathname === "/api/overview") {
+      const overview = getOverview(actor.organizationId);
+      if (!jobRepository) return json(response, 200, overview);
+      try {
+        const jobs = await jobRepository.listJobs({ organizationId: actor.organizationId });
+        return json(response, 200, { ...overview, jobs: jobs.map((job) => postgresJobForApi(job, actor.organizationId)), jobStorage: "postgres_test_only" });
+      } catch {
+        return json(response, 503, { error: "job_store_unavailable" });
+      }
+    }
     if (request.method === "GET" && url.pathname === "/api/accounts") return json(response, 200, { accounts: accountQuery.all(actor.organizationId).map(accountFromRow) });
     if (request.method === "GET" && url.pathname === "/api/audit") {
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
@@ -1233,7 +1267,15 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const sites = db.prepare("SELECT s.id, s.account_id AS accountId, s.domain, s.kind, s.document_root AS documentRoot, s.php_version AS phpVersion, s.status FROM sites s JOIN accounts a ON a.id = s.account_id WHERE s.account_id = ? AND a.organization_id = ? ORDER BY s.domain").all(accountId, actor.organizationId);
       return json(response, 200, { sites, source: "mock_fixture", live: false });
     }
-    if (request.method === "GET" && url.pathname === "/api/jobs") return json(response, 200, { jobs: jobQuery.all(actor.organizationId).map(jobFromRow) });
+    if (request.method === "GET" && url.pathname === "/api/jobs") {
+      if (!jobRepository) return json(response, 200, { jobs: jobQuery.all(actor.organizationId).map(jobFromRow) });
+      try {
+        const jobs = await jobRepository.listJobs({ organizationId: actor.organizationId });
+        return json(response, 200, { jobs: jobs.map((job) => postgresJobForApi(job, actor.organizationId)), jobStorage: "postgres_test_only" });
+      } catch {
+        return json(response, 503, { error: "job_store_unavailable" });
+      }
+    }
     if (request.method === "POST" && url.pathname === "/api/jobs/refresh") {
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
@@ -1243,6 +1285,39 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const account = db.prepare("SELECT id FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
         if (!account) return json(response, 404, { error: "account_not_found" });
         const suppliedKey = request.headers["idempotency-key"]?.toString().slice(0, 120) ?? null;
+        if (jobRepository) {
+          try {
+            // The job is durable in PostgreSQL but the SQLite audit is not in
+            // the same transaction. Keep this experimental mode test-only.
+            const queued = await jobRepository.enqueue({
+              organizationId: actor.organizationId,
+              accountId: account.id,
+              requestedBy: actor.id,
+              idempotencyKey: suppliedKey || randomUUID(),
+            });
+            if (queued.created) {
+              appendAuditEvent(db, {
+                organizationId: actor.organizationId,
+                actor: actor.id,
+                action: "inventory.refresh",
+                targetId: account.id,
+                outcome: "queued",
+                details: { source: "postgres_test_only", live: false, jobId: queued.job.id },
+              });
+            }
+            return json(response, queued.created ? 202 : 200, {
+              jobId: queued.job.id,
+              status: queued.created ? "queued" : "existing",
+              source: "mock_fixture",
+              live: false,
+              jobStorage: "postgres_test_only",
+            });
+          } catch (error) {
+            return json(response, error.message === "idempotency_key_payload_conflict" ? 409 : 503, {
+              error: error.message === "idempotency_key_payload_conflict" ? "idempotency_conflict" : "job_store_unavailable",
+            });
+          }
+        }
         const idempotencyKey = suppliedKey ? `${actor.organizationId}:${suppliedKey}` : null;
         const existing = idempotencyKey ? db.prepare("SELECT id FROM jobs WHERE organization_id = ? AND idempotency_key = ?").get(actor.organizationId, idempotencyKey) : null;
         if (existing) return json(response, 200, { jobId: existing.id, status: "existing", source: "mock_fixture" });
@@ -1260,6 +1335,14 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     }
     const jobMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/);
     if (request.method === "GET" && jobMatch) {
+      if (jobRepository) {
+        try {
+          const record = await jobRepository.getJob({ organizationId: actor.organizationId, id: decodeURIComponent(jobMatch[1]) });
+          return record ? json(response, 200, { job: postgresJobForApi(record, actor.organizationId), jobStorage: "postgres_test_only" }) : json(response, 404, { error: "job_not_found" });
+        } catch {
+          return json(response, 503, { error: "job_store_unavailable" });
+        }
+      }
       const row = db.prepare("SELECT j.*, a.label AS account_label FROM jobs j JOIN accounts a ON a.id = j.account_id WHERE j.id = ? AND j.organization_id = ?").get(decodeURIComponent(jobMatch[1]), actor.organizationId);
       return row ? json(response, 200, { job: jobFromRow(row) }) : json(response, 404, { error: "job_not_found" });
     }
