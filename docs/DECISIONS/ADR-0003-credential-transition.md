@@ -62,6 +62,10 @@ A [synthetic mutation actor authorization](../../apps/api/ci-source-mutation-aut
 
 [Detached CI witness signer](../../apps/api/ci-detached-witness-checkpoint.mjs), [source/target consistency probe](../../apps/api/ci-shadow-readiness-probe.mjs), and [15-job hosted evidence](../TEST_EVIDENCE/2026-11-23-orb-005-ci-detached-readiness.md) validate separately pinned HMAC metadata, normalized witness snapshots, rollback detection, event completeness, PG epoch projection and absence of stale shadow drafts. The mock auditor checkpoint is merely a **second writable file within the same CI runner**, not operationally independent WORM, vault, object-lock retention or off-host recovery. Its test may report synthetic fixture consistency but structurally refuses all production login authority. Real external audit custody, source-to-witness atomicity/undetected pre-anchor suppression, production MFA authorization, cross-store recovery and approval remain blocking.
 
+## CI-only signed metadata recovery across separate Actions runners (2026-11-23)
+
+[Cross-runner Ed25519 signed metadata adapter](../../apps/api/ci-cross-runner-evidence.mjs) and [17-job hosted evidence](../TEST_EVIDENCE/2026-11-23-orb-005-ci-cross-runner-evidence.md) test transfer between separate disposable GitHub Actions runners with a SHA-256 public-key fingerprint + artifact hash + sequence via workflow outputs, strict witness/epoch row validation, and metadata-only fresh SQLite restoration with injected rollback. This improves the **synthetic portability test**, not actual independent custody: both runner jobs/artifacts/outputs share repository administrator trust, have seven-day retention, no source HMAC key on receiver, no real account verifiers or encrypted operational DB and no external WORM/HSM, recoverability or production login authority.
+
 ## Acceptance and adversarial evidence gate
 
 - [x] Exact legacy KDF outputs reproduced using synthetic Unicode/ASCII/empty-password fixtures, UTF-8 hex-text versus decoded salt checks, fixed parameters and timing-safe comparison; [CI evidence](../TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md).

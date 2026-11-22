@@ -324,7 +324,13 @@
         "scripts/verify-postgres-ci-detached-readiness.mjs",
         "tests/ci-detached-readiness.test.mjs",
         "docs/RESEARCH/2026-11-23-detached-witness-gate.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-detached-readiness.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-detached-readiness.md",
+        "apps/api/ci-cross-runner-evidence.mjs",
+        "scripts/ci-export-witness-evidence.mjs",
+        "scripts/ci-restore-witness-evidence.mjs",
+        "tests/ci-cross-runner-evidence.test.mjs",
+        "docs/RESEARCH/2026-11-23-cross-runner-audit-evidence.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-cross-runner-evidence.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
@@ -334,7 +340,8 @@
         "PR #26 synthetic-only source credential-epoch SQLite outbox and PG private revoke-only fences passed full 12-job hosted service integration plus CI/Chromium at 50ab3c6. Tested source+event atomicity, password reset/disable/MFA/role changes, PG fault rollback, source file reopen, pending-event replay, anti-regression and source-tenant mismatch. NOT integrated into normal login/mutation routes or real MFA key custody; no source-event provenance attestation, distributed atomicity, off-host restore or production authority gate.",
         "PR #27 CI-only signed SQLite event provenance and HMAC-pseudonymous login-failure records passed 13 hosted PG16/Redis/Compose jobs, standard CI, Chromium on 01955da6. Tampering, wrong signing key, old-key rotation/replay, DB audit failure and unknown/wrong-password response parity tested. NOT runtime HTTP-wired or proof of independent source event completeness/authorization, distributed rate-limit, external key custody or production migration.",
         "PR #28 CI-only synthetic actor fresh password/RBAC and separate PG source witness passed hosted 14-job integration + CI/Chromium at 70a6de2b. Tests detect deleted previously witnessed events, source epoch rollback, actor-HMAC tamper and restricted PG role denials. Still no atomic source-to-witness commit, WORM/external trust, real actor MFA/API mutation, independent key custody, off-host restore or production cutover.",
-        "PR #29 disposable detached signed source-witness checkpoint and CI-only fail-closed source/PG epoch consistency passed hosted 15-job service integration on 73a06983; detected stale signed checkpoint, missing PG witness, deleted source event, pending journal, lost PG epoch fence, stale draft and SQLite reopen. The separate auditor file/key are NOT off-host independent WORM; no operational key custody, source/PG atomicity, real MFA/HTTP or production login authority."
+        "PR #29 disposable detached signed source-witness checkpoint and CI-only fail-closed source/PG epoch consistency passed hosted 15-job service integration on 73a06983; detected stale signed checkpoint, missing PG witness, deleted source event, pending journal, lost PG epoch fence, stale draft and SQLite reopen. The separate auditor file/key are NOT off-host independent WORM; no operational key custody, source/PG atomicity, real MFA/HTTP or production login authority.",
+        "PR #30 CI-only cross-runner Ed25519 signed synthetic source epoch/witness metadata archive and atomic fresh-SQLite metadata restore passed 17 service-workflow jobs + standard CI + Chromium at b9edaa8d. Different GitHub jobs but shared admin trust, no independent WORM/KMS, no verified real source signing key, full encrypted off-host database/secret/job/MFA restore or production auth cutover."
       ],
       "started_at": null,
       "completed_at": null,
