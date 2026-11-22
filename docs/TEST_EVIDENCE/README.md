@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-009/018 reliable workspace state and 320px/browser permissions](2026-11-23-orb-009-018-truthful-ui-states.md): hosted synthetic Chromium and standard CI; full WCAG/real zoom/manual audit not proven.
+
 Store task ID, command/workflow, runtime, date, exit code, commit, fixture/environment, artifacts and limitations. Redact secrets, personal data, tokenized URLs and database dumps. Separate unit/mock, browser, integration and live-provider evidence.
 
 - [2026-11-09 local proof of concept](2026-11-09-local-poc.md): local/mock evidence only.

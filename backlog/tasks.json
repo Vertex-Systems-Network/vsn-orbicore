@@ -514,18 +514,19 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": "8080346bff39c7b18b4f6b6325582284c54b055d",
+      "commit_hash": "69dc14ce168707b0bff9eb193062a2fecea204b5",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md"
       ],
       "blockers": [
-        "Browser keyboard/collapsed navigation/focus and 390/768px layout are tested, but manual WCAG screen reader/contrast, 320px/200% reflow, error/stale/empty and permission matrix review remain."
+        "Hosted Chromium 320/390/640/768 CSS viewport, empty-filter, HTTP 503 POST/secondary GET and retry, reduced-motion and viewer-role permission checks passed at 69dc14ce. Remaining: actual 200%/400% zoom, full WCAG screen reader/contrast/touch targets, account-sites and cross-tenant session negative browser tests, wider device/state matrix."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-23T00:00:00Z",
+      "last_updated": "2026-11-23",
       "verification_level": "browser_tested",
       "blocker_type": null
     },
@@ -949,19 +950,20 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "8080346bff39c7b18b4f6b6325582284c54b055d",
+      "commit_hash": "69dc14ce168707b0bff9eb193062a2fecea204b5",
       "evidence_paths": [
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md"
       ],
       "blockers": [
-        "Browser keyboard/collapsed navigation/focus and 390/768px layout are tested, but manual WCAG screen reader/contrast, 320px/200% reflow, error/stale/empty and permission matrix review remain."
+        "Hosted Chromium 320/390/640/768 CSS viewport, empty-filter, HTTP 503 POST/secondary GET and retry, reduced-motion and viewer-role permission checks passed at 69dc14ce. Remaining: actual 200%/400% zoom, full WCAG screen reader/contrast/touch targets, account-sites and cross-tenant session negative browser tests, wider device/state matrix."
       ],
       "blocker_type": null,
       "verification_level": "browser_tested",
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-23T00:00:00Z"
+      "last_updated": "2026-11-23"
     },
     {
       "id": "ORB-019",
