@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-23 — ORB-005 detached signed witness / fail-closed synthetic readiness (PR #29)
+
+- [PR #29](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/29) tested functional SHA `73a06983b84256d119a8edaedf3b2a9da76668ab` passed [15-job PostgreSQL 16/Redis/Compose integration #45064183849](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45064183849), [PR CI #45064183858](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45064183858), and [branch CI #45064061226](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45064061226). [Evidence](TEST_EVIDENCE/2026-11-23-orb-005-ci-detached-readiness.md), [synthetic artifact #14770129613](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45064183849/artifacts/14770129613).
+- An injected ephemeral auditor HMAC key signs sorted PG source-witness metadata. A compact signed head in a different CI file from source SQLite/PG, plus independently supplied pinned MAC/minimum sequence, detects torn/missing snapshots, old versions, PG owner witness deletion and source event removal. The new inspector also rejects source pending events, mismatched PG epoch fences and stale or disabled/MFA-active shadow verifiers, including after SQLite restart.
+- **Not production readiness:** `fixtureConsistent` can be true but `productionLoginAuthorized` is always false. No real WORM/off-host custody, actual independent administrator, production actor/MFA/HTTP wiring, atomic cross-store snapshot or restore proof. Default auth remains SQLite. ORB-005 stays `in_progress/integration_tested`.
+- **Next:** independently controlled append-only audit infrastructure, external trust pin and restore, production-shaped actor/MFA, session epoch and throttling/cutover veto tests. Verify final docs-head and postmerge main CI separately.
+
+
 ## 2026-11-23 — ORB-005 synthetic actor authorization / independent PG witness (PR #28)
 
 - [PR #28](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/28) functional SHA `70a6de2b5341d04b60b15c8f345149e9534d01cc` passed [14-job PostgreSQL 16/Redis/Compose #45062773129](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45062773129), [PR CI #45062773114](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45062773114), [branch CI #45062750068](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45062750068) and [Chromium #45062773103](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45062773103). [Artifact #14770496072](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45062773129/artifacts/14770496072). [Evidence](TEST_EVIDENCE/2026-11-23-orb-005-ci-actor-witness.md).

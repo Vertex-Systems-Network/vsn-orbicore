@@ -1,0 +1,13 @@
+# ORB-005 — CI-only detached checkpoint and fail-closed readiness
+
+**Reviewed:** 2026-11-23.
+
+The [NIST SP 800-92 Guide to Computer Security Log Management](https://csrc.nist.gov/pubs/sp/800/92/final) establishes the broader need for trustworthy audit storage and retention; [NIST SP 800-53 AU-9](https://csrc.nist.gov/projects/risk-management/sp800-53-controls) covers protection of audit information. [PostgreSQL 16 RLS](https://www.postgresql.org/docs/16/ddl-rowsecurity.html) and [SQLite transactions](https://www.sqlite.org/lang_transaction.html) inform database separation and atomic source journaling. [Node HMAC](https://nodejs.org/api/crypto.html#cryptocreatehmacalgorithm-key-options) documents the signing primitive.
+
+**CI threat model:** The latest private PostgreSQL witness can be rewritten or removed by a trusted database owner and there is no cross-store atomic commit. To make tampering visible *after capture*, the disposable CI harness signs a normalized sorted snapshot of witness metadata using an externally injected random HMAC key; the resulting compact checkpoint is stored in a **different local file/directory** from source SQLite and PG. A separate trusted test reader pins the expected checkpoint MAC and minimum sequence. Without an external monotonic trusted head, an attacker can replay an old valid checkpoint or replace both records and pins. Source and PG production administrators must not control an actual auditor key or trusted pin.
+
+The test-only fail-closed readiness inspector verifies: signed snapshot against pinned checkpoint; full per-user SQLite source epoch/outbox signatures versus independently supplied PG witness metadata; zero outstanding SQLite outbox events; equal PG reconciled epochs per changed user; no extra/duplicate target fence; and no stale/disabled/MFA-active shadow draft. **It never approves production login** even if fixture consistency is proven.
+
+These tools do **not** produce real object-lock/WORM retention, external HSM/KMS custody, a protected independent auditor, deletion protection before checkpoint issuance, snapshot read isolation between SQLite and PG, real power-loss testing, production HTTP mutation/MFA integration, auth session read routing, or migration approval. The detached file is writable by the CI process and is explicitly *not* off-host, immutable or independently administered.
+
+**Next:** independently configured external audit vault/object-lock+IAM with measured retention, real operator/actor consent and MFA, source/PG consistency pause, restore testing, and human-approved cutover/rollback. Never promote the CI-only signature to a production authority.
