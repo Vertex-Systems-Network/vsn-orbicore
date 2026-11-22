@@ -737,6 +737,9 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/005_postgres_feature_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/006_postgres_synthetic_write_gateway.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/010_postgres_ci_shadow_schema.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/011_postgres_ci_reauth_shadow.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/011_postgres_ci_reauth_shadow.sql
