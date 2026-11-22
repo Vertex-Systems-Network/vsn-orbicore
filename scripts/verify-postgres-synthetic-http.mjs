@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { request as httpRequest } from "node:http";
 import { Pool } from "pg";
 import { computeAuditEntryHash } from "../apps/api/audit.mjs";
 import { createPostgresSyntheticSubmissionGateway } from "../apps/api/postgres-synthetic-gateway.mjs";
@@ -18,6 +19,24 @@ const ownerPool = new Pool({
   password: process.env.PGPASSWORD,
   max: 3,connectionTimeoutMillis: 5000,
 });
+async function spoofHostRequest(base,cookie) {
+  const target=new URL(base);
+  return new Promise((resolve,reject)=>{
+    const request=httpRequest({
+      hostname:"127.0.0.1",
+      port:Number(target.port),
+      path:"/__ci/pg/session/csrf",
+      method:"GET",
+      headers:{host:"untrusted.example.invalid",cookie},
+    },response=>{
+      response.resume();
+      response.once("end",()=>resolve(response.statusCode));
+    });
+    request.once("error",reject);
+    request.end();
+  });
+}
+
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const orgA = "org-ci-http-a", orgB = "org-ci-http-b";
 const accA = "account-ci-http-a", accA2 = "account-ci-http-a2";
@@ -154,8 +173,7 @@ try {
     headers:{origin:"https://untrusted.example.invalid"}})).status,403);
   assert.equal((await request(csrfPath,{sessionKey:"ownerA",
     headers:{"sec-fetch-site":"cross-site"}})).status,403);
-  assert.equal((await request(csrfPath,{sessionKey:"ownerA",
-    headers:{host:"malicious.example.invalid"}})).status,403);
+  assert.equal(await spoofHostRequest(base,"orbicore_session="+sessions.ownerA),403);
 
   assert.equal((await post({csrfToken:null})).status,403);
   assert.equal((await post({csrfToken:"0".repeat(64)})).status,403);
