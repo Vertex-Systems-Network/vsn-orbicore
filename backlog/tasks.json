@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-21T00:00:00Z",
+  "updated_at": "2026-11-22T06:46:19Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -374,7 +374,7 @@
       "dependencies": [
         "ORB-002"
       ],
-      "status": "blocked",
+      "status": "ready",
       "owner_agent": "codex",
       "assumptions": [
         "A supported browser can access the local app"
@@ -398,15 +398,13 @@
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md"
       ],
-      "blockers": [
-        "Shared browser could not reach isolated loopback and Chromium CDN returned an empty archive; GitHub-hosted browser-runner feasibility remains untested."
-      ],
+      "blockers": [],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-22T06:46:19Z",
       "verification_level": "none",
-      "blocker_type": "environment"
+      "blocker_type": null
     },
     {
       "id": "ORB-010",
@@ -498,12 +496,12 @@
         "docs/AUTHENTICATOR_OPERATIONS.md"
       ],
       "blockers": [
-        "Browser passkey E2E, verified-contact delivery, tested key rotation/restore, distributed throttling and production identity controls remain open."
+        "verified-contact delivery, tested key rotation/restore, distributed throttling and production identity controls remain open."
       ],
       "started_at": "2026-11-09T23:10:00+05:00",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T23:41:00+05:00",
+      "last_updated": "2026-11-22T06:46:19Z",
       "verification_level": "unit",
       "blocker_type": "environment"
     },
@@ -518,7 +516,7 @@
       "dependencies": [
         "ORB-011"
       ],
-      "status": "ready",
+      "status": "verified",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -536,15 +534,19 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": null,
-      "evidence_paths": [],
+      "commit_hash": "8c7e9a2b3eaf952469a9f8882ab3e674f95b633f",
+      "evidence_paths": [
+        "scripts/browser-verify.mjs",
+        ".github/workflows/ci-browser.yml",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md"
+      ],
       "blockers": [],
       "blocker_type": null,
-      "verification_level": "none",
-      "started_at": null,
-      "completed_at": null,
-      "verified_at": null,
-      "last_updated": "2026-11-10"
+      "verification_level": "browser_tested",
+      "started_at": "2026-11-22T06:37:02Z",
+      "completed_at": "2026-11-22T06:46:19Z",
+      "verified_at": "2026-11-22T06:46:19Z",
+      "last_updated": "2026-11-22T06:46:19Z"
     },
     {
       "id": "ORB-013",
