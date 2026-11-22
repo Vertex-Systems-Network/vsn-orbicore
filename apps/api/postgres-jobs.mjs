@@ -87,6 +87,18 @@ export function createPostgresJobRepository(database) {
 
     getJob,
 
+    async listJobs({ organizationId, limit = 20 }) {
+      identifier(organizationId, "organizationId");
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        throw new RangeError("limit must be between 1 and 100");
+      }
+      const result = await database.query(
+        "SELECT " + JOB_COLUMNS + " FROM jobs WHERE organization_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2",
+        [organizationId, limit],
+      );
+      return result.rows.map(jobFromRow);
+    },
+
     async claimNext({ organizationId, workerId, leaseSeconds = 30 }) {
       identifier(organizationId, "organizationId");
       identifier(workerId, "workerId");
