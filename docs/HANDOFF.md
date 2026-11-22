@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-23 — ORB-004 full nonowner synthetic worker gateway (PR #36)
+
+- [PR #36](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/36) functional SHA `aa13769395402b933f8b1bde196c20b6bb79824c` passed [all 22 PostgreSQL/Redis/Compose service jobs #45072644838](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072644838), [PR CI #45072644782](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072644782), [branch CI #45072639938](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072639938) and [Chromium #45072644791](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072644791). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-full-worker-gateway.md); redacted artifact #14773818726.
+- Add CI-only migration 016 with NOLOGIN worker gateway role and a separately admin-bound authenticated principal/tenant map, fixed-search-path, revoked-public SECURITY DEFINER functions for PG outbox publication, reconciliation, claim, atomically policy-checked completion and expiry. An injected CI-only gateway permits **one real nonowner PG session** for all synthetic worker job operations AND restricted poison-signal recording. Tests cover denied raw table access/tenant switching, real Redis publish/fail/reconcile/PEL replay, lock/lease fencing, actor disabled/viewer rejection, and permission-loss recovery.
+- Earlier functional service job failed due to a test fixture unconsumed terminal outbox row, drained and reran 22/22 on `aa13769395402b933f8b1bde196c20b6bb79824c`. No untested commit is used as evidence. Default standalone worker remains privileged CI-compatible, ordinary HTTP auth remains SQLite; migration key custody, signed Redis publisher, production scope, full PostgreSQL auth cutover and provider authorization all remain open.
+- ORB-004 stays `testing/integration_tested`; final docs-head/postmerge main need separate checks.
+
+
 ## 2026-11-23 — ORB-004 nonowner tenant-scoped signal rejection gateway (PR #35)
 
 - [PR #35](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/35) functional SHA `797eb708b807c9c5a1e7c2d8d52497f7a3db7b22` passed [21/21 service jobs #45071162058](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071162058), [PR CI #45071161798](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071161798), [branch CI #45071093165](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071093165) and [Chromium #45071162057](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45071162057). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-scoped-signal-writer.md), nonsecret artifact #14773591618.
