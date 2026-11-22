@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-22 — ORB-005 CI-only PostgreSQL shadow schema and RLS denial (PR #24)
+
+- [PR #24](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/24) functional SHA `f41f78c509d76bff1643eeb3c44c2f887f007b83` passed [10-job PostgreSQL/Redis/Compose service integration #45055972375](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055972375), [standard CI #45055972363](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055972363) and [branch CI #45055953186](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055953186). [Machine-readable shadow artifact #14766933040](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055972375/artifacts/14766933040), [detailed evidence](TEST_EVIDENCE/2026-11-22-orb-005-pg-ci-shadow-schema.md).
+- Gated migration 010 creates an isolated CI-only private schema, tenant FK/epoch/idempotency constraints and FORCE RLS without policies. Hosted restricted login verifies direct deny and deliberately granted table-access deny; the schema accepts **fake placeholders only**. No password verifier, approved writer, session, normal SQLite auth wiring or production cutover.
+- **Next:** independent reauthentication and fresh-destination-KDF/write authorization design, backed by CI-only fault/revocation tests. Broader ORB-005 blockers remain; verify final docs head CI and main merge independently.
+
+
 ## 2026-11-22 — ORB-005 reversible scrypt compatibility slice (PR #23)
 
 - [ADR-0003](DECISIONS/ADR-0003-credential-transition.md) defines the required SQLite → PostgreSQL authority state machine, fresh-password reauthentication/reset, private verifier custody, tenant+credential epoch, MFA/session/audit continuity and rollback gates.
