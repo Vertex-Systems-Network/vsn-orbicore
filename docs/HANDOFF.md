@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-22 — ORB-005 reversible scrypt compatibility slice (PR #23)
+
+- [ADR-0003](DECISIONS/ADR-0003-credential-transition.md) defines the required SQLite → PostgreSQL authority state machine, fresh-password reauthentication/reset, private verifier custody, tenant+credential epoch, MFA/session/audit continuity and rollback gates.
+- [PR #23](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/23) functional head `1ac44ad8a3220ed0a3b9bed09fc7c681b1c96726` passed [standard PR CI #45055406351](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055406351), [branch CI #45055379223](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055379223) and [Chromium #45055406339](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055406339). See [detailed evidence](TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md).
+- Only the **read-only** legacy SQLite compatibility helper and six synthetic regression cases were added; default SQLite login, CI-only PostgreSQL bcrypt, production data and hosting connections are untouched. No production migration is proven. ORB-005 remains `in_progress / integration_tested`.
+- **Next:** ADR-0003 Slice B private synthetic shadow credential schema and non-owner grants/negative tests; no target authority change. Verify latest docs head CI and postmerge main independently before reporting merge.
+
 ## 2026-11-22 — ORB-005 CI-only PostgreSQL atomic authentication audit (PR #22)
 
 - Functional green SHA `21629439c95e143e46d3b7368fdfaae1fca6afb0`: [nine-job Service Integration #45014979418](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979418) **success**, [75-test standard CI #45014979437](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979437) **success**, [Chromium #45014979422](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979422) **success**. [PG auth audit JSON artifact #14751114463](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979418/artifacts/14751114463). [Detailed evidence](TEST_EVIDENCE/2026-11-22-orb-005-pg-atomic-auth-audit.md).
