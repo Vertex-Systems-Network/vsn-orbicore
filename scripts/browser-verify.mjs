@@ -72,6 +72,9 @@ try {
 
   // ORB-009/018: skip-link is keyboard-visible and targets the one main.
   await page.locator(".skip-link").focus();
+  // Use actual keyboard navigation to enter the :focus-visible modality.
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
   assert.equal(await page.locator(".skip-link").evaluate((el) =>
     getComputedStyle(el).position), "fixed");
   await page.keyboard.press("Enter");
