@@ -85,6 +85,17 @@ try {
     /unsupported_auth_state:recovery_contacts/,
   );
   app.db.prepare("DELETE FROM recovery_contacts WHERE id = ?").run("ci-unsynced-contact");
+  app.db.prepare(
+    "INSERT INTO jobs(id,type,organization_id,account_id,requested_by,status,created_at) " +
+    "VALUES (?,'inventory_refresh',?,?,?,'queued',?)",
+  ).run("ci-unported-queued-job", "org-demo", "acct-copperline", owner.id, timestamp);
+  await assert.rejects(
+    copySyntheticIdentitySnapshot({
+      sqlite: app.db, postgres: pool, consent: "fixture_only_offline_copy",
+    }),
+    /source_jobs_not_supported_by_identity_core/,
+  );
+  app.db.prepare("DELETE FROM jobs WHERE id = ?").run("ci-unported-queued-job");
   // Also refuse importing a tampered local SHA-256 audit chain.
   const auditRow = app.db.prepare(
     "SELECT id, details_json FROM audit_events WHERE organization_id = ? ORDER BY rowid LIMIT 1",
@@ -224,6 +235,7 @@ try {
     kind: "synthetic-sqlite-to-postgres-identity-core-and-readonly-rls",
     sqliteAuditCheckedBeforeCopy: true,
     unsupportedAuthStateRefused: true,
+    unportedJobStateRefused: true,
     tamperedAuditRefused: true,
     destinationEmptyGuard: true,
     counts: result.counts,
