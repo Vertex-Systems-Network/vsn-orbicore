@@ -165,7 +165,10 @@ try {
       child.once("message", resolve);
       child.once("exit", (code) => reject(new Error("crash_fixture_exited:" + code + ":" + childError)));
     }),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("crash_fixture_claim_timeout")), 15_000)),
+    new Promise((_, reject) => {
+      const timeout = setTimeout(() => reject(new Error("crash_fixture_claim_timeout")), 15_000);
+      timeout.unref();
+    }),
   ]);
   assert.equal(claimed.stage, "claimed");
   assert.equal(claimed.jobId, crashJob);
@@ -228,10 +231,13 @@ try {
       cliWorker.once("error", reject);
       cliWorker.once("exit", resolve);
     }),
-    new Promise((_, reject) => setTimeout(() => {
-      cliWorker.kill("SIGKILL");
-      reject(new Error("standalone_worker_timeout"));
-    }, 15000)),
+    new Promise((_, reject) => {
+      const timeout = setTimeout(() => {
+        cliWorker.kill("SIGKILL");
+        reject(new Error("standalone_worker_timeout"));
+      }, 15000);
+      timeout.unref();
+    }),
   ]);
   assert.equal(cliExit, 0, "standalone synthetic worker: " + cliStderr);
   assert.equal(JSON.parse(cliStdout).mode, "synthetic_only");
