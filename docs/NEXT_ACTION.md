@@ -1,22 +1,19 @@
 # Next action
 
-1. **ORB-004 / ORB-016:** Replace the test-only hybrid PostgreSQL gateway with an **end-to-end production-shaped job flow**. Pinned runtime `pg@8.23.1` and `redis@6.3.1` are now installed and CI-verified. Implement the complete PostgreSQL identity/account/tenant schema, or an explicit migration/sync contract; do not silently treat the local SQLite identities as production-authoritative.
-2. Implement **transactional PostgreSQL job + outbox publication**, Redis Streams consumer with ACK/reclaim and idempotent execution, and a dedicated worker with fresh tenant/policy checks. Redis redelivery tests alone do not establish exactly-once side effects.
-3. Run GitHub-hosted real application tests with actual worker process shutdown/restart, persistent job and outbox recovery, cross-tenant denial, safe retries, and Docker Compose named-volume persistence after service container replacement. The existing authenticated HTTP test uses a manually injected PostgreSQL store and **does not start a PG worker**.
-4. Continue ORB-018/009 accessible browser testing of keyboard/focus, contrast, responsiveness and permission/error states; keep physical authenticator and live contact delivery as separate gates.
-5. ORB-010/017 production security/installer: complete release SBOM validation, secrets/RLS policy, PostgreSQL upgrade/rollback, restore and resource benchmarks.
-6. ORB-006/019 live cPanel/WHM testing requires authorized disposable least-privilege credentials and explicit scope.
+1. **ORB-004 / ORB-016:** The **synthetic PostgreSQL transaction/outbox and Redis Streams worker** now pass service-backed CI, including an opt-in standalone worker executable and real Node `SIGKILL` after a claim. **Next: migrate identity, account, tenant and audit authority from SQLite v7 into a complete versioned PostgreSQL schema** with explicit backfill/cutover/rollback and consistency gates; stop relying on manually mirrored CI user/account rows.
+2. Add PostgreSQL database roles and tenant-aware RLS, stable actor authorization, tamper-evident audit/outbox writes in one PostgreSQL transaction, configuration and secrets hardening. Avoid enabling live provider actions until policy and authorization evidence exist.
+3. Run disposable **actual PostgreSQL/Redis container stop/recreate** and `docker compose` named-volume persistence drills (including backup/restore), worker restart after natural lease expiry without manual timestamp advancement, duplicate/outbox crash windows and Redis AOF recovery. The current process kill test forcibly advances the test lease clock; it is **not** a full service disaster-recovery demonstration.
+4. Add worker supervision/operational readiness, real retry/backoff and poison-message inspection before production. The explicit standalone runner is **synthetic-only** and does not auto-start via `npm start`.
+5. **ORB-018 / ORB-009:** Expand browser accessibility QA for keyboard/focus, contrast, mobile, stale/empty/error and permission states.
+6. **ORB-010 / ORB-017:** Release CycloneDX JSON schema validation, deployed-system inventory and installer/upgrade/rollback gates remain.
+7. **ORB-006 / ORB-019:** Live cPanel/WHM needs owner-authorized disposable scoped credentials and external operation approvals.
 
-## Latest merged and verified checkpoints
+## Verified checkpoint chain
 
-- ORB-012 PR [#7](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/7) virtual passkey E2E merged as `1f8dec9446089dd38a4eb723e278467d7106484d`.
-- ORB-015 PR [#8](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/8) security audit/SBOM and recovery fix merged as `2944dda70a332ece1a43225a904c58a5012fb421`.
-- ORB-016 PR [#9](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/9) hosted PostgreSQL/Redis service tests merged as `4b9622fb3db0e81d5caf67d54210db3624e951fa`.
-- ORB-004 PR [#10](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/10) lease/stream contract merged as `12eb732320b3d6e932a7012c774f1e2df32b6557`.
-- ORB-004 PR [#11](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/11) injected PostgreSQL job repository merged as `8a8762cecf78c1350d4f9130d808502b291593a5`.
-- ORB-004 PR [#12](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/12) authenticated PostgreSQL HTTP slice merged into `main` as `c5267790a71cc8978b2c6101aeeafc64c21775b3`. [Evidence](TEST_EVIDENCE/2026-11-22-orb-004-postgres-http-ci.md).
-- ORB-004 PR [#13](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/13) pinned PG/Redis runtime packages at SHA `3b7f26ee97e992427d5f0bad4cabc4c1a4f68e53`; [hosted service run #44998860302](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998860302) and [49-test standard CI #44998860295](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998860295) passed. [Evidence](TEST_EVIDENCE/2026-11-22-orb-004-runtime-packages.md). Verify final PR head and merge independently.
+- ORB-012 passkeys PR [#7](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/7); ORB-015 npm audit/SBOM PR [#8](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/8); ORB-016 hosted services PR [#9](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/9) merged.
+- ORB-004 PRs [#10](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/10), [#11](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/11), [#12](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/12), [#13](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/13) merged into `main` (last main `d7efb48fef3e16a96ca906c961343bd5485027fe`). Prior evidence indexed in [test evidence](TEST_EVIDENCE/README.md).
+- ORB-004 PR [#14](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/14): synthetic job/outbox/Redis worker [service integration #45002004269](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002004269), [52-test CI #45002004261](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002004261), [Chromium #45002004230](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002004230) **passed** on `037e7bd9e00067db6a3f5474099e9598f2472102`. [Detailed limits](TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md). Verify final PR head and squash merge separately.
 
 ## Evidence contract
 
-For every completion claim preserve workflow/run URL, exact tested SHA, job/version/commands, runtime result, artifact, and explicit untested limits in `docs/TEST_EVIDENCE/`. Do not infer live provider, production readiness, persistent worker or full accessibility from mock/virtual-service results.
+Preserve tested SHA, hosted run, complete commands, versions, artifacts and remaining limits. Do not infer production, exactly-once provider effects, full database migration, provider authorization or physical authenticator coverage from fixture-based tests.
