@@ -156,9 +156,12 @@ export async function copySyntheticIdentitySnapshot({ sqlite, postgres, consent 
       await connection.query(
         "INSERT INTO audit_events(id, organization_id, actor, action, target_id, outcome, " +
         "created_at, details_json, details_raw_json, prev_hash, entry_hash) " +
-        "VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$8,$9,$10)",
+        // Use distinct bind parameters: PostgreSQL coerces a reused JSONB
+        // parameter to canonical text and would break the legacy SHA-256 chain.
+        "VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::text,$10,$11)",
         [row.id, row.organization_id, row.actor, row.action, row.target_id,
-          row.outcome, row.created_at, row.details_json, row.prev_hash, row.entry_hash],
+          row.outcome, row.created_at, row.details_json, row.details_json,
+          row.prev_hash, row.entry_hash],
       );
     }
     const result = await connection.query(
