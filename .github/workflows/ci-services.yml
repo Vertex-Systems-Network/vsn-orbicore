@@ -14,6 +14,8 @@ on:
       - "apps/api/synthetic-worker-runner.mjs"
       - "apps/api/postgres-identity-core.mjs"
       - "scripts/verify-postgres-identity-core.mjs"
+      - "scripts/verify-postgres-auth-state.mjs"
+      - "tests/postgres-auth-state.test.mjs"
       - "tests/postgres-identity-core.test.mjs"
       - "scripts/verify-pg-redis-outbox.mjs"
       - "scripts/verify-compose-restart.sh"
@@ -249,5 +251,59 @@ jobs:
         with:
           name: orb-005-postgres-identity-core
           path: .data/ci/orb-005-identity-core.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  postgres-auth-state:
+    name: Disposable PostgreSQL MFA/passkey/recovery schema and offline snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-auth-state-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-auth-state-only-password
+      ORBICORE_CI_SYNTHETIC_AUTH_IMPORT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Initialize PostgreSQL identity and rerunnable auth state schema
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+      - name: Verify atomic synthetic MFA, passkey, recovery and notification import
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-auth-state.mjs > .data/ci/orb-005-auth-state.json
+      - name: Upload auth-state schema and PostgreSQL tenant security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-005-postgres-auth-state
+          path: .data/ci/orb-005-auth-state.json
           if-no-files-found: ignore
           retention-days: 14
