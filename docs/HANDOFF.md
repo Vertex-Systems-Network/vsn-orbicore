@@ -1,5 +1,14 @@
 # Handoff
 
+## 2026-11-22 — ORB-005 PostgreSQL core identity snapshot / read RLS (PR #16)
+
+- Tested feature SHA `8a96b2357ec3cbb6fa5a0725d0daa62a33900c90`. [GitHub service CI #45003751423](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751423) **success** for isolated PG identity, existing PG/Redis worker and Compose recovery. [Standard CI #45003751433](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751433) **55 tests passed, zero failed**, audit 0 high/critical at run time; [virtual browser CI #45003751489](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751489) **success**.
+- `db/migrations/003_postgres_identity_core_rls.sql` adds tenant-bound Postgres sessions, case-insensitive global email uniqueness, raw audit JSON chain preservation and a NOLOGIN tenant read role with RLS across core tables. This role has **column-only grants** for users/sessions; verified denials for password hashes, session hashes and writes. The custom transaction-local tenant context is proof-only and must be controlled by a trusted boundary in production.
+- `apps/api/postgres-identity-core.mjs` has a PostgreSQL SHA-256 session-token-hash lookup with MFA/disabled/expiration rejection, scoped account reader and explicitly consented **synthetic-only offline empty-target** importer. SQLite source remains unchanged. It fails closed for MFA/passkeys/recovery/challenge/notification/secrets/live-account state and tampered audit chains; it does not migrate full v7 feature tables or switch HTTP auth. Preserves audit exact serialized bytes via **two distinct SQL parameters** (JSONB/text).
+- Full [evidence](TEST_EVIDENCE/2026-11-22-orb-005-postgres-identity-core.md), [JSON artifact 14747235280](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751423/artifacts/14747235280).
+- PR #15 merged as `b5a5911d0bca6c5afc75997c70e37827e4362bcd` with post-merge [CI 45002988617](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002988617). PR #16 needs final-head checks and merge verification.
+- **Next:** finish all SQLite v7 auth, MFA/passkeys/recovery/secret/feature schema and a safe PG cutover; trusted non-bypass runtime write role and atomic audit/outbox; no provider calls before authorization. ORB-005 stays `in_progress` even though a narrow PG scope has `integration_tested` evidence.
+
 ## 2026-11-22 — ORB-016 Compose named-volume and Redis AOF persistence (PR #15)
 
 - Implementation SHA `93b9b763c36bbb4082235fc403083f4b9d62922e`; [GitHub-hosted service CI 45002668539](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002668539) passed both existing parity and **Docker Compose persistence** jobs; [standard CI 45002668414](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002668414) passed.
