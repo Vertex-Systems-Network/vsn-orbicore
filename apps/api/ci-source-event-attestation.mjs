@@ -26,9 +26,16 @@ function isValidEvent(e){
     typeof e.organization_id==="string" && ID.test(e.organization_id) &&
     typeof e.user_id==="string" && ID.test(e.user_id) &&
     Number.isSafeInteger(e.source_epoch) && e.source_epoch>=2 &&
-    REASONS.has(e.reason);
+    REASONS.has(e.reason) &&
+    (e.actor_id===null||e.actor_id===undefined||
+      (typeof e.actor_id==="string"&&ID.test(e.actor_id)));
 }
 function message(e){
+  if(typeof e.actor_id==="string"){
+    return JSON.stringify(["orbicore:ci:source-event:v2",
+      e.event_id,e.organization_id,e.user_id,e.source_epoch,e.reason,
+      e.actor_id]);
+  }
   return JSON.stringify(["orbicore:ci:source-event:v1",
     e.event_id,e.organization_id,e.user_id,e.source_epoch,e.reason]);
 }

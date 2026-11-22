@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync } from "node:crypto";
 
 import { createCiSourceEventAttestor } from "./ci-source-event-attestation.mjs";
+import { verifyCiMutationActor } from "./ci-source-mutation-authorization.mjs";
 
 // ORB-005: CI-only durable SQLite outbox + PostgreSQL shadow invalidation.
 // Normal HTTP login / password mutation paths intentionally do not import it.
@@ -39,6 +40,7 @@ export function initializeCiSourceEpochJournal(sqlite) {
         ('password_reset','disabled','mfa_enrolled','role_revoked')),
       origin_key_id TEXT,
       origin_mac TEXT CHECK(origin_mac IS NULL OR length(origin_mac)=64),
+      actor_id TEXT,
       status TEXT NOT NULL DEFAULT 'pending'
         CHECK(status IN ('pending','reconciled')),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -51,7 +53,7 @@ export function initializeCiSourceEpochJournal(sqlite) {
 
 export function changeCiSourceCredential({
   sqlite, userId, kind, newPassword, injectBeforeCommit=false,
-  attestor,
+  attestor, actorId, actorPassword,
 } = {}) {
   requireFixture();
   requireSqlite(sqlite);
@@ -76,6 +78,13 @@ export function changeCiSourceCredential({
         row.epoch>=Number.MAX_SAFE_INTEGER) {
       sqlite.exec("ROLLBACK");opened=false;return false;
     }
+    const actorMode=process.env.ORBICORE_CI_SYNTHETIC_ACTOR_AUTH==="1";
+    if(actorMode && !verifyCiMutationActor({
+      sqlite,actorId,actorPassword,targetUserId:userId,kind,
+    })){
+      sqlite.exec("ROLLBACK");opened=false;return false;
+    }
+    const eventActorId=actorMode?actorId:null;
     const nextEpoch=row.epoch+1;
     if (kind==="password_reset") {
       const salt=randomBytes(16).toString("hex");
@@ -102,14 +111,16 @@ export function changeCiSourceCredential({
     const signature=attestor?.sign({
       event_id:id,organization_id:identity.organization_id,
       user_id:userId,source_epoch:nextEpoch,reason:kind,
+      ...(eventActorId?{actor_id:eventActorId}:{}),
     });
     sqlite.prepare(
       "INSERT INTO ci_source_credential_outbox("+
       "event_id,organization_id,user_id,source_epoch,reason,"+
-      "origin_key_id,origin_mac,status) "+
-      "VALUES(?,?,?,?,?,?,?,'pending')",
+      "origin_key_id,origin_mac,actor_id,status) "+
+      "VALUES(?,?,?,?,?,?,?,?,'pending')",
     ).run(id,identity.organization_id,userId,nextEpoch,kind,
-      signature?.originKeyId??null,signature?.originMac??null);
+      signature?.originKeyId??null,signature?.originMac??null,
+      eventActorId);
     if (injectBeforeCommit) throw new Error("ci_source_injected_before_commit");
     sqlite.exec("COMMIT");
     opened=false;
@@ -140,7 +151,7 @@ export function createCiSourceEpochReconciler({sqlite,postgres,attestor}={}) {
     // Only the order literal is interpolated. All event data is bound.
     const events=sqlite.prepare(
       "SELECT event_id,organization_id,user_id,source_epoch,reason,"+
-      "origin_key_id,origin_mac "+
+      "origin_key_id,origin_mac,actor_id "+
       "FROM ci_source_credential_outbox WHERE status='pending' "+
       "ORDER BY sequence "+(order==="desc"?"DESC":"ASC")+" LIMIT ?",
     ).all(limit);

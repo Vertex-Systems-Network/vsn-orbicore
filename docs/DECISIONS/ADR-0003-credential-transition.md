@@ -54,6 +54,10 @@ Transitions must be durable, monotonic, tenant-scoped and observable. Retain a r
 
 [Source event attestor](../../apps/api/ci-source-event-attestation.mjs), [keyed failure-audit helper](../../apps/api/ci-keyed-auth-failure-audit.mjs) and [13-job hosted evidence](../TEST_EVIDENCE/2026-11-23-orb-005-ci-hmac-auth-provenance.md) now test externally injected HMAC-SHA256 with rotating keys, typed/tenant-bound signed source event claims, tamper denial before PG reconciliation, and pseudonymized, tenant-independent generic rejected-login evidence including key-rotation fail-closed behavior. These do **not** prove authorized real actor provenance, source event completeness (deletion protection), actual HTTP response timing parity, distributed throttle, key custody, or a production migration. No PG authentication read routing or real account changes.
 
+## CI-only actor authorization and independent source witness (2026-11-23)
+
+A [synthetic mutation actor authorization](../../apps/api/ci-source-mutation-authorization.mjs) helper and [private PostgreSQL witness migration 013](../../db/migrations/013_postgres_ci_source_witness.sql) have [hosted 14-job evidence](../TEST_EVIDENCE/2026-11-23-orb-005-ci-actor-witness.md). Versioned v2 source HMAC binds actor identity to event/tenant/source epoch, while a separate PG table retains metadata with an append-once restricted non-owner role. The trusted CI inspector identifies deleted witnessed events, missing/unmatched witnesses, malformed signatures and local source epoch regressions. **Not closure:** signer compromise, event suppression before external witness, coordinated source epoch+outbox tampering, privileged target owner, actor MFA, externally auditable key custody, actual HTTP integration and operator-approved cutover remain open.
+
 ## Acceptance and adversarial evidence gate
 
 - [x] Exact legacy KDF outputs reproduced using synthetic Unicode/ASCII/empty-password fixtures, UTF-8 hex-text versus decoded salt checks, fixed parameters and timing-safe comparison; [CI evidence](../TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md).

@@ -1,0 +1,11 @@
+# ORB-005 — Actor authorization and independent CI source-event witness
+
+**Reviewed:** 2026-11-23. These references informed a **synthetic-only** extension of ADR-0003 and are not production assurance.
+
+- SQLite [Transaction](https://www.sqlite.org/lang_transaction.html) and [Isolation](https://www.sqlite.org/isolation.html) describe `BEGIN IMMEDIATE` transaction isolation and atomic source mutation+outbox write. SQLite and PostgreSQL still have **no shared atomic commit** in this design; witness capture is after the SQLite commit.
+- PostgreSQL 16 [RLS](https://www.postgresql.org/docs/16/ddl-rowsecurity.html) describes `ENABLE`/`FORCE ROW LEVEL SECURITY` and default-deny behavior when no row policies apply. The synthetic witness table is unqueryable and undeletable by its non-owner writer role.
+- PostgreSQL 16 [CREATE FUNCTION](https://www.postgresql.org/docs/16/sql-createfunction.html) requires care with `SECURITY DEFINER`; the witness function uses an explicitly safe `search_path`, schema-qualified relations, limited EXECUTE grant, and no raw verifier columns.
+- `CI synthetic actor authorization` requires a fresh legacy SQLite password proof, tenant equality, and narrowly chosen actor role/target rules. The actor's ID is included in a signed v2 event MAC so substituting an actor in a stored event invalidates the signature, but an injected source signing key alone cannot establish the *real* actor's consent or MFA authorization.
+- The PG witness records separately preserve event metadata after SQLite source mutations. The trusted CI inspector cross-checks every source epoch from 2 through current and verifies matching MACs, actor IDs and witness rows. A deleted **already witnessed** event is detectable; an entirely absent **unwitnessed** event plus a simultaneously falsified SQLite source epoch is outside the proof. PG privileged writers, HMAC signer/key compromise, source event withholding and external off-host custody remain open.
+
+**Needed before production:** independently trusted append-only/WORM witness outside the source/target DB administration boundary; vetted key custody and rotation/recovery; authorization at actual HTTP mutation handlers with verified MFA; distributed, privacy-preserving auth throttling; crash-safe reconciliation and time-bounded fail-closed cutover gates; off-host database and key restore drills.
