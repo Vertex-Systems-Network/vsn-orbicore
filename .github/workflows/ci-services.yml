@@ -11,6 +11,7 @@ on:
       - "apps/api/postgres-jobs.mjs"
       - "apps/api/transactional-outbox.mjs"
       - "apps/api/synthetic-redis-worker.mjs"
+      - "apps/api/synthetic-worker-runner.mjs"
       - "scripts/verify-pg-redis-outbox.mjs"
       - "scripts/fixtures/hold-synthetic-worker.mjs"
       - "package.json"
