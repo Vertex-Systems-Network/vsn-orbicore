@@ -168,7 +168,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#6",
         "AI_Native_Multi_Hosting_Master_Prompt.md#16"
       ],
-      "commit_hash": "037e7bd9e00067db6a3f5474099e9598f2472102",
+      "commit_hash": "77c8d33d2d606d977d7715423e6a1c5f44219152",
       "evidence_paths": [
         "db/migrations/001_postgres_job_leases.sql",
         "scripts/verify-leased-jobs.sh",
@@ -193,15 +193,17 @@
         "scripts/verify-pg-redis-outbox.mjs",
         "scripts/fixtures/hold-synthetic-worker.mjs",
         "tests/transactional-outbox.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-poison-signal-quarantine.md"
       ],
       "blockers": [
-        "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification."
+        "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification.",
+        "PR #34 20-job hosted PostgreSQL16/Redis7 synthetic signal rejection-before-XACK, DB-fault PEL recovery and failed-ACK replay passed at 77c8d33d; full signed producer identity, durable low-privilege worker role, real DLQ inspection/redrive policy, off-host audit and live provider authorization still not verified."
       ],
       "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T08:24:00Z",
+      "last_updated": "2026-11-23T00:00:00Z",
       "verification_level": "integration_tested",
       "blocker_type": "technical"
     },

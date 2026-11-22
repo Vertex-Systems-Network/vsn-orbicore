@@ -16,6 +16,9 @@ on:
       - "apps/api/transactional-outbox.mjs"
       - "apps/api/synthetic-redis-worker.mjs"
       - "apps/api/synthetic-worker-runner.mjs"
+      - "apps/api/synthetic-worker-backoff.mjs"
+      - "tests/synthetic-worker-backoff.test.mjs"
+      - "scripts/verify-postgres-ci-signal-quarantine.mjs"
       - "apps/api/postgres-identity-core.mjs"
       - "apps/api/postgres-synthetic-gateway.mjs"
       - "apps/api/postgres-synthetic-http-harness.mjs"
@@ -1185,5 +1188,69 @@ jobs:
         with:
           name: orb-016-isolated-pg16-restore-summary
           path: .data/ci/pg-isolated-recovery/evidence.json
+          if-no-files-found: ignore
+          retention-days: 14
+  postgres-ci-synthetic-poison-signal-quarantine:
+    name: PG16/Redis7 invalid wakeup signal quarantine and ACK crash gap
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-poison-signal-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-poison-signal-only
+      ORBICORE_CI_REDIS_URL: redis://127.0.0.1:6379
+      ORBICORE_CI_SYNTHETIC_SIGNAL_REJECTIONS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply synthetic PostgreSQL tables and private quarantine migration twice
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/014_postgres_ci_signal_rejections.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/014_postgres_ci_signal_rejections.sql
+      - name: Verify rejection persistence precedes Redis ACK and reclaim gap
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-ci-signal-quarantine.mjs > .data/ci/orb-004-poison-signal-proof.json
+      - name: Upload nonsecret metadata-only fault proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-004-poison-signal-quarantine-proof
+          path: .data/ci/orb-004-poison-signal-proof.json
           if-no-files-found: ignore
           retention-days: 14

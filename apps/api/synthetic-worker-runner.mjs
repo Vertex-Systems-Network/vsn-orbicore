@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { createClient } from "redis";
 import { createSyntheticRedisJobRunner } from "./synthetic-redis-worker.mjs";
+import { syntheticCycleBackoffMs } from "./synthetic-worker-backoff.mjs";
 import { createPostgresJobRepository } from "./postgres-jobs.mjs";
 
 // Run separately from the HTTP API. This worker executes only *synthetic*
@@ -65,7 +66,8 @@ try {
         failedCycles += 1;
         console.error("synthetic_job_cycle_failed");
       }
-      await delay(Math.min(5000, 250 * (1 + failedCycles)));
+      if (stopping) break;
+      await delay(syntheticCycleBackoffMs(failedCycles));
     }
   }
 } finally {
