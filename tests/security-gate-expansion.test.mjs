@@ -63,7 +63,7 @@ test("ORB-010: scope includes docs, root dotenv, workflow and service files; fin
     const npmToken = "//registry.npmjs.org/:_authToken=" + "n".repeat(40);
     write("docs/OPERATION.md", "Bearer " + githubPat);
     write(".github/workflows/deploy.yml", "AWS_KEY=" + awsKey);
-    write(".env.production", "NPM_CONFIG=" + npmToken);
+    write(".env.production", npmToken);
     write("README.md", "Public documentation only");
     const report = runSupplyChainGate(root);
     assert.equal(report.passed, false);
