@@ -126,15 +126,58 @@ export function createSyntheticRedisJobRunner({
     if (count !== 1) throw new Error("redis_ack_failed");
   }
 
+  async function recordRejectedSignal(redisId, reason) {
+    // Never store the untrusted raw Redis fields, job id, password, tenant
+    // spoofing string or stream payload. The ID is server-generated metadata.
+    const result = await pool.query(
+      "INSERT INTO job_signal_rejections " +
+      "(organization_id, redis_entry_id, reason, worker_id) " +
+      "VALUES ($1, $2, $3, $4) " +
+      "ON CONFLICT (organization_id, redis_entry_id) DO UPDATE " +
+      "SET occurrences = job_signal_rejections.occurrences + 1, " +
+      "last_seen_at = clock_timestamp() " +
+      "WHERE job_signal_rejections.reason = EXCLUDED.reason " +
+      "RETURNING redis_entry_id",
+      [organizationId, redisId, reason, workerId],
+    );
+    if (!result.rows[0]) throw new Error("signal_rejection_reason_conflict");
+  }
+
+  async function inspectRejectedSignals({ limit = 20 } = {}) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new RangeError("rejection inspection limit must be in [1,100]");
+    }
+    const result = await pool.query(
+      "SELECT reason, occurrences, first_seen_at, last_seen_at " +
+      "FROM job_signal_rejections WHERE organization_id = $1 " +
+      "ORDER BY last_seen_at DESC, redis_entry_id DESC LIMIT $2",
+      [organizationId, limit],
+    );
+    return result.rows.map((row) => ({
+      reason: row.reason, occurrences: row.occurrences,
+      firstSeenAt: row.first_seen_at, lastSeenAt: row.last_seen_at,
+    }));
+  }
+
   async function processEvent(event) {
     const { redisId, fields } = event;
     if (fields.organization_id !== organizationId || !IDENTIFIER.test(fields.job_id ?? "")) {
-      await ack(redisId); // Invalid signal: never execute or take ownership.
+      const reason = fields.organization_id !== organizationId
+        ? "tenant_mismatch" : "invalid_job_id";
+      await recordRejectedSignal(redisId, reason);
+      // No ACK until the durable PG reason row has committed. An outage
+      // leaves the Redis PEL entry available for safe claim/retry.
+      await ack(redisId);
       return { status: "rejected_invalid_signal" };
     }
     const jobId = fields.job_id;
     let record = await repository.getJob({ organizationId, id: jobId });
-    if (!record || record.status === "completed" || record.status === "failed") {
+    if (!record) {
+      await recordRejectedSignal(redisId, "missing_job");
+      await ack(redisId);
+      return { status: "rejected_missing_job" };
+    }
+    if (record.status === "completed" || record.status === "failed") {
       await ack(redisId);
       return { status: "already_terminal", jobId };
     }
@@ -223,6 +266,7 @@ export function createSyntheticRedisJobRunner({
   }
 
   return Object.freeze({
-    stream, group: GROUP, ensureGroup, publishOne, reconcileUnfinished, consumeOne,
+    stream, group: GROUP, ensureGroup, publishOne, reconcileUnfinished,
+    consumeOne, inspectRejectedSignals,
   });
 }
