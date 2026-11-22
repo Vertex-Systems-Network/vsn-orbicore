@@ -22,6 +22,14 @@ REVOKE ALL PRIVILEGES ON TABLE public.jobs, public.job_outbox,
   FROM orbicore_synthetic_submitter;
 GRANT USAGE ON SCHEMA public TO orbicore_synthetic_submitter;
 
+-- Timestamp ties must never choose the wrong audit head. Existing imported
+-- rows acquire a monotonically assigned position; their old chain ordering
+-- still requires an independent migration/cutover proof.
+ALTER TABLE public.audit_events
+  ADD COLUMN IF NOT EXISTS audit_sequence BIGINT GENERATED ALWAYS AS IDENTITY;
+CREATE UNIQUE INDEX IF NOT EXISTS audit_events_sequence_unique
+  ON public.audit_events(audit_sequence);
+
 -- Only the owner of this function is allowed to touch the underlying tables.
 -- It must be owned by the controlled database schema owner, never an untrusted
 -- or caller-controlled role. search_path is fixed; every table is qualified.
@@ -130,7 +138,7 @@ BEGIN
   SELECT a.entry_hash INTO v_previous
   FROM public.audit_events AS a
   WHERE a.organization_id = p_organization_id
-  ORDER BY a.created_at DESC, a.id DESC
+  ORDER BY a.audit_sequence DESC
   LIMIT 1;
 
   IF FOUND AND (v_previous IS NULL OR v_previous !~ '^[0-9a-f]{64}$') THEN
