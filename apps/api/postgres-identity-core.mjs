@@ -3,11 +3,13 @@ import { verifyAuditChain } from "./audit.mjs";
 // Deliberately limited offline copy of a synthetic SQLite identity snapshot.
 // It does not switch HTTP authentication, migrate MFA/passkeys, or write to an
 // existing PostgreSQL destination. The source stays unchanged.
-const UNSUPPORTED = [
+const AUTH_TABLES = [
   "passkeys", "webauthn_challenges", "authenticators", "recovery_codes",
   "login_challenges", "notification_outbox", "recovery_contacts",
-  "secret_references", "bootstrap_tokens",
 ];
+const UNSUPPORTED = [...AUTH_TABLES, "secret_references", "bootstrap_tokens"];
+const FIXTURE_ONLY_UNSUPPORTED = ["secret_references", "bootstrap_tokens"];
+const TEST_ADDRESS = /@[^\s@]+\.(test|invalid)$/i;
 const SQL_TABLES = [
   "organizations", "users", "accounts", "sites", "sessions", "audit_events",
 ];
@@ -52,9 +54,11 @@ export function createPostgresIdentityCoreReader(database) {
   });
 }
 
-function verifySyntheticSource(sqlite) {
+function verifySyntheticSource(sqlite, includeAuthState = false) {
   const scoped = {};
-  for (const table of SQL_TABLES) scoped[table] = sqlite.prepare("SELECT * FROM " + table).all();
+  for (const table of includeAuthState ? [...SQL_TABLES, ...AUTH_TABLES] : SQL_TABLES) {
+    scoped[table] = sqlite.prepare("SELECT * FROM " + table).all();
+  }
 
   if (scoped.users.length === 0) throw new Error("identity_snapshot_requires_bootstrapped_user");
   // Jobs and their execution history are outside this *identity core* copy.
@@ -65,12 +69,37 @@ function verifySyntheticSource(sqlite) {
   if (scoped.accounts.some((row) => row.source !== "mock_fixture")) {
     throw new Error("live_account_copy_refused");
   }
-  if (scoped.users.some((row) => row.mfa_enabled !== 0)) {
+  if (!includeAuthState && scoped.users.some((row) => row.mfa_enabled !== 0)) {
     throw new Error("mfa_enabled_copy_not_supported");
   }
-  for (const table of UNSUPPORTED) {
+  for (const table of includeAuthState ? FIXTURE_ONLY_UNSUPPORTED : UNSUPPORTED) {
     if (sqlite.prepare("SELECT 1 FROM " + table + " LIMIT 1").get()) {
       throw new Error("unsupported_auth_state:" + table);
+    }
+  }
+  if (includeAuthState) {
+    // Hard fixture boundary: never copy real user identities, encrypted MFA
+    // secrets or delivery recipients through this CI-only training adapter.
+    if (process.env.GITHUB_ACTIONS !== "true" ||
+        process.env.ORBICORE_CI_SYNTHETIC_AUTH_IMPORT !== "1") {
+      throw new Error("synthetic_auth_import_ci_gate_required");
+    }
+    if (scoped.users.some((row) => !TEST_ADDRESS.test(row.email))) {
+      throw new Error("non_fixture_user_email_refused");
+    }
+    if (scoped.authenticators.some((row) => !row.encrypted_secret.startsWith("ci-fixture-encrypted:")) ||
+        scoped.passkeys.some((row) => !row.public_key.startsWith("ci-fixture-credential:"))) {
+      throw new Error("non_fixture_auth_material_refused");
+    }
+    if (scoped.recovery_contacts.some((row) => !TEST_ADDRESS.test(row.address)) ||
+        scoped.notification_outbox.some((row) => !TEST_ADDRESS.test(row.recipient))) {
+      throw new Error("non_fixture_notification_recipient_refused");
+    }
+    for (const user of scoped.users) {
+      if (user.mfa_enabled && !scoped.authenticators.some((row) =>
+        row.user_id === user.id && row.enabled === 1)) {
+        throw new Error("enabled_mfa_missing_authenticator");
+      }
     }
   }
   const normalizedEmails = new Set();
@@ -89,8 +118,12 @@ function verifySyntheticSource(sqlite) {
   return scoped;
 }
 
-export async function copySyntheticIdentitySnapshot({ sqlite, postgres, consent = null }) {
-  if (consent !== "fixture_only_offline_copy") {
+export async function copySyntheticIdentitySnapshot({
+  sqlite, postgres, consent = null, includeAuthState = false,
+}) {
+  if (includeAuthState
+    ? consent !== "fixture_only_auth_offline_copy"
+    : consent !== "fixture_only_offline_copy") {
     throw new Error("explicit_synthetic_offline_copy_required");
   }
   if (!sqlite || typeof sqlite.prepare !== "function" || typeof sqlite.exec !== "function") {
@@ -104,17 +137,25 @@ export async function copySyntheticIdentitySnapshot({ sqlite, postgres, consent 
   let connection;
   let inTransaction = false;
   try {
-    const source = verifySyntheticSource(sqlite);
+    const source = verifySyntheticSource(sqlite, includeAuthState);
     connection = await postgres.connect();
     await connection.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
     inTransaction = true;
     await connection.query("SELECT pg_advisory_xact_lock(564221, 5)");
+    const copiedTables = includeAuthState ? [...SQL_TABLES, ...AUTH_TABLES] : SQL_TABLES;
+    // A synthetic auth snapshot must never land in a partially initialized
+    // production-shaped target whose jobs, secrets or WP state it would not
+    // migrate. This is stricter than the original core-only proof.
+    const guardedTables = includeAuthState
+      ? [...copiedTables, "bootstrap_tokens", "jobs", "job_outbox",
+        "secret_references", "wp_site_state"]
+      : copiedTables;
     const occupied = await connection.query(
-      "SELECT " + SQL_TABLES.map((table) =>
+      "SELECT " + guardedTables.map((table) =>
         "(SELECT COUNT(*) FROM " + table + ") AS " + table,
       ).join(", "),
     );
-    if (SQL_TABLES.some((table) => Number(occupied.rows[0][table]) !== 0)) {
+    if (guardedTables.some((table) => Number(occupied.rows[0][table]) !== 0)) {
       throw new Error("nonempty_postgres_target_refused");
     }
 
@@ -170,13 +211,75 @@ export async function copySyntheticIdentitySnapshot({ sqlite, postgres, consent 
           row.prev_hash, row.entry_hash],
       );
     }
+    if (includeAuthState) {
+      const tenantForUser = new Map(source.users.map((row) =>
+        [row.id, row.organization_id]));
+      const insert = async (table, columns, values) => {
+        // All table/column identifiers are static declarations below.
+        const sql = "INSERT INTO " + table + " (" + columns.join(", ") +
+          ") VALUES (" + values.map((_, i) => "$" + (i + 1)).join(", ") + ")";
+        await connection.query(sql, values);
+      };
+      const org = (row) => {
+        const organizationId = tenantForUser.get(row.user_id);
+        if (!organizationId) throw new Error("orphaned_auth_user_refused");
+        return organizationId;
+      };
+      for (const row of source.passkeys) {
+        await insert("passkeys", [
+          "credential_id","organization_id","user_id","public_key","counter",
+          "transports_json","device_type","backed_up","created_at","last_used_at",
+        ], [row.credential_id,org(row),row.user_id,row.public_key,row.counter,
+          row.transports_json,row.device_type,Boolean(row.backed_up),
+          row.created_at,row.last_used_at]);
+      }
+      for (const row of source.webauthn_challenges) {
+        await insert("webauthn_challenges", [
+          "handle_hash","organization_id","challenge","user_id","purpose",
+          "expires_at","created_at",
+        ], [row.handle_hash,org(row),row.challenge,row.user_id,row.purpose,
+          row.expires_at,row.created_at]);
+      }
+      for (const row of source.authenticators) {
+        await insert("authenticators", [
+          "user_id","organization_id","encrypted_secret","enabled",
+          "pending_expires_at","last_totp_step",
+        ], [row.user_id,org(row),row.encrypted_secret,Boolean(row.enabled),
+          row.pending_expires_at,row.last_totp_step]);
+      }
+      for (const row of source.recovery_codes) {
+        await insert("recovery_codes", [
+          "user_id","organization_id","code_hash","used_at",
+        ], [row.user_id,org(row),row.code_hash,row.used_at]);
+      }
+      for (const row of source.login_challenges) {
+        await insert("login_challenges", [
+          "token_hash","organization_id","user_id","expires_at","created_at",
+        ], [row.token_hash,org(row),row.user_id,row.expires_at,row.created_at]);
+      }
+      for (const row of source.notification_outbox) {
+        await insert("notification_outbox", [
+          "id","organization_id","user_id","event","recipient","status",
+          "attempts","last_error","idempotency_key","created_at","updated_at",
+        ], [row.id,org(row),row.user_id,row.event,row.recipient,row.status,
+          row.attempts,row.last_error,row.idempotency_key,row.created_at,row.updated_at]);
+      }
+      for (const row of source.recovery_contacts) {
+        await insert("recovery_contacts", [
+          "id","organization_id","user_id","channel","address","verified_at",
+          "verification_token_hash","verification_expires_at","created_at",
+        ], [row.id,org(row),row.user_id,row.channel,row.address,
+          row.verified_at,row.verification_token_hash,row.verification_expires_at,
+          row.created_at]);
+      }
+    }
     const result = await connection.query(
-      "SELECT " + SQL_TABLES.map((table) =>
+      "SELECT " + copiedTables.map((table) =>
         "(SELECT COUNT(*) FROM " + table + ") AS " + table,
       ).join(", "),
     );
     const counts = {};
-    for (const table of SQL_TABLES) {
+    for (const table of copiedTables) {
       counts[table] = source[table].length;
       if (Number(result.rows[0][table]) !== counts[table]) {
         throw new Error("postgres_snapshot_count_mismatch");
@@ -192,7 +295,10 @@ export async function copySyntheticIdentitySnapshot({ sqlite, postgres, consent 
     }
     await connection.query("COMMIT");
     inTransaction = false;
-    return Object.freeze({ scope: "synthetic_core_only", counts, target: "postgres" });
+    return Object.freeze({
+      scope: includeAuthState ? "synthetic_auth_state_only" : "synthetic_core_only",
+      counts, target: "postgres",
+    });
   } catch (error) {
     if (connection && inTransaction) {
       try { await connection.query("ROLLBACK"); } catch { /* original failure wins */ }
@@ -202,4 +308,9 @@ export async function copySyntheticIdentitySnapshot({ sqlite, postgres, consent 
     if (connection) connection.release();
     sqlite.exec("ROLLBACK"); // Release snapshot lock; no source writes.
   }
+}
+
+/** Fixture-gated atomic offline import of core + MFA/passkey/recovery state. */
+export function copySyntheticIdentityWithAuthSnapshot({ sqlite, postgres, consent = null }) {
+  return copySyntheticIdentitySnapshot({ sqlite, postgres, consent, includeAuthState: true });
 }

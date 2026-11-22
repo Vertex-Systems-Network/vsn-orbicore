@@ -243,7 +243,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#12",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "8a96b2357ec3cbb6fa5a0725d0daa62a33900c90",
+      "commit_hash": "73d72c60bd1e4a223278c9712becf0803ec34e67",
       "evidence_paths": [
         "docs/DATA_MODEL.md",
         "docs/DECISIONS/ADR-0002-authentication.md",
@@ -256,10 +256,14 @@
         "apps/api/postgres-identity-core.mjs",
         "scripts/verify-postgres-identity-core.mjs",
         "tests/postgres-identity-core.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-005-postgres-identity-core.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-postgres-identity-core.md",
+        "db/migrations/004_postgres_auth_state.sql",
+        "scripts/verify-postgres-auth-state.mjs",
+        "tests/postgres-auth-state.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-auth-state.md"
       ],
       "blockers": [
-        "Hosted PostgreSQL core identity migration, scoped read-only tenant RLS, column-level password/session-hash denials, audit-chain preservation, synthetic snapshot fail-closed guards and PostgreSQL session-reader validation passed (55 project tests). Existing app HTTP authentication/audit still uses SQLite; full v7 MFA/passkeys/recovery/feature tables, trusted DB runtime role and write isolation, synchronized cutover, live contact delivery and provider authorization remain unimplemented."
+        "Hosted Postgres schema 004 and fixture-only atomic core+MFA/passkey/recovery/notification snapshot passed with tenant composite FKs and secret-denying read RLS; 57 tests and service CI passed at implementation head. No production encryption/key migration, complete SQLite v7 feature/secret data parity, runtime PostgreSQL auth/DB write role/RLS, atomic cross-store cutover, distributed revocation, live notification or hosting provider authorization."
       ],
       "started_at": null,
       "completed_at": null,
