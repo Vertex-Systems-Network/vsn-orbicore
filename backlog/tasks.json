@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T06:56:59Z",
+  "updated_at": "2026-11-22T07:02:49Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -149,7 +149,7 @@
       "dependencies": [
         "ORB-002"
       ],
-      "status": "blocked",
+      "status": "ready",
       "owner_agent": "codex",
       "assumptions": [
         "Docker or installable local PostgreSQL/Redis will be available in a later environment"
@@ -170,15 +170,13 @@
       ],
       "commit_hash": null,
       "evidence_paths": [],
-      "blockers": [
-        "Docker/PostgreSQL/Redis were unavailable in the previously inspected environment; GitHub Actions service-container feasibility remains untested."
-      ],
+      "blockers": [],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-22T07:02:49Z",
       "verification_level": "none",
-      "blocker_type": "environment"
+      "blocker_type": null
     },
     {
       "id": "ORB-005",
@@ -703,7 +701,7 @@
       "dependencies": [
         "ORB-002"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -721,15 +719,23 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
-      "blocker_type": null,
-      "verification_level": "none",
-      "started_at": null,
+      "commit_hash": "2d46a0bac12f7631476fb72ad69529465a181e2f",
+      "evidence_paths": [
+        ".github/workflows/ci-services.yml",
+        "scripts/verify-service-containers.sh",
+        "db/postgres-schema.sql",
+        "docker-compose.yml",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md"
+      ],
+      "blockers": [
+        "Hosted Postgres/Redis service-level checks passed. Complete PostgreSQL v7 schema/application adapter, durable Redis worker, migration/restart recovery and Docker Compose persistence remain unverified."
+      ],
+      "blocker_type": "technical",
+      "verification_level": "integration_tested",
+      "started_at": "2026-11-22T07:01:30Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-10"
+      "last_updated": "2026-11-22T07:02:49Z"
     },
     {
       "id": "ORB-017",

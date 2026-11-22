@@ -1,5 +1,14 @@
 # Handoff
 
+## 2026-11-22 — ORB-016 hosted Postgres/Redis service parity (PR #9)
+
+- CI tested head `2d46a0bac12f7631476fb72ad69529465a181e2f` in [run 44996391832](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44996391832): passed PostgreSQL 16.16 and Redis 7.4.12 service container start, partial schema twice, synthetic job persistence across independent SQL sessions, FK/idempotency constraints and Redis SET/GET/TTL/DEL. Artifact [14743823737](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44996391832/artifacts/14743823737). Evidence `docs/TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md`.
+- First attempt [44996321561](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44996321561) was blocked by missing Redis CLI on GitHub runner; workflow now installs `redis-tools`.
+- `docker-compose.yml` now defines named Postgres/Redis data volumes; the Compose stack itself has **not** run. `db/postgres-schema.sql` explicitly declares partial target schema, not SQLite v7 parity.
+- **Do not mark ORB-016 verified:** real app PostgreSQL adapter, Redis durable worker, schema migrations, worker restart/recovery and live Compose data persistence remain absent. Task stays testing with technical blockers. PR #9 docs commits require fresh CI before merge.
+- PR [#8](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/8) merged into `main` as `2944dda70a332ece1a43225a904c58a5012fb421`.
+- **Next:** ORB-004 / ORB-016 actual production-shaped DB and queue app slice with service-backed recovery tests, then ORB-018 accessibility and remaining security gates.
+
 ## 2026-11-22 — ORB-015 supply-chain gates verified (PR #8)
 
 - Commit tested: `5e0cf94130e36c803a94c61b8d9f8a1828d13670`. GitHub [PR CI 44995631637](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995631637) and [branch CI 44995614820](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995614820) succeeded, including `npm test` (45 passing on final fix SHA `011317d2be346868356e2956e95676a6bea347c6`; earlier supply-chain head had 44 passing), `npm run lint`, `npm run security:check`, `npm audit --audit-level=high` (0 vulnerabilities reported), build, smoke and doctor.

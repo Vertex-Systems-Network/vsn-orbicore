@@ -5,6 +5,7 @@ on:
     paths:
       - "docker-compose.yml"
       - "db/**"
+      - "scripts/verify-service-containers.sh"
       - ".github/workflows/ci-services.yml"
   workflow_dispatch:
 permissions:
@@ -37,11 +38,21 @@ jobs:
           --health-retries=10
     steps:
       - uses: actions/checkout@v4
-      - name: Apply PostgreSQL DDL parity schema
+      - name: Install Redis CLI for hosted service checks
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-tools
+      - name: Verify hosted service schema, constraints and Redis I/O
         env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: orbicore
+          PGDATABASE: orbicore
           PGPASSWORD: ci-test-password
-        run: |
-          psql -h 127.0.0.1 -U orbicore -d orbicore -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
-          psql -h 127.0.0.1 -U orbicore -d orbicore -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
-      - name: Verify Redis connectivity
-        run: redis-cli -h 127.0.0.1 -p 6379 ping
+        run: bash scripts/verify-service-containers.sh
+      - name: Upload scoped service-parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-016-hosted-service-parity
+          path: .data/ci/orb-016-service-parity.json
+          if-no-files-found: ignore
+          retention-days: 14
