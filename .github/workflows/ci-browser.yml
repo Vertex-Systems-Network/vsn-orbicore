@@ -27,3 +27,11 @@ jobs:
           ORBICORE_BOOTSTRAP_TOKEN: ci-browser-bootstrap-token-32bytes
           ORBICORE_MFA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
         run: node scripts/browser-verify.mjs
+      - name: Upload non-sensitive browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-012-browser-evidence
+          path: .data/browser-evidence/
+          if-no-files-found: ignore
+          retention-days: 14
