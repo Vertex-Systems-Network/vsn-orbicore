@@ -10,7 +10,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+$/;
 const CODES = /^[A-Za-z0-9_-]{12,128}$/;
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 
-export function createPostgresCiLoginAdapter(pool) {
+export function createPostgresCiLoginAdapter(pool, { audited = false } = {}) {
   if (process.env.GITHUB_ACTIONS !== "true" ||
       process.env.ORBICORE_CI_SYNTHETIC_PG_LOGIN !== "1") {
     throw new Error("postgres_fixture_login_ci_only");
@@ -18,6 +18,20 @@ export function createPostgresCiLoginAdapter(pool) {
   if (!pool || typeof pool.connect !== "function") {
     throw new TypeError("A restricted PostgreSQL pool is required");
   }
+  if (typeof audited !== "boolean") {
+    throw new TypeError("audited must be a boolean");
+  }
+  // Migrations through 008 keep the original CI-only fixture verifier.
+  // 009 revokes that role's unaudited EXECUTE grants; opt in only when
+  // hosted integration has applied 009 and verified its audit chain.
+  const fn = Object.freeze({
+    login: audited ? "orbicore_ci_password_login_audited"
+      : "orbicore_ci_password_login",
+    mfa: audited ? "orbicore_ci_finish_recovery_mfa_audited"
+      : "orbicore_ci_finish_recovery_mfa",
+    logout: audited ? "orbicore_ci_revoke_session_audited"
+      : "orbicore_ci_revoke_session",
+  });
 
   async function restricted(sql, args) {
     const connection = await pool.connect();
@@ -51,7 +65,7 @@ export function createPostgresCiLoginAdapter(pool) {
       const token = randomBytes(32).toString("base64url");
       const row = await restricted(
         "SELECT accepted, needs_mfa, tenant_id, rate_limited " +
-          "FROM public.orbicore_ci_password_login($1,$2,$3)",
+          "FROM public." + fn.login + "($1,$2,$3)",
         [email.trim().toLowerCase(),password,sha(token)],
       );
       if (!row || row.accepted !== true) {
@@ -74,7 +88,7 @@ export function createPostgresCiLoginAdapter(pool) {
       }
       const newToken = randomBytes(32).toString("base64url");
       const row = await restricted(
-        "SELECT public.orbicore_ci_finish_recovery_mfa($1,$2,$3) AS accepted",
+        "SELECT public." + fn.mfa + "($1,$2,$3) AS accepted",
         [sha(token),sha(newToken),recoveryCodeHash(code)],
       );
       return row?.accepted === true
@@ -85,7 +99,7 @@ export function createPostgresCiLoginAdapter(pool) {
     async revoke({ token }) {
       if (typeof token !== "string" || !TOKEN.test(token)) return false;
       const row = await restricted(
-        "SELECT public.orbicore_ci_revoke_session($1) AS revoked",
+        "SELECT public." + fn.logout + "($1) AS revoked",
         [sha(token)],
       );
       return row?.revoked === true;
