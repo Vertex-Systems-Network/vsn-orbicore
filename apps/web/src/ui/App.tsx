@@ -279,12 +279,16 @@ function JobRow({ job }: { job: Job }) {
 
 export function App() {
   const [actor, setActor] = useState<User | null>(null);
+  const canMutate = actor !== null && ["owner", "admin", "operator"].includes(actor.role);
   const [authLoading, setAuthLoading] = useState(true);
   const [bootstrapRequired, setBootstrapRequired] = useState(false);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
   const [allSites, setAllSites] = useState<Site[]>([]);
+  const [siteLoading, setSiteLoading] = useState(false);
+  const [siteError, setSiteError] = useState<string | null>(null);
+  const [siteRequestVersion, setSiteRequestVersion] = useState(0);
   const [query, setQuery] = useState("");
   const [activeNav, setActiveNav] = useState<NavSection>("Overview");
   const [loading, setLoading] = useState(true);
@@ -296,13 +300,15 @@ export function App() {
   const loadOverview = useCallback(async () => {
     try {
       const [overviewRes, sitesRes] = await Promise.all([fetch("/api/overview"), fetch("/api/sites")]);
-      if (!overviewRes.ok) throw new Error("The local API could not load the overview.");
-      const data = (await overviewRes.json()) as Overview;
+      if (!overviewRes.ok || !sitesRes.ok) throw new Error("The local API could not load the complete workspace snapshot.");
+      // Publish one consistent snapshot only after both requests succeed; preserve the
+      // last successful view (with a visible stale warning) if either read fails.
+      const [data, sitesData] = await Promise.all([
+        overviewRes.json() as Promise<Overview>,
+        sitesRes.json() as Promise<{ sites: Site[] }>,
+      ]);
       setOverview(data);
-      if (sitesRes.ok) {
-        const sitesData = (await sitesRes.json()) as { sites: Site[] };
-        setAllSites(sitesData.sites);
-      }
+      setAllSites(sitesData.sites);
       setError(null);
       setSelectedAccountId((current) => current ?? data.accounts[0]?.id ?? null);
     } catch (cause) {
@@ -355,14 +361,18 @@ export function App() {
   useEffect(() => { if (actor) void loadOverview(); }, [actor, loadOverview]);
 
   useEffect(() => {
-    if (!selectedAccountId) { setSites([]); return; }
+    setSites([]); // Never show the previous account's rows under a new account.
+    setSiteError(null);
+    if (!selectedAccountId) { setSiteLoading(false); return; }
     let cancelled = false;
+    setSiteLoading(true);
     fetch(`/api/accounts/${encodeURIComponent(selectedAccountId)}/sites`)
-      .then((response) => { if (!response.ok) throw new Error("Could not load websites."); return response.json() as Promise<{ sites: Site[] }>; })
+      .then((response) => { if (!response.ok) throw new Error("Could not load this account's websites."); return response.json() as Promise<{ sites: Site[] }>; })
       .then((data) => { if (!cancelled) setSites(data.sites); })
-      .catch(() => { if (!cancelled) setSites([]); });
+      .catch(() => { if (!cancelled) setSiteError("This account's websites could not be loaded. This is not an empty inventory."); })
+      .finally(() => { if (!cancelled) setSiteLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedAccountId, overview?.counts.sites]);
+  }, [selectedAccountId, overview?.counts.sites, siteRequestVersion]);
 
   useEffect(() => {
     if (!refreshing || !overview) return;
@@ -378,14 +388,24 @@ export function App() {
 
   const runRefresh = async (accountId?: string) => {
     if (!overview || refreshing) return;
+    if (!canMutate) {
+      setError("Your role does not permit inventory refresh. Ask an operator or administrator.");
+      return;
+    }
     setRefreshing(true);
     try {
       const ids = accountId ? [accountId] : overview.accounts.map((account) => account.id);
-      await Promise.all(ids.map((id) => fetch("/api/jobs/refresh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accountId: id }) })));
+      if (ids.length === 0) throw new Error("No hosting accounts are available to refresh.");
+      const responses = await Promise.all(ids.map((id) => fetch("/api/jobs/refresh", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accountId: id }),
+      })));
+      if (responses.some((response) => !response.ok)) {
+        throw new Error("One or more refresh requests were rejected. Some jobs may already be queued; check Jobs & activity before retrying.");
+      }
       await loadOverview();
       window.setTimeout(() => setRefreshing(false), 1200);
-    } catch {
-      setError("Refresh could not be queued. Your current inventory is unchanged.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not queue inventory refresh.");
       setRefreshing(false);
     }
   };
@@ -420,6 +440,8 @@ export function App() {
     setOverview(null);
     setSites([]);
     setAllSites([]);
+    setSiteError(null);
+    setError(null);
   };
 
   const activeAccount = overview?.accounts.find((account) => account.id === selectedAccountId);
@@ -429,7 +451,6 @@ export function App() {
   if (authLoading) return <main className="auth-screen"><div className="auth-card auth-loading"><span className="loader" /> Checking your local session...</div></main>;
   if (!actor) return <AuthGate bootstrapRequired={bootstrapRequired} onAuthenticated={(user) => { setActor(user); setError(null); }} />;
 
-  const canMutate = ["owner", "admin", "operator"].includes(actor.role);
   const isAdmin = ["owner", "admin"].includes(actor.role);
   const displayName = actor.email.split("@")[0];
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -438,7 +459,7 @@ export function App() {
     <a className="skip-link" href="#main-content">Skip to main content</a>
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="brand-lockup"><span className="brand-symbol"><i /><i /><i /></span><span><strong>ORBICORE</strong><small>BY VSN</small></span></div>
-      <button className="org-switcher" aria-label="Current workspace: Pella Global" onClick={() => setActiveNav("Overview")}><span className="org-avatar">P</span><span><strong>Pella Global</strong><small>Agency workspace</small></span><span className="chevron">⌄</span></button>
+      <button className="org-switcher" aria-label="Current local workspace" onClick={() => setActiveNav("Overview")}><span className="org-avatar">O</span><span><strong>Local workspace</strong><small>Synthetic tenant</small></span><span className="chevron">⌄</span></button>
       <nav className="primary-nav">
         {navGroups.map((group) => <div className="nav-group" key={group.label}><span className="nav-group-label">{group.label}</span>{group.items.map((item) => <button key={item.label} type="button" aria-label={item.label} aria-current={activeNav === item.label ? "page" : undefined} onClick={() => setActiveNav(item.label)} className={`nav-item ${activeNav === item.label ? "active" : ""}`}><Icon name={item.icon} /><span>{item.label}</span>{item.label === "Jobs & activity" && jobs.length > 0 && <em>{jobs.length}</em>}</button>)}</div>)}
       </nav>
@@ -460,14 +481,14 @@ export function App() {
           </div>
           <div className="heading-actions">
             {isAdmin && <button className="secondary-button" onClick={() => void seedExtendedDemo()} disabled={seedingDemo}><Icon name="database" /> {seedingDemo ? "Loading..." : "Load extended demo data"}</button>}
-            <button className="secondary-button" onClick={() => setActiveNav("Hosting accounts")}><Icon name="plus" /> Sandbox account</button>
-            <button className="primary-button" onClick={() => void runRefresh()} disabled={loading || refreshing || !overview}><Icon className={refreshing ? "spinning" : ""} name="refresh" />{refreshing ? "Refreshing..." : "Refresh inventory"}</button>
+            <button className="secondary-button" onClick={() => setActiveNav("Hosting accounts")}><Icon name="plus" /> {canMutate ? "Sandbox account" : "Hosting accounts"}</button>
+            <button className="primary-button" title={!canMutate ? "Requires operator, admin, or owner role" : undefined} onClick={() => void runRefresh()} disabled={!canMutate || loading || refreshing || !overview || overview.accounts.length === 0}><Icon className={refreshing ? "spinning" : ""} name="refresh" />{refreshing ? "Refreshing..." : "Refresh inventory"}</button>
           </div>
         </section>
 
         <div className="environment-banner" role="status"><span className="banner-icon">i</span><span><strong>Local prototype workspace</strong> — {demoNotice ?? "synthetic fixtures & pre-seeded dry-run workflows active. Live hosting provider connections: 0."}</span><button onClick={() => setActiveNav("System & security")}>Preflight &amp; security <Icon name="arrow" /></button></div>
 
-        {error && <div className="error-banner" role="alert"><strong>Could not refresh live data.</strong> {error}<button onClick={() => void loadOverview()}>Try again</button></div>}
+        {error && <div className="error-banner" role="alert"><strong>{overview ? "Last successful snapshot may be stale." : "Workspace snapshot unavailable."}</strong> {error}<button type="button" onClick={() => void loadOverview()}>Retry loading workspace</button></div>}
 
         {activeNav === "Overview" && <>
           <section className="metric-grid" aria-label="Hosting overview metrics">
@@ -480,15 +501,15 @@ export function App() {
           <section className="content-grid">
             <article className="panel accounts-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Hosting accounts</h2><span className="count-chip">{overview?.counts.accounts ?? 0}</span></div><p>Manage and monitor your connected infrastructure.</p></div><button className="text-button" onClick={() => setActiveNav("Hosting accounts")}>Capabilities <Icon name="arrow" /></button></div>
               <div className="account-table-head"><span>ACCOUNT</span><span>PROVIDER</span><span>SITES</span><span>STORAGE USAGE</span><span>LAST SYNC</span><span>HEALTH</span><span aria-hidden="true" /></div>
-              <div className="account-rows">{loading ? <div className="loading-state"><span className="loader" /> Loading inventory...</div> : filteredAccounts.length ? filteredAccounts.map((account) => <AccountRow key={account.id} account={account} selected={selectedAccountId === account.id} onSelect={() => setSelectedAccountId(account.id)} />) : <div className="empty-state"><strong>No matching accounts</strong><span>Try a different search term.</span></div>}</div>
+              <div className="account-rows">{loading ? <div className="loading-state" role="status"><span className="loader" /> Loading inventory...</div> : filteredAccounts.length ? filteredAccounts.map((account) => <AccountRow key={account.id} account={account} selected={selectedAccountId === account.id} onSelect={() => setSelectedAccountId(account.id)} />) : <div className="empty-state"><strong>{overview?.accounts.length ? "No matching accounts" : "No hosting accounts yet"}</strong><span>{overview?.accounts.length ? "Try a different search term." : "An operator can create a local sandbox account."}</span></div>}</div>
               <div className="panel-footer"><span>Showing <strong>{filteredAccounts.length}</strong> of <strong>{overview?.counts.accounts ?? 0}</strong> accounts</span><span>Fixture inventory</span></div>
             </article>
 
-            <article className="panel activity-panel"><div className="panel-heading"><div><h2>Recent activity</h2><p>Latest operations across your workspace.</p></div><button className="text-button" onClick={() => setActiveNav("Jobs & activity")}>All jobs <Icon name="arrow" /></button></div><div className="activity-content">{jobs.length ? <ul className="job-list">{jobs.slice(0, 4).map((job) => <JobRow key={job.id} job={job} />)}</ul> : <div className="activity-empty"><span className="empty-clock"><Icon name="clock" /></span><strong>No recent activity</strong><span>Refresh inventory to create a local demo job.</span></div>}</div><div className="activity-footer"><span className="activity-status"><i /> Job worker ready</span><span>Local demo queue</span></div></article>
+            <article className="panel activity-panel"><div className="panel-heading"><div><h2>Recent activity</h2><p>Latest operations across your workspace.</p></div><button className="text-button" onClick={() => setActiveNav("Jobs & activity")}>All jobs <Icon name="arrow" /></button></div><div className="activity-content">{jobs.length ? <ul className="job-list">{jobs.slice(0, 4).map((job) => <JobRow key={job.id} job={job} />)}</ul> : <div className="activity-empty"><span className="empty-clock"><Icon name="clock" /></span><strong>No recent activity</strong><span>Refresh inventory to create a local demo job.</span></div>}</div><div className="activity-footer"><span className="activity-status"><i /> Synthetic job history</span><span>Local demo queue</span></div></article>
           </section>
 
           <section className="panel site-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Websites</h2><span className="count-chip">{activeAccount ? sites.length : 0}</span></div><p>{activeAccount ? `Latest discovered sites from ${activeAccount.label}.` : "Select an account to view discovered sites."}</p></div><button className="text-button" onClick={() => setActiveNav("Websites")}>All websites <Icon name="arrow" /></button></div>
-            {sites.length ? <div className="site-table"><div className="site-table-head"><span>WEBSITE</span><span>TYPE</span><span>DOCUMENT ROOT</span><span>PHP</span><span>STATUS</span></div>{sites.slice(0, 4).map((site) => <div className="site-row" key={site.id}><span><span className="site-favicon">{site.domain.slice(0, 1).toUpperCase()}</span><strong>{site.domain}</strong></span><span>{site.kind}</span><span className="path-cell">{site.documentRoot}</span><span className="php-tag">{site.phpVersion}</span><span><StatusBadge status={site.status === "active" ? "healthy" : site.status} /></span></div>)}</div> : <div className="empty-inline">{loading ? "Loading websites..." : "No websites discovered for this account."}</div>}
+            {siteError ? <div className="error-banner panel-banner" role="alert">{siteError} <button type="button" onClick={() => setSiteRequestVersion((current) => current + 1)}>Retry websites</button></div> : sites.length ? <div className="site-table"><div className="site-table-head"><span>WEBSITE</span><span>TYPE</span><span>DOCUMENT ROOT</span><span>PHP</span><span>STATUS</span></div>{sites.slice(0, 4).map((site) => <div className="site-row" key={site.id}><span><span className="site-favicon">{site.domain.slice(0, 1).toUpperCase()}</span><strong>{site.domain}</strong></span><span>{site.kind}</span><span className="path-cell">{site.documentRoot}</span><span className="php-tag">{site.phpVersion}</span><span><StatusBadge status={site.status === "active" ? "healthy" : site.status} /></span></div>)}</div> : <div className="empty-inline" role="status">{siteLoading ? "Loading websites..." : "No websites discovered for this account."}</div>}
           </section>
         </>}
 
