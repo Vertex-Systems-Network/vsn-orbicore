@@ -27,7 +27,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 | ORB-014 | MFA key rotation & backup verify | P1 | testing | unit | Versioned keyring rotation & backup integrity tested locally |
 | ORB-015 | Threat-model tests & CI gates | P1 | verified | unit | [CI audit, 45 tests, SBOM artifact](TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md); release/compliance review still separate |
 | ORB-012 | Virtual-authenticator browser E2E | P1 | verified | browser_tested | [Chromium run 44995181964](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md); physical authenticator remains separate |
-| ORB-016 | Hosted PostgreSQL/Redis services | P1 | testing | integration_tested | [Service parity](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md) and [lease/stream contract](TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md) passed; production app and restart remain open |
+| ORB-016 | Hosted PostgreSQL/Redis services | P1 | testing | integration_tested | [Service parity](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md) and [synthetic outbox/worker integration](TEST_EVIDENCE/2026-11-22-orb-004-outbox-worker.md) passed; full PG identity and Compose service restart remain open |
 | ORB-017–019 | Installer, accessibility and live provider | P1 | mixed | none / mock | Use exact task evidence contracts in machine backlog |
 
 ## Evidence-backed completion
@@ -35,11 +35,11 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 - Phase 0 records ORB-001/003/008 as documentation/validation complete; this is not release readiness.
 - ORB-002/005 have local mock evidence only.
 - PR #2 shipped passkey server/UI; PR #3 shipped inventory/revocation/rebinding. CI history is indexed in [`docs/TEST_EVIDENCE/2026-11-10-github-ci.md`](TEST_EVIDENCE/2026-11-10-github-ci.md).
-- Current CI checks install, tests, lint, build, smoke and doctor. Virtual-authenticator browser E2E passed in [ORB-012](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md). Physical authenticator, complete accessibility, production app DB/queue worker integration and live provider verification remain open. Hosted service schema/Redis checks passed in [ORB-016](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md). ORB-015 now verifies the PR's npm audit, scoped secret/license scans and uploaded lockfile SBOM; full release compliance/schema validation are separate.
+- Current CI checks install, tests, lint, build, smoke and doctor. Virtual-authenticator browser E2E passed in [ORB-012](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md). Physical authenticator, complete accessibility, full production identity/tenant DB migration, Compose service restart, and live provider verification remain open. Hosted service schema/Redis checks passed in [ORB-016](TEST_EVIDENCE/2026-11-22-orb-016-services-ci.md). ORB-015 now verifies the PR's npm audit, scoped secret/license scans and uploaded lockfile SBOM; full release compliance/schema validation are separate.
 
 ## Blocker interpretation
 
-- ORB-004 now has integration-tested lease and stream redelivery **contracts** from hosted disposable services; the real application adapters, production worker, outbox and container restart drill still require implementation/testing.
+- ORB-004 now includes a hosted, explicitly opted-in **synthetic** PostgreSQL job/outbox and Redis Streams worker with real child-process SIGKILL/lease recovery evidence. SQLite identity/account/audit remain a hybrid test fixture; production PostgreSQL migration, database role isolation, whole-service/Compose durability and live provider verification remain open.
 - ORB-006/019 require an authorized disposable provider account.
 - ORB-009 is now ready: hosted Chromium works; full browser accessibility/visual review remains to be implemented.
 - ORB-007 covers local preflight; ORB-017 gates production services and upgrade/recovery.
