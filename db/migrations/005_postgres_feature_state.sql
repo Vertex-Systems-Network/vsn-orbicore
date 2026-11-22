@@ -188,6 +188,11 @@ REVOKE ALL PRIVILEGES ON TABLE
   capability_snapshots, migration_plans, storage_policies, site_snapshots,
   automation_rules, automation_runs, wp_site_state, secret_references
   FROM orbicore_tenant_readonly;
+-- Sites gained a tenant column; avoid leaking document_root through the
+-- former table-level SELECT grant from migration 003.
+REVOKE ALL PRIVILEGES ON TABLE sites FROM orbicore_tenant_readonly;
+GRANT SELECT(id, organization_id, account_id, domain, kind, php_version, status)
+  ON sites TO orbicore_tenant_readonly;
 GRANT SELECT(id, organization_id, account_id, profile_name, source, fetched_at)
   ON capability_snapshots TO orbicore_tenant_readonly;
 GRANT SELECT(id, organization_id, site_id, strategy, state, checkpoint_percent,
