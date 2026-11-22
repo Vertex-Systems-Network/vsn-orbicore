@@ -1,18 +1,18 @@
 # Next action
 
-1. **ORB-015:** Review and strengthen the already-running CI security suite. Ensure negative tests cover SSRF, traversal, tenant isolation, injection, replay and redaction, add an actionable dependency audit policy and produce a reproducible full CycloneDX SBOM artifact. Current `security:check` produces a summary, not a distributable full SBOM. Preserve license attribution and fail-closed behavior.
-2. **ORB-016:** Execute and evaluate GitHub Actions PostgreSQL/Redis service-container workflow (`.github/workflows/ci-services.yml`). Verify schema reapplication, connectivity and then implement/test durable worker recovery; do not mislabel schema-only success as a production DB/queue application integration.
-3. **ORB-018 / ORB-009:** Expand hosted Chromium checks for WCAG keyboard, focus, color contrast, desktop/mobile layouts, loading, stale, permission and error paths. Basic DOM checks in ORB-012 do not close this.
-4. **ORB-011 / ORB-013 / ORB-014:** Complete verified contact *live* notification delivery, physical platform authenticator, production key management and backup restore, with safe sandbox boundaries.
-5. **ORB-017:** Production installer, PostgreSQL/Redis upgrades/recovery, and measured VPS resources remain separate from local SQLite preflight.
-6. **ORB-006 / ORB-019:** Owner-authorized disposable cPanel account/token required before any scoped read-only live integration tests; never enable real provider mutations from mock evidence.
+1. **ORB-016 / ORB-004:** Execute `.github/workflows/ci-services.yml` on a GitHub-hosted runner with PostgreSQL 16 and Redis 7 services. Test PostgreSQL schema apply/re-apply, migrations, Redis ping and data round-trip, service restart/recovery where possible, and preserve exact CI URLs and versions. The currently defined workflow is schema/connection parity only; do not call it integrated production DB/queue recovery.
+2. Implement the missing production DB adapter and durable queue/worker recovery in an isolated, tested slice before claiming Phase 1 infrastructure complete. Keep existing SQLite synthetic mode and tests intact.
+3. **ORB-018 / ORB-009:** Extend hosted Chromium accessibility checks to focus order, keyboard, contrast, mobile/desktop layouts, loading, stale, error, permissions and empty states. ORB-012 basic DOM smoke does not close accessibility.
+4. **ORB-010:** Full security validation, upstream CycloneDX JSON schema validation, actual release BOM/build assets, secret scanning coverage, and production vault/identity review remain separate from completed ORB-015 CI gates.
+5. **ORB-011 / ORB-013 / ORB-014 / ORB-017:** Manual/physical authenticator and live verified-contact delivery, production key management, restore, installer and upgrade safeguards are still open.
+6. **ORB-006 / ORB-019:** Owner-authorized disposable cPanel account/token required before any read-only live test; do not perform live provider operations with current mock fixtures.
 
-## Verified checkpoint
+## Verified checkpoints
 
-- **ORB-012 is browser-tested and verified**, [GitHub Actions 44995181964](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995181964), tested SHA `8c7e9a2b3eaf952469a9f8882ab3e674f95b633f`. See [evidence](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md) and [artifact](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995181964/artifacts/14743052654).
-- Browser verification used Chromium with an internal virtual CTAP2 authenticator and synthetic SQLite fixtures. No physical authenticator, live provider, production secrets, full accessibility or distributed DB/queue was verified.
-- PR [#6](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/6) merged the scoped Can I Use license fix in `main` at `6aa0629540525174cdf1ff88dc6bf74c56e9a048`. PR #7 includes ORB-012 code and evidence; verify its final CI/merge SHA independently.
+- **ORB-012:** Chromium CTAP2 virtual-authenticator E2E verified, PR [#7](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/7) merged in `main` as `1f8dec9446089dd38a4eb723e278467d7106484d`. [Run 44995181964](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995181964), detailed [evidence](TEST_EVIDENCE/2026-11-22-orb-012-browser-e2e.md).
+- **ORB-015:** PR [#8](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/8) implementation SHA `5e0cf94130e36c803a94c61b8d9f8a1828d13670` passed [GitHub CI 44995631637](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44995631637) (44 tests, npm audit zero findings, lockfile BOM with 169 components and an uploaded artifact). See [evidence](TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md); confirm final PR head checks and merged main SHA separately.
+- ORB-012/015 evidence does not imply physical authenticator, complete accessibility, external SBOM schema validation, production distributed databases/jobs or live hosting verification.
 
 ## Evidence contract
 
-For each task, record its ID, URL, exact tested SHA, jobs and commands, runtime, exit result, artifacts, limitations, and any unblocker in `docs/TEST_EVIDENCE/`. Keep task lifecycle distinct from the verification level; do not upgrade physical authenticator, live email, production DB/queue or provider status based on local or mocked tests.
+Record task ID, GitHub Actions run URL, tested SHA, jobs/commands, runtime, outcome, artifacts, and limitations in `docs/TEST_EVIDENCE/`. Never claim a passed external gate based on mock/local evidence alone.
