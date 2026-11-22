@@ -243,7 +243,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#12",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "73d72c60bd1e4a223278c9712becf0803ec34e67",
+      "commit_hash": "1d6af47567f2112f1335b9d6dce5e82c6c07d647",
       "evidence_paths": [
         "docs/DATA_MODEL.md",
         "docs/DECISIONS/ADR-0002-authentication.md",
@@ -260,10 +260,15 @@
         "db/migrations/004_postgres_auth_state.sql",
         "scripts/verify-postgres-auth-state.mjs",
         "tests/postgres-auth-state.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-auth-state.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-auth-state.md",
+        "db/migrations/005_postgres_feature_state.sql",
+        "apps/api/postgres-feature-state.mjs",
+        "scripts/verify-postgres-feature-state.mjs",
+        "tests/postgres-feature-state.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-feature-state.md"
       ],
       "blockers": [
-        "Hosted Postgres schema 004 and fixture-only atomic core+MFA/passkey/recovery/notification snapshot passed with tenant composite FKs and secret-denying read RLS; 57 tests and service CI passed at implementation head. No production encryption/key migration, complete SQLite v7 feature/secret data parity, runtime PostgreSQL auth/DB write role/RLS, atomic cross-store cutover, distributed revocation, live notification or hosting provider authorization."
+        "PostgreSQL schema migrations 003-005 and guarded synthetic identity+MFA+operational feature snapshot now have hosted integration evidence (61 project tests, all five service jobs): tenant FKs, read-only metadata RLS, cross-tenant transaction rollback and full fixture row counts. SQLite v7 job history, secret references and migration metadata, live key decryption/provenance, trusted non-bypass runtime PostgreSQL write role, atomic audit/outbox, HTTP identity cutover/rollback, off-host recovery, real notification/provider authorization remain open."
       ],
       "started_at": null,
       "completed_at": null,
