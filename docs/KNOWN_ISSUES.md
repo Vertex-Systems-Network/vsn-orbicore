@@ -2,7 +2,7 @@
 
 | ID | Severity | State | Detail | Next action |
 |---|---|---|---|---|
-| KI-001 | High | Partial | Bootstrap/login, tenant scopes, TOTP/recovery, WebAuthn enrollment/login, passkey inventory/revocation and password-reauthenticated rebinding are implemented. Browser E2E, verified contact delivery, production key/restore lifecycle, SSO, vault, distributed throttling, hardening and tamper-evident audit are unverified. | Loopback/synthetic-only; execute ORB-012–015 before provider credentials. |
+| KI-001 | High | Partial | Bootstrap/login, tenant scopes, TOTP/recovery, WebAuthn enrollment/login, passkey inventory/revocation, password-reauthenticated rebinding, and local SHA-256 tamper-evident audit chaining (`/api/audit/verify`) are implemented. Browser E2E, verified contact delivery, production key/restore lifecycle, SSO, vault, distributed throttling, and external WORM audit archiving remain open. | Loopback/synthetic-only; execute ORB-012–015 before provider credentials. |
 | KI-002 | Medium | Environment blocked | Docker/PostgreSQL/Redis absent in earlier environment; hosted service-container feasibility unknown. | Attempt ORB-016 in GitHub Actions. |
 | KI-003 | High | External blocked | No authorized cPanel/WHM sandbox account or scoped token. | Keep fixture-only until owner supplies disposable least-privilege access. |
 | KI-004 | Medium | Open | VPS minimums and performance baselines not measured. | Benchmark after production-shaped stack is available. |

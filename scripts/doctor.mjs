@@ -11,9 +11,9 @@ let sqlite = false;
 try { const db = new DatabaseSync(":memory:"); db.exec("select 1"); db.close(); sqlite = true; } catch {}
 const report = {
   node: process.version,
-  supportedNode: Number(process.versions.node.split(".")[0]) >= 24,
+  supportedNode: Number(process.versions.node.split(".")[0]) >= 22,
   sqliteApi: sqlite,
-  sqliteStability: "Node's built-in SQLite API is experimental in the selected Node 24 runtime.",
+  sqliteStability: "Node's built-in SQLite API is experimental in Node 22/24 local prototype mode.",
   apiPort: port,
   apiPortAvailable: portAvailable,
   postgres: "not detected by this preflight",

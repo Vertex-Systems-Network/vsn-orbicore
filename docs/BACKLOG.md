@@ -18,12 +18,15 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 | ORB-004 | PostgreSQL/Redis and durable worker | P1 | blocked | none | Try GitHub-hosted service containers; record result |
 | ORB-005 | Local auth, tenant policy and audit | P1 | testing | mock_tested | Synthetic-data controls only; production gates remain |
 | ORB-006 | Authorized live cPanel UAPI | P1 | blocked | none | Requires owner-authorized disposable account/token |
-| ORB-007 | Local installer preflight/bootstrap | P1 | ready | none | Work independently of production services |
+| ORB-007 | Local installer preflight/bootstrap | P1 | testing | mock_tested | Preflight & SQLite backup/verify pass locally; prod upgrade tracked in ORB-017 |
 | ORB-008 | Bank validation/schema tooling | P0 | verified | docs_reviewed | Preserve reproducible validator evidence |
 | ORB-009 | Browser UX/accessibility | P1 | blocked | none | Try hosted Chromium; earlier shared-browser failure is not universal |
-| ORB-010 | Security/supply-chain umbrella | P1 | in_progress | none | Execute ORB-015 |
-| ORB-011 | MFA/passkey and recovery gates | P1 | in_progress | unit | Server/UI and recovery management merged; browser/operational gates open |
-| ORB-012–019 | Browser, notification, key recovery, scanning, services, installer, accessibility, live provider | P1 | mixed | none | Use exact task evidence contracts in machine backlog |
+| ORB-010 | Security/supply-chain umbrella | P1 | in_progress | none | Local SSRF/path/redaction tests pass; CI SBOM/audit tracked in ORB-015 |
+| ORB-011 | MFA/passkey and recovery gates | P1 | in_progress | unit | Server/UI, key rotation, and local outbox tested; browser E2E open |
+| ORB-013 | Verified recovery contacts & outbox | P1 | testing | mock_tested | Simulated outbox & retry tracking tested; live SMTP provider gated |
+| ORB-014 | MFA key rotation & backup verify | P1 | testing | unit | Versioned keyring rotation & backup integrity tested locally |
+| ORB-015 | Threat-model tests & CI gates | P1 | in_progress | unit | SSRF/path/redaction unit tests pass; CI SBOM/audit checks pending |
+| ORB-012, 016–019 | Browser, services, installer, accessibility, live provider | P1 | mixed | none | Use exact task evidence contracts in machine backlog |
 
 ## Evidence-backed completion
 

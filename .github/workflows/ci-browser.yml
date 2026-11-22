@@ -1,0 +1,29 @@
+name: Browser E2E & Accessibility (WebAuthn Virtual Authenticator)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "scripts/browser-verify.mjs"
+      - ".github/workflows/ci-browser.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium-webauthn-a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Install Playwright Chromium runner
+        run: npm install --no-save playwright && npx playwright install chromium
+      - name: Run browser WebAuthn & accessibility checks
+        env:
+          ORBICORE_BOOTSTRAP_TOKEN: ci-browser-bootstrap-token-32bytes
+          ORBICORE_MFA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+        run: node scripts/browser-verify.mjs

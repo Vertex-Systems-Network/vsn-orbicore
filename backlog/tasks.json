@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-10T08:00:00Z",
+  "updated_at": "2026-11-21T00:00:00Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -288,7 +288,7 @@
       "dependencies": [
         "ORB-005"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -305,14 +305,20 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#16"
       ],
       "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
-      "started_at": null,
+      "evidence_paths": [
+        "apps/api/preflight.mjs",
+        "tests/platform-slices.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-21-local-slices.md"
+      ],
+      "blockers": [
+        "Production PostgreSQL/Redis upgrade and external deploy gates remain tracked in ORB-017"
+      ],
+      "started_at": "2026-11-21T00:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z",
-      "verification_level": "none",
-      "blocker_type": null
+      "last_updated": "2026-11-21",
+      "verification_level": "mock_tested",
+      "blocker_type": "technical"
     },
     {
       "id": "ORB-008",
@@ -551,7 +557,7 @@
       "dependencies": [
         "ORB-011"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -570,14 +576,19 @@
         "docs/SECURITY_THREAT_MODEL.md"
       ],
       "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
-      "blocker_type": null,
-      "verification_level": "none",
-      "started_at": null,
+      "evidence_paths": [
+        "apps/api/notifications.mjs",
+        "tests/platform-slices.test.mjs"
+      ],
+      "blockers": [
+        "Live external email/SMTP provider delivery remains disabled until authorized credentials exist"
+      ],
+      "blocker_type": "external",
+      "verification_level": "mock_tested",
+      "started_at": "2026-11-21T00:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-10"
+      "last_updated": "2026-11-21"
     },
     {
       "id": "ORB-014",
@@ -590,7 +601,7 @@
       "dependencies": [
         "ORB-011"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -609,14 +620,21 @@
         "docs/SECURITY_THREAT_MODEL.md"
       ],
       "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
-      "blocker_type": null,
-      "verification_level": "none",
-      "started_at": null,
+      "evidence_paths": [
+        "apps/api/mfa.mjs",
+        "apps/api/preflight.mjs",
+        "tests/platform-slices.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-21-local-slices.md"
+      ],
+      "blockers": [
+        "External KMS/secret-manager integration remains deferred to production deployment"
+      ],
+      "blocker_type": "environment",
+      "verification_level": "mock_tested",
+      "started_at": "2026-11-21T00:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-10"
+      "last_updated": "2026-11-21"
     },
     {
       "id": "ORB-015",
@@ -629,7 +647,7 @@
       "dependencies": [
         "ORB-005"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -651,14 +669,22 @@
         "docs/SECURITY_THREAT_MODEL.md"
       ],
       "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
-      "blocker_type": null,
-      "verification_level": "none",
-      "started_at": null,
+      "evidence_paths": [
+        "apps/api/security.mjs",
+        "scripts/security-gate.mjs",
+        "tests/security.test.mjs",
+        ".github/workflows/ci.yml",
+        "docs/TEST_EVIDENCE/2026-11-21-local-slices.md"
+      ],
+      "blockers": [
+        "Local SSRF/path/redaction/supply-chain checks pass; GitHub Actions runner execution remains pending"
+      ],
+      "blocker_type": "environment",
+      "verification_level": "mock_tested",
+      "started_at": "2026-11-21T00:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-10"
+      "last_updated": "2026-11-21"
     },
     {
       "id": "ORB-016",

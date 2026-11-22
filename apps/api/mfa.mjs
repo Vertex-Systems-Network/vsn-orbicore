@@ -66,18 +66,57 @@ export function mfaEncryptionKey(value = process.env.ORBICORE_MFA_ENCRYPTION_KEY
   }
 }
 
-export function encryptMfaSecret(secret, key) {
+export function parseMfaKeyring({ primary = process.env.ORBICORE_MFA_ENCRYPTION_KEY, previous = process.env.ORBICORE_MFA_PREVIOUS_KEYS, primaryId = process.env.ORBICORE_MFA_KEY_ID ?? "k1" } = {}) {
+  const keys = new Map();
+  const primaryKey = mfaEncryptionKey(primary);
+  if (!primaryKey) return null;
+  keys.set(primaryId, primaryKey);
+  if (typeof previous === "string" && previous.trim()) {
+    previous.split(",").map((item) => item.trim()).filter(Boolean).forEach((entry, index) => {
+      const [maybeId, maybeValue] = entry.includes(":") ? entry.split(":", 2) : [`prev-${index + 1}`, entry];
+      const parsed = mfaEncryptionKey(maybeValue);
+      if (parsed && !keys.has(maybeId)) keys.set(maybeId, parsed);
+    });
+  }
+  return { primaryId, primaryKey, keys };
+}
+
+export function encryptMfaSecret(secret, key, keyId = null) {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   const ciphertext = Buffer.concat([cipher.update(secret, "utf8"), cipher.final()]);
-  return [iv, cipher.getAuthTag(), ciphertext].map((part) => part.toString("base64url")).join(".");
+  const payload = [iv, cipher.getAuthTag(), ciphertext].map((part) => part.toString("base64url")).join(".");
+  return keyId ? `v1:${keyId}:${payload}` : payload;
 }
 
-export function decryptMfaSecret(value, key) {
-  const [ivText, tagText, dataText] = value.split(".");
+export function decryptMfaSecret(value, keyOrKeyring) {
+  let payload = value;
+  let key = Buffer.isBuffer(keyOrKeyring) ? keyOrKeyring : keyOrKeyring?.primaryKey ?? null;
+  if (value.startsWith("v1:")) {
+    const parts = value.split(":");
+    if (parts.length !== 3) throw new Error("Malformed versioned MFA secret");
+    const [, keyId, body] = parts;
+    payload = body;
+    if (!Buffer.isBuffer(keyOrKeyring)) {
+      key = keyOrKeyring?.keys?.get(keyId) ?? null;
+    }
+  }
+  if (!key) throw new Error("Decryption key unavailable");
+  const [ivText, tagText, dataText] = payload.split(".");
   const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivText, "base64url"));
   decipher.setAuthTag(Buffer.from(tagText, "base64url"));
   return Buffer.concat([decipher.update(Buffer.from(dataText, "base64url")), decipher.final()]).toString("utf8");
+}
+
+export function decryptMfaSecretWithFallback(value, keyring) {
+  if (!keyring) throw new Error("MFA keyring unavailable");
+  if (value.startsWith("v1:")) return decryptMfaSecret(value, keyring);
+  for (const candidate of keyring.keys.values()) {
+    try {
+      return decryptMfaSecret(value, candidate);
+    } catch { /* try next key */ }
+  }
+  throw new Error("Unable to decrypt MFA secret with available keys");
 }
 
 export function newRecoveryCodes(count = 10) {

@@ -1,0 +1,47 @@
+name: Service Integration (PostgreSQL & Redis)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docker-compose.yml"
+      - "db/**"
+      - ".github/workflows/ci-services.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-redis-parity:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply PostgreSQL DDL parity schema
+        env:
+          PGPASSWORD: ci-test-password
+        run: |
+          psql -h 127.0.0.1 -U orbicore -d orbicore -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -h 127.0.0.1 -U orbicore -d orbicore -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+      - name: Verify Redis connectivity
+        run: redis-cli -h 127.0.0.1 -p 6379 ping

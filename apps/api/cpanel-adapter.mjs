@@ -1,0 +1,294 @@
+import { createHash } from "node:crypto";
+import { CAPABILITY_PROFILES, validateExternalEndpoint } from "./security.mjs";
+
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+
+export class LiveCpanelAdapterBoundary {
+  constructor({ fetchImpl = fetch, timeoutMs = 5000 } = {}) {
+    this.mode = "disabled_local_prototype";
+    this.live = false;
+    this.fetchImpl = fetchImpl;
+    this.timeoutMs = timeoutMs;
+  }
+
+  async _callUapi(connectionRef, moduleName, funcName) {
+    if (!connectionRef?.authorized || !connectionRef?.username || !connectionRef?.apiToken) {
+      return {
+        ok: false,
+        live: true,
+        error: "live_credentials_not_authorized",
+        reason: `Live cPanel connection for ${connectionRef?.host ?? "unknown"} is blocked until owner-authorized sandbox tokens are explicitly provisioned.`,
+      };
+    }
+    const endpoint = validateExternalEndpoint(`https://${connectionRef.host}:2083`, { requireHttps: true });
+    if (!endpoint.valid) {
+      return { ok: false, live: true, error: endpoint.reason, reason: "Host rejected by outbound SSRF policy." };
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const targetUrl = `${endpoint.origin}/execute/${encodeURIComponent(moduleName)}/${encodeURIComponent(funcName)}`;
+      const res = await this.fetchImpl(targetUrl, {
+        method: "GET",
+        headers: {
+          Authorization: `cpanel ${connectionRef.username}:${connectionRef.apiToken}`,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
+      });
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, live: true, error: "revoked_or_denied_token", status: res.status };
+      }
+      if (!res.ok) {
+        return { ok: false, live: true, error: "uapi_http_error", status: res.status };
+      }
+      const payload = await res.json();
+      if (payload?.status === 0) {
+        return { ok: false, live: true, error: "uapi_call_failed", messagesCount: Array.isArray(payload.errors) ? payload.errors.length : 0 };
+      }
+      return { ok: true, live: true, data: payload?.data ?? null };
+    } catch {
+      return { ok: false, live: true, error: "provider_unreachable" };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async discoverCapabilities(connectionRef) {
+    const quotaCheck = await this._callUapi(connectionRef, "Quota", "get_quota_info");
+    if (!quotaCheck.ok) return quotaCheck;
+    return {
+      ok: true,
+      live: true,
+      host: connectionRef.host,
+      source: "cpanel_uapi_read_only",
+      capabilities: CAPABILITY_PROFILES.cpanel_uapi_standard,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  async fetchInventory(connectionRef) {
+    const domainsRes = await this._callUapi(connectionRef, "DomainInfo", "domains_data");
+    if (!domainsRes.ok) {
+      return { ...domainsRes, accounts: [], sites: [] };
+    }
+    const data = domainsRes.data ?? {};
+    const list = [
+      ...(data.main_domain ? [data.main_domain] : []),
+      ...(Array.isArray(data.addon_domains) ? data.addon_domains : []),
+      ...(Array.isArray(data.sub_domains) ? data.sub_domains : []),
+    ];
+    return {
+      ok: true,
+      live: true,
+      source: "cpanel_uapi_read_only",
+      fetchedAt: new Date().toISOString(),
+      sites: list.map((d) => ({
+        domain: String(d.domain ?? "unknown.invalid"),
+        documentRoot: String(d.documentroot ?? "/public_html"),
+        phpVersion: String(d.phpversion ?? "unknown"),
+        kind: d.type === "main_domain" ? "Primary" : "Domain",
+      })),
+    };
+  }
+
+  async healthCheck(connectionRef) {
+    const ping = await this._callUapi(connectionRef, "Variables", "get_user_information");
+    return ping.ok
+      ? { status: "reachable_read_only", live: true, checkedAt: new Date().toISOString() }
+      : { status: ping.error === "revoked_or_denied_token" ? "unauthorized" : "disabled", live: true, error: ping.error };
+  }
+}
+
+export function createMockCpanelAdapter(fixture) {
+  return {
+    mode: "mock_fixture",
+    live: false,
+
+    discoverCapabilities({ accountId, label, capabilityProfile = "cpanel_uapi_standard" }) {
+      const profileName = capabilityProfile in CAPABILITY_PROFILES ? capabilityProfile : "cpanel_uapi_standard";
+      return {
+        accountId,
+        accountLabel: label,
+        profileName,
+        capabilities: CAPABILITY_PROFILES[profileName],
+        source: "mock_fixture",
+        live: false,
+        fetchedAt: new Date().toISOString(),
+      };
+    },
+
+    fetchInventory({ accountId, fixtureAccount, dbSites = [] }) {
+      const sites = fixtureAccount ? fixtureAccount.sites : dbSites;
+      return {
+        source: "mock_fixture",
+        live: false,
+        provider: fixture?.metadata?.provider ?? "cPanel",
+        providerVersion: fixture?.metadata?.providerVersion ?? "unknown",
+        accountId,
+        sites: sites.map((site) => ({
+          id: site.id,
+          domain: site.domain,
+          kind: site.kind,
+          documentRoot: site.document_root ?? site.documentRoot,
+          phpVersion: site.php_version ?? site.phpVersion,
+          status: site.status,
+        })),
+        fetchedAt: new Date().toISOString(),
+      };
+    },
+
+    healthCheck({ host }) {
+      const endpoint = validateExternalEndpoint(host, { requireHttps: false });
+      return {
+        status: endpoint.valid ? "simulated_reachable" : "blocked_host",
+        host: endpoint.valid ? endpoint.hostname : host,
+        live: false,
+        source: "mock_fixture",
+        checkedAt: new Date().toISOString(),
+      };
+    },
+
+    inspectSiteHealth({ site, account, snapshots = [], wpState = null }) {
+      const profileName = account?.capabilityProfile && account.capabilityProfile in CAPABILITY_PROFILES
+        ? account.capabilityProfile
+        : "cpanel_uapi_standard";
+      const capabilities = CAPABILITY_PROFILES[profileName];
+      const backupCap = capabilities.find((item) => item.capability === "backups.user_archive");
+      const dnsCap = capabilities.find((item) => item.capability === "dns.zone_edit");
+      const whmCap = capabilities.find((item) => item.capability === "whm.account_transfer");
+
+      const isWordPress = /wordpress|woo/i.test(site.kind);
+      const needsPhpUpdate = site.phpVersion === "8.1";
+      const attention = site.status === "attention";
+
+      const sslStatus = attention
+        ? { state: "expiring_soon", issuer: "cPanel Simulated AutoSSL", validUntil: "2026-12-01T00:00:00Z", note: "Simulated renewal check advised before cutover." }
+        : { state: "valid", issuer: "cPanel Simulated AutoSSL", validUntil: "2027-02-15T00:00:00Z", note: "Certificate matches domain hostname (fixture)." };
+
+      const dnsAlignment = {
+        registrarManagedExternally: dnsCap?.level !== "supported",
+        recordStatus: attention ? "ttl_high" : "aligned",
+        note: dnsCap?.level === "supported"
+          ? "Reseller zone read/edit permitted under simulated WHM scope."
+          : "DNS zone is read-only/external; registrar changes stay outside cPanel user credentials.",
+      };
+
+      const defaultPending = attention ? 3 : 0;
+      const wordpress = isWordPress
+        ? {
+          detected: true,
+          simulatedCoreVersion: wpState?.coreVersion ?? "6.7.2",
+          activePluginsCount: site.kind === "WooCommerce" ? 14 : 7,
+          pendingUpdates: wpState ? wpState.pendingUpdates : defaultPending,
+          stagingUrl: wpState?.stagingUrl ?? null,
+          stagingCreatedAt: wpState?.stagingCreatedAt ?? null,
+          lastRestorePointSha256: wpState?.lastRestorePointSha256 ?? null,
+          lastAction: wpState?.lastAction ?? null,
+          canRollback: Boolean(wpState?.previousCoreVersion),
+          adminCredentialAssumption: "never_inferred_from_cpanel",
+          note: "WP-CLI / consent agent required for live plugin/core changes.",
+        }
+        : {
+          detected: false,
+          simulatedCoreVersion: null,
+          activePluginsCount: 0,
+          pendingUpdates: 0,
+          stagingUrl: null,
+          stagingCreatedAt: null,
+          lastRestorePointSha256: null,
+          lastAction: null,
+          canRollback: false,
+          adminCredentialAssumption: "not_applicable",
+          note: `${site.kind} workload without WordPress runtime.`,
+        };
+
+      const operations = [
+        {
+          id: "backup_dry_run",
+          label: "Dry-run site archive",
+          permitted: backupCap?.level === "supported",
+          level: backupCap?.level ?? "unknown",
+          reason: backupCap?.level === "supported"
+            ? "Simulated site archive & checksum verification allowed under user quota."
+            : backupCap?.note ?? "Site archive disabled by account plan policy.",
+        },
+        {
+          id: "wp_preflight",
+          label: isWordPress ? "WordPress health preflight" : "Runtime compatibility check",
+          permitted: true,
+          level: "supported",
+          reason: isWordPress
+            ? "Runs read-only plugin/PHP/checksum preflight without modifying wp-content."
+            : "Evaluates runtime & PHP alignment from fixture inventory.",
+        },
+        {
+          id: "dns_ssl_check",
+          label: "Verify SSL & DNS alignment",
+          permitted: true,
+          level: dnsCap?.level ?? "read_only",
+          reason: "Inspects certificate expiry and registrar delegation boundary without changing zone records.",
+        },
+      ];
+
+      return {
+        site,
+        account: {
+          id: account.id,
+          label: account.label,
+          host: account.host,
+          capabilityProfile: profileName,
+          source: account.source,
+        },
+        sslStatus,
+        dnsAlignment,
+        wordpress,
+        phpGuidance: {
+          current: site.phpVersion,
+          recommended: needsPhpUpdate ? "8.3" : site.phpVersion,
+          status: needsPhpUpdate ? "upgrade_recommended" : "current",
+        },
+        capabilityBoundary: {
+          canPackageFullAccount: whmCap?.level === "supported",
+          canArchiveSite: backupCap?.level === "supported",
+          canEditDnsZones: dnsCap?.level === "supported",
+        },
+        operations,
+        snapshots,
+        live: false,
+        source: "mock_fixture",
+      };
+    },
+
+    executeDryRunSiteAction({ site, account, action }) {
+      const profileName = account?.capabilityProfile && account.capabilityProfile in CAPABILITY_PROFILES
+        ? account.capabilityProfile
+        : "cpanel_uapi_standard";
+      const capabilities = CAPABILITY_PROFILES[profileName];
+      const backupCap = capabilities.find((item) => item.capability === "backups.user_archive");
+
+      if (action === "backup_dry_run" && backupCap?.level !== "supported") {
+        return {
+          allowed: false,
+          reason: "capability_restricted",
+          message: backupCap?.note ?? "Site archive is disabled for this hosting account profile.",
+        };
+      }
+
+      const now = new Date().toISOString();
+      const checksumSha256 = sha256(`${account.id}:${site.id}:${action}:${now}`);
+      const details = action === "backup_dry_run"
+        ? { dryRun: true, archiveTarget: `${site.documentRoot}.dryrun.tar.gz`, verifiedChecksum: checksumSha256, live: false }
+        : action === "wp_preflight"
+          ? { dryRun: true, phpVersion: site.phpVersion, integrityOk: site.status === "active", wpCore: /wordpress|woo/i.test(site.kind) ? "6.7.2" : "n/a", live: false }
+          : { dryRun: true, sslValid: site.status === "active", dnsZoneChangeAttempted: false, live: false };
+
+      return {
+        allowed: true,
+        checksumSha256,
+        details,
+        createdAt: now,
+      };
+    },
+  };
+}

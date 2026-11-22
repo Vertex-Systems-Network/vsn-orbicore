@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Icon } from "./icons";
-import type { HostingAccount, Job, Overview, Site } from "./types";
+import type { HostingAccount, Job, NavSection, Overview, Site } from "./types";
+import {
+  AccountsView,
+  AutomationAndReportsView,
+  JobsAndAuditView,
+  MigrationsView,
+  StorageView,
+  SystemAndSecurityView,
+  WebsitesView,
+} from "./WorkspaceViews";
 
 type User = { id: string; email: string; role: string; organizationId: string; mfaEnabled?: boolean | number };
 
@@ -176,6 +185,14 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not disable MFA."); }
     finally { setBusy(false); }
   };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return <div className="mfa-backdrop"><section className="mfa-panel" role="dialog" aria-modal="true" aria-labelledby="mfa-title">
     <button className="mfa-close" onClick={onClose} aria-label="Close security setup">×</button><div className="eyebrow">ACCOUNT SECURITY</div><h2 id="mfa-title">Authenticator setup</h2>
     <button type="button" className="secondary-button" onClick={() => setShowPasskeySetup((value) => !value)}>{showPasskeySetup ? "Hide passkey setup" : "Add a passkey"}</button>
@@ -185,10 +202,11 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
   </section></div>;
 }
 
-const navGroups = [
+const navGroups: Array<{ label: string; items: Array<{ label: NavSection; icon: "grid" | "server" | "globe" | "move" | "database" | "clock" | "check" | "shield" }> }> = [
   { label: "WORKSPACE", items: [{ label: "Overview", icon: "grid" }, { label: "Hosting accounts", icon: "server" }, { label: "Websites", icon: "globe" }] },
-  { label: "OPERATIONS", items: [{ label: "Migrations", icon: "move" }, { label: "Storage", icon: "database" }, { label: "Jobs & activity", icon: "clock" }] },
-] as const;
+  { label: "OPERATIONS", items: [{ label: "Migrations", icon: "move" }, { label: "Storage", icon: "database" }, { label: "Jobs & activity", icon: "clock" }, { label: "Automation & reports", icon: "check" }] },
+  { label: "GOVERNANCE", items: [{ label: "System & security", icon: "shield" }] },
+];
 
 const formatBytes = (bytes: number) => {
   if (!bytes) return "0 GB";
@@ -235,19 +253,25 @@ export function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
+  const [allSites, setAllSites] = useState<Site[]>([]);
   const [query, setQuery] = useState("");
-  const activeNav = "Overview";
+  const [activeNav, setActiveNav] = useState<NavSection>("Overview");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadOverview = useCallback(async () => {
     try {
-      const response = await fetch("/api/overview");
-      if (!response.ok) throw new Error("The local API could not load the overview.");
-      const data = (await response.json()) as Overview;
+      const [overviewRes, sitesRes] = await Promise.all([fetch("/api/overview"), fetch("/api/sites")]);
+      if (!overviewRes.ok) throw new Error("The local API could not load the overview.");
+      const data = (await overviewRes.json()) as Overview;
       setOverview(data);
+      if (sitesRes.ok) {
+        const sitesData = (await sitesRes.json()) as { sites: Site[] };
+        setAllSites(sitesData.sites);
+      }
       setError(null);
       setSelectedAccountId((current) => current ?? data.accounts[0]?.id ?? null);
     } catch (cause) {
@@ -256,6 +280,30 @@ export function App() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      return window.localStorage.getItem("orbicore-theme") === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { window.localStorage.setItem("orbicore-theme", theme); } catch { /* ignore */ }
+  }, [theme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -297,17 +345,41 @@ export function App() {
     return (overview?.accounts ?? []).filter((account) => `${account.label} ${account.host} ${account.username}`.toLowerCase().includes(normalized));
   }, [overview, query]);
 
-  const runRefresh = async () => {
+  const runRefresh = async (accountId?: string) => {
     if (!overview || refreshing) return;
     setRefreshing(true);
     try {
-      const ids = overview.accounts.map((account) => account.id);
-      await Promise.all(ids.map((accountId) => fetch("/api/jobs/refresh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accountId }) })));
+      const ids = accountId ? [accountId] : overview.accounts.map((account) => account.id);
+      await Promise.all(ids.map((id) => fetch("/api/jobs/refresh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accountId: id }) })));
       await loadOverview();
-      window.setTimeout(() => setRefreshing(false), 1500);
+      window.setTimeout(() => setRefreshing(false), 1200);
     } catch {
       setError("Refresh could not be queued. Your current inventory is unchanged.");
       setRefreshing(false);
+    }
+  };
+
+  const [seedingDemo, setSeedingDemo] = useState(false);
+  const [demoNotice, setDemoNotice] = useState<string | null>(null);
+
+  const seedExtendedDemo = async () => {
+    if (seedingDemo) return;
+    setSeedingDemo(true);
+    setDemoNotice(null);
+    try {
+      const res = await fetch("/api/system/demo-seed", { method: "POST" });
+      const data = await res.json() as { accountsAdded?: number; sitesAdded?: number; teamAdded?: number };
+      if (!res.ok) throw new Error("Demo data could not be loaded.");
+      await loadOverview();
+      setDemoNotice(
+        data.accountsAdded || data.sitesAdded || data.teamAdded
+          ? `Loaded +${data.accountsAdded ?? 0} dummy accounts, +${data.sitesAdded ?? 0} websites, +${data.teamAdded ?? 0} team members (synthetic fixture).`
+          : "Extended dummy dataset is already loaded in this workspace.",
+      );
+    } catch {
+      setError("Could not load extended dummy dataset.");
+    } finally {
+      setSeedingDemo(false);
     }
   };
 
@@ -316,6 +388,7 @@ export function App() {
     setActor(null);
     setOverview(null);
     setSites([]);
+    setAllSites([]);
   };
 
   const activeAccount = overview?.accounts.find((account) => account.id === selectedAccountId);
@@ -325,51 +398,104 @@ export function App() {
   if (authLoading) return <main className="auth-screen"><div className="auth-card auth-loading"><span className="loader" /> Checking your local session...</div></main>;
   if (!actor) return <AuthGate bootstrapRequired={bootstrapRequired} onAuthenticated={(user) => { setActor(user); setError(null); }} />;
 
+  const canMutate = ["owner", "admin", "operator"].includes(actor.role);
+  const isAdmin = ["owner", "admin"].includes(actor.role);
+  const displayName = actor.email.split("@")[0];
+  const initials = displayName.slice(0, 2).toUpperCase();
+
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="brand-lockup"><span className="brand-symbol"><i /><i /><i /></span><span><strong>ORBICORE</strong><small>BY VSN</small></span></div>
-      <button className="org-switcher" aria-label="Current workspace: Pella Global"><span className="org-avatar">P</span><span><strong>Pella Global</strong><small>Agency workspace</small></span><span className="chevron">⌄</span></button>
+      <button className="org-switcher" aria-label="Current workspace: Pella Global" onClick={() => setActiveNav("Overview")}><span className="org-avatar">P</span><span><strong>Pella Global</strong><small>Agency workspace</small></span><span className="chevron">⌄</span></button>
       <nav className="primary-nav">
-        {navGroups.map((group) => <div className="nav-group" key={group.label}><span className="nav-group-label">{group.label}</span>{group.items.map((item) => <button key={item.label} disabled={item.label !== "Overview"} title={item.label === "Overview" ? undefined : "Not available in this local demo"} className={`nav-item ${activeNav === item.label ? "active" : ""}`}><Icon name={item.icon} /><span>{item.label}</span>{item.label === "Jobs & activity" && jobs.length > 0 && <em>{jobs.length}</em>}</button>)}</div>)}
+        {navGroups.map((group) => <div className="nav-group" key={group.label}><span className="nav-group-label">{group.label}</span>{group.items.map((item) => <button key={item.label} onClick={() => setActiveNav(item.label)} className={`nav-item ${activeNav === item.label ? "active" : ""}`}><Icon name={item.icon} /><span>{item.label}</span>{item.label === "Jobs & activity" && jobs.length > 0 && <em>{jobs.length}</em>}</button>)}</div>)}
       </nav>
-      <div className="sidebar-bottom">{["owner", "admin"].includes(actor.role) && <button className="nav-item settings-item" onClick={() => setShowMfaSetup(true)}><span className="settings-gear">⚿</span><span>{actor.mfaEnabled ? "Manage MFA" : "Set up MFA"}</span></button>}<div className="user-profile"><span className="user-avatar">{actor.email.slice(0, 1).toUpperCase()}</span><span><strong>{actor.email}</strong><small>{actor.role} · local workspace</small></span><button className="logout-button" onClick={() => void logout()} title="Sign out" aria-label="Sign out">↗</button></div></div>
+      <div className="sidebar-bottom">{isAdmin && <button className="nav-item settings-item" onClick={() => setShowMfaSetup(true)}><span className="settings-gear">⚿</span><span>{actor.mfaEnabled ? "Manage MFA" : "Set up MFA"}</span></button>}<div className="user-profile"><span className="user-avatar">{actor.email.slice(0, 1).toUpperCase()}</span><span><strong>{actor.email}</strong><small>{actor.role} · local workspace</small></span><button className="logout-button" onClick={() => void logout()} title="Sign out" aria-label="Sign out">↗</button></div></div>
     </aside>
 
     <main className="main-content">
       <header className="topbar">
         <div className="breadcrumbs"><span>Workspace</span><span className="crumb-divider">/</span><strong>{activeNav}</strong></div>
-        <div className="topbar-actions"><label className="global-search"><Icon name="search" /><input aria-label="Search accounts" placeholder="Search accounts..." value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘ K</kbd></label><button className="icon-button alert-button" aria-label="Notifications" disabled title="Notifications are not available in this local demo"><Icon name="bell" /><i /></button><span className="topbar-avatar" aria-label="Alex Morgan">AM</span></div>
+        <div className="topbar-actions"><label className="global-search"><Icon name="search" /><input ref={searchInputRef} aria-label="Search accounts or websites" placeholder="Search accounts or sites..." value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘ K</kbd></label><button type="button" className="theme-toggle" aria-pressed={theme === "dark"} aria-label="Toggle color theme" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button><button className="icon-button alert-button" aria-label="Jobs and activity" title="View jobs & activity" onClick={() => setActiveNav("Jobs & activity")}><Icon name="bell" /><i /></button><span className="topbar-avatar" aria-label={actor.email}>{initials}</span></div>
       </header>
 
       <div className="page-container">
-        <section className="page-heading"><div><div className="eyebrow"><span className="live-indicator" /> CONTROL CENTER <span className="eyebrow-divider">·</span> {new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date())}</div><h1>Good morning, Alex</h1><p className="page-subtitle">Here’s what’s happening across your hosting infrastructure.</p></div><div className="heading-actions"><button className="secondary-button" disabled title="Account connection is not available in the local demo"><Icon name="plus" /> Add account</button><button className="primary-button" onClick={() => void runRefresh()} disabled={loading || refreshing || !overview}><Icon className={refreshing ? "spinning" : ""} name="refresh" />{refreshing ? "Refreshing..." : "Refresh inventory"}</button></div></section>
+        <section className="page-heading">
+          <div>
+            <div className="eyebrow"><span className="live-indicator" /> CONTROL CENTER <span className="eyebrow-divider">·</span> {new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date())}</div>
+            <h1>{activeNav === "Overview" ? `Workspace active, ${displayName}` : activeNav}</h1>
+            <p className="page-subtitle">Capability-aware hosting operations across local synthetic fixtures and dry-run workflows.</p>
+          </div>
+          <div className="heading-actions">
+            {isAdmin && <button className="secondary-button" onClick={() => void seedExtendedDemo()} disabled={seedingDemo}><Icon name="database" /> {seedingDemo ? "Loading..." : "Load extended demo data"}</button>}
+            <button className="secondary-button" onClick={() => setActiveNav("Hosting accounts")}><Icon name="plus" /> Sandbox account</button>
+            <button className="primary-button" onClick={() => void runRefresh()} disabled={loading || refreshing || !overview}><Icon className={refreshing ? "spinning" : ""} name="refresh" />{refreshing ? "Refreshing..." : "Refresh inventory"}</button>
+          </div>
+        </section>
 
-        <div className="environment-banner" role="status"><span className="banner-icon">i</span><span><strong>Demo workspace</strong> — showing synthetic cPanel fixture data. No hosting accounts are connected.</span><button disabled title="Not available in this local demo">Connection guide <Icon name="arrow" /></button></div>
+        <div className="environment-banner" role="status"><span className="banner-icon">i</span><span><strong>Local prototype workspace</strong> — {demoNotice ?? "synthetic fixtures & pre-seeded dry-run workflows active. Live hosting provider connections: 0."}</span><button onClick={() => setActiveNav("System & security")}>Preflight &amp; security <Icon name="arrow" /></button></div>
 
         {error && <div className="error-banner" role="alert"><strong>Could not refresh live data.</strong> {error}<button onClick={() => void loadOverview()}>Try again</button></div>}
 
-        <section className="metric-grid" aria-label="Hosting overview metrics">
-          <article className="metric-card"><div className="metric-card-top"><span>Hosting accounts</span><span className="metric-icon mint"><Icon name="server" /></span></div><div className="metric-value">{loading ? "—" : overview?.counts.accounts ?? 0}</div><div className="metric-foot"><span className="metric-neutral"><Icon name="clock" /> Fixture data</span><span>Across this workspace</span></div></article>
-          <article className="metric-card"><div className="metric-card-top"><span>Websites tracked</span><span className="metric-icon blue"><Icon name="globe" /></span></div><div className="metric-value">{loading ? "—" : overview?.counts.sites ?? 0}</div><div className="metric-foot"><span className="metric-neutral"><Icon name="check" /> Inventory snapshot</span><span>Last read: {formatRelative(overview?.accounts[0]?.lastSyncedAt ?? null)}</span></div></article>
-          <article className="metric-card"><div className="metric-card-top"><span>Storage utilization</span><span className="metric-icon amber"><Icon name="database" /></span></div><div className="metric-value">{loading ? "—" : formatBytes(overview?.storage.usedBytes ?? 0)}<small> / {formatBytes(overview?.storage.quotaBytes ?? 0)}</small></div><div className="metric-foot"><span className="metric-neutral">{utilization}% used</span><span>Across connected accounts</span></div><div className="metric-progress"><span style={{ width: `${utilization}%` }} /></div></article>
-          <article className="metric-card"><div className="metric-card-top"><span>Account health</span><span className="metric-icon green"><Icon name="check" /></span></div><div className="metric-value health-value">{loading ? "—" : overview?.counts.healthy ?? 0}<small> / {overview?.counts.accounts ?? 0} healthy</small></div><div className="metric-foot"><span className="health-legend"><i /> Operational</span><span><i className="attention-dot" /> {overview?.counts.attention ?? 0} needs attention</span></div></article>
-        </section>
+        {activeNav === "Overview" && <>
+          <section className="metric-grid" aria-label="Hosting overview metrics">
+            <article className="metric-card"><div className="metric-card-top"><span>Hosting accounts</span><span className="metric-icon mint"><Icon name="server" /></span></div><div className="metric-value">{loading ? "—" : overview?.counts.accounts ?? 0}</div><div className="metric-foot"><span className="metric-neutral"><Icon name="clock" /> Fixture data</span><span>Across this workspace</span></div></article>
+            <article className="metric-card"><div className="metric-card-top"><span>Websites tracked</span><span className="metric-icon blue"><Icon name="globe" /></span></div><div className="metric-value">{loading ? "—" : overview?.counts.sites ?? 0}</div><div className="metric-foot"><span className="metric-neutral"><Icon name="check" /> Inventory snapshot</span><span>Last read: {formatRelative(overview?.accounts[0]?.lastSyncedAt ?? null)}</span></div></article>
+            <article className="metric-card"><div className="metric-card-top"><span>Storage utilization</span><span className="metric-icon amber"><Icon name="database" /></span></div><div className="metric-value">{loading ? "—" : formatBytes(overview?.storage.usedBytes ?? 0)}<small> / {formatBytes(overview?.storage.quotaBytes ?? 0)}</small></div><div className="metric-foot"><span className="metric-neutral">{utilization}% used</span><span>Across connected accounts</span></div><div className="metric-progress"><span style={{ width: `${utilization}%` }} /></div></article>
+            <article className="metric-card"><div className="metric-card-top"><span>Account health</span><span className="metric-icon green"><Icon name="check" /></span></div><div className="metric-value health-value">{loading ? "—" : overview?.counts.healthy ?? 0}<small> / {overview?.counts.accounts ?? 0} healthy</small></div><div className="metric-foot"><span className="health-legend"><i /> Operational</span><span><i className="attention-dot" /> {overview?.counts.attention ?? 0} needs attention</span></div></article>
+          </section>
 
-        <section className="content-grid">
-          <article className="panel accounts-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Hosting accounts</h2><span className="count-chip">{overview?.counts.accounts ?? 0}</span></div><p>Manage and monitor your connected infrastructure.</p></div></div>
-            <div className="account-table-head"><span>ACCOUNT</span><span>PROVIDER</span><span>SITES</span><span>STORAGE USAGE</span><span>LAST SYNC</span><span>HEALTH</span><span aria-hidden="true" /></div>
-            <div className="account-rows">{loading ? <div className="loading-state"><span className="loader" /> Loading inventory...</div> : filteredAccounts.length ? filteredAccounts.map((account) => <AccountRow key={account.id} account={account} selected={selectedAccountId === account.id} onSelect={() => setSelectedAccountId(account.id)} />) : <div className="empty-state"><strong>No matching accounts</strong><span>Try a different search term.</span></div>}</div>
-            <div className="panel-footer"><span>Showing <strong>{filteredAccounts.length}</strong> of <strong>{overview?.counts.accounts ?? 0}</strong> accounts</span><span>Fixture inventory</span></div>
-          </article>
+          <section className="content-grid">
+            <article className="panel accounts-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Hosting accounts</h2><span className="count-chip">{overview?.counts.accounts ?? 0}</span></div><p>Manage and monitor your connected infrastructure.</p></div><button className="text-button" onClick={() => setActiveNav("Hosting accounts")}>Capabilities <Icon name="arrow" /></button></div>
+              <div className="account-table-head"><span>ACCOUNT</span><span>PROVIDER</span><span>SITES</span><span>STORAGE USAGE</span><span>LAST SYNC</span><span>HEALTH</span><span aria-hidden="true" /></div>
+              <div className="account-rows">{loading ? <div className="loading-state"><span className="loader" /> Loading inventory...</div> : filteredAccounts.length ? filteredAccounts.map((account) => <AccountRow key={account.id} account={account} selected={selectedAccountId === account.id} onSelect={() => setSelectedAccountId(account.id)} />) : <div className="empty-state"><strong>No matching accounts</strong><span>Try a different search term.</span></div>}</div>
+              <div className="panel-footer"><span>Showing <strong>{filteredAccounts.length}</strong> of <strong>{overview?.counts.accounts ?? 0}</strong> accounts</span><span>Fixture inventory</span></div>
+            </article>
 
-          <article className="panel activity-panel"><div className="panel-heading"><div><h2>Recent activity</h2><p>Latest operations across your workspace.</p></div></div><div className="activity-content">{jobs.length ? <ul className="job-list">{jobs.slice(0, 4).map((job) => <JobRow key={job.id} job={job} />)}</ul> : <div className="activity-empty"><span className="empty-clock"><Icon name="clock" /></span><strong>No recent activity</strong><span>Refresh inventory to create a local demo job.</span></div>}</div><div className="activity-footer"><span className="activity-status"><i /> Job worker ready</span><span>Local demo queue</span></div></article>
-        </section>
+            <article className="panel activity-panel"><div className="panel-heading"><div><h2>Recent activity</h2><p>Latest operations across your workspace.</p></div><button className="text-button" onClick={() => setActiveNav("Jobs & activity")}>All jobs <Icon name="arrow" /></button></div><div className="activity-content">{jobs.length ? <ul className="job-list">{jobs.slice(0, 4).map((job) => <JobRow key={job.id} job={job} />)}</ul> : <div className="activity-empty"><span className="empty-clock"><Icon name="clock" /></span><strong>No recent activity</strong><span>Refresh inventory to create a local demo job.</span></div>}</div><div className="activity-footer"><span className="activity-status"><i /> Job worker ready</span><span>Local demo queue</span></div></article>
+          </section>
 
-        <section className="panel site-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Websites</h2><span className="count-chip">{activeAccount ? sites.length : 0}</span></div><p>{activeAccount ? `Latest discovered sites from ${activeAccount.label}.` : "Select an account to view discovered sites."}</p></div></div>
-          {sites.length ? <div className="site-table"><div className="site-table-head"><span>WEBSITE</span><span>TYPE</span><span>DOCUMENT ROOT</span><span>PHP</span><span>STATUS</span></div>{sites.slice(0, 4).map((site) => <div className="site-row" key={site.id}><span><span className="site-favicon">{site.domain.slice(0, 1).toUpperCase()}</span><strong>{site.domain}</strong></span><span>{site.kind}</span><span className="path-cell">{site.documentRoot}</span><span className="php-tag">{site.phpVersion}</span><span><StatusBadge status={site.status === "active" ? "healthy" : site.status} /></span></div>)}</div> : <div className="empty-inline">{loading ? "Loading websites..." : "No websites discovered for this account."}</div>}
-        </section>
+          <section className="panel site-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Websites</h2><span className="count-chip">{activeAccount ? sites.length : 0}</span></div><p>{activeAccount ? `Latest discovered sites from ${activeAccount.label}.` : "Select an account to view discovered sites."}</p></div><button className="text-button" onClick={() => setActiveNav("Websites")}>All websites <Icon name="arrow" /></button></div>
+            {sites.length ? <div className="site-table"><div className="site-table-head"><span>WEBSITE</span><span>TYPE</span><span>DOCUMENT ROOT</span><span>PHP</span><span>STATUS</span></div>{sites.slice(0, 4).map((site) => <div className="site-row" key={site.id}><span><span className="site-favicon">{site.domain.slice(0, 1).toUpperCase()}</span><strong>{site.domain}</strong></span><span>{site.kind}</span><span className="path-cell">{site.documentRoot}</span><span className="php-tag">{site.phpVersion}</span><span><StatusBadge status={site.status === "active" ? "healthy" : site.status} /></span></div>)}</div> : <div className="empty-inline">{loading ? "Loading websites..." : "No websites discovered for this account."}</div>}
+          </section>
+        </>}
 
-        <footer className="page-footer"><span>VSN ORBICORE <b>·</b> Local demo build</span><span>Inventory source: {overview?.source === "mock_fixture" ? "synthetic fixture" : "provider"} <b>·</b> Live connections: {overview?.liveConnections ?? 0}</span></footer>
+        {activeNav === "Hosting accounts" && (
+          <AccountsView
+            accounts={filteredAccounts}
+            selectedAccountId={selectedAccountId}
+            onSelectAccount={setSelectedAccountId}
+            canMutate={canMutate}
+            isAdmin={isAdmin}
+            onAccountCreated={loadOverview}
+            onRefreshAccount={(id) => runRefresh(id)}
+          />
+        )}
+
+        {activeNav === "Websites" && <WebsitesView sites={allSites} globalQuery={query} canMutate={canMutate} />}
+
+        {activeNav === "Migrations" && (
+          <MigrationsView accounts={overview?.accounts ?? []} sites={allSites} canMutate={canMutate} />
+        )}
+
+        {activeNav === "Storage" && <StorageView canMutate={canMutate} />}
+
+        {activeNav === "Jobs & activity" && <JobsAndAuditView jobs={jobs} isAdmin={isAdmin} />}
+
+        {activeNav === "Automation & reports" && (
+          <AutomationAndReportsView isAdmin={isAdmin} canMutate={canMutate} onNavigate={setActiveNav} />
+        )}
+
+        {activeNav === "System & security" && (
+          <SystemAndSecurityView
+            actorId={actor.id}
+            role={actor.role}
+            mfaEnabled={Boolean(actor.mfaEnabled)}
+            onOpenMfaModal={() => setShowMfaSetup(true)}
+          />
+        )}
+
+        <footer className="page-footer"><span>VSN ORBICORE <b>·</b> Phase 1 foundation build</span><span>Inventory source: {overview?.source === "mock_fixture" ? "synthetic fixture" : "provider"} <b>·</b> Live connections: {overview?.liveConnections ?? 0}</span></footer>
       </div>
     </main>
     {showMfaSetup && <MfaSetup enabled={Boolean(actor.mfaEnabled)} onClose={() => setShowMfaSetup(false)} onEnabled={() => setActor((current) => current ? { ...current, mfaEnabled: true } : current)} onDisabled={() => { setShowMfaSetup(false); setActor(null); }} />}

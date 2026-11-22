@@ -5,7 +5,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID, randomBytes, createHash, scryptSync, timingSafeEqual } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from "@simplewebauthn/server";
-import { decryptMfaSecret, encodeBase32, encryptMfaSecret, mfaEncryptionKey, newRecoveryCodes, recoveryCodeHash, verifyTotp } from "./mfa.mjs";
+import { decryptMfaSecret, decryptMfaSecretWithFallback, encodeBase32, encryptMfaSecret, mfaEncryptionKey, newRecoveryCodes, parseMfaKeyring, recoveryCodeHash, verifyTotp } from "./mfa.mjs";
+import { CAPABILITY_PROFILES, redactSecrets, resolveContainedPath, validateExternalEndpoint } from "./security.mjs";
+import { createLocalNotificationAdapter, dispatchRecoveryNotification, issueRecoveryContactVerification, verifyRecoveryContactToken } from "./notifications.mjs";
+import { buildDeploymentReadiness, buildDiagnosticBundle, createDatabaseBackup, listBackups, runPreflight, runRestoreDrill, verifyBackupFile } from "./preflight.mjs";
+import { createMockCpanelAdapter, LiveCpanelAdapterBoundary } from "./cpanel-adapter.mjs";
+import { APPROVAL_MODES, buildAgencyReadinessReport, executePolicyRuleDryRun, generateAdvisoryInsights, RULE_TYPES } from "./automation.mjs";
+import { appendAuditEvent, verifyAuditChain } from "./audit.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultFixturePath = resolve(here, "fixtures/cpanel-uapi-inventory.json");
@@ -147,7 +153,9 @@ function createDatabase(dbPath, fixture) {
       target_id TEXT NOT NULL,
       outcome TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      details_json TEXT NOT NULL
+      details_json TEXT NOT NULL,
+      prev_hash TEXT,
+      entry_hash TEXT
     );
     CREATE TABLE IF NOT EXISTS organizations (
       id TEXT PRIMARY KEY,
@@ -223,41 +231,321 @@ function createDatabase(dbPath, fixture) {
       event TEXT NOT NULL,
       recipient TEXT NOT NULL,
       status TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      idempotency_key TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      applied_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS recovery_contacts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      channel TEXT NOT NULL,
+      address TEXT NOT NULL,
+      verified_at TEXT,
+      verification_token_hash TEXT,
+      verification_expires_at TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (user_id, channel)
+    );
+    CREATE TABLE IF NOT EXISTS capability_snapshots (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      profile_name TEXT NOT NULL,
+      capabilities_json TEXT NOT NULL,
+      source TEXT NOT NULL,
+      fetched_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS migration_plans (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      site_id TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+      source_account_id TEXT NOT NULL,
+      target_account_id TEXT NOT NULL,
+      strategy TEXT NOT NULL CHECK (strategy IN ('wordpress_optimized', 'generic_php', 'whm_account_package')),
+      state TEXT NOT NULL CHECK (state IN ('planned', 'preflight', 'snapshot', 'transfer', 'restore', 'verify', 'ready_for_cutover', 'cutover', 'monitor', 'completed', 'blocked', 'failed', 'rolled_back')),
+      preflight_json TEXT NOT NULL,
+      checksum_sha256 TEXT,
+      rollback_note TEXT,
+      blocker_reason TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (source_account_id, organization_id) REFERENCES accounts(id, organization_id),
+      FOREIGN KEY (target_account_id, organization_id) REFERENCES accounts(id, organization_id)
+    );
+    CREATE TABLE IF NOT EXISTS storage_policies (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      account_id TEXT NOT NULL,
+      mode TEXT NOT NULL CHECK (mode IN ('media_offload', 'backup_archival', 'static_assets')),
+      target_endpoint TEXT NOT NULL,
+      target_bucket TEXT NOT NULL,
+      threshold_percent INTEGER NOT NULL CHECK (threshold_percent >= 50 AND threshold_percent <= 99),
+      estimated_reclaim_bytes INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL CHECK (status IN ('dry_run_only', 'paused')),
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (account_id, organization_id) REFERENCES accounts(id, organization_id)
+    );
+    CREATE TABLE IF NOT EXISTS site_snapshots (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      site_id TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+      action TEXT NOT NULL,
+      status TEXT NOT NULL,
+      checksum_sha256 TEXT NOT NULL,
+      details_json TEXT NOT NULL,
+      created_by TEXT NOT NULL,
       created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS automation_rules (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      name TEXT NOT NULL,
+      rule_type TEXT NOT NULL CHECK (rule_type IN ('inventory_stale_refresh', 'quota_threshold_alert', 'backup_snapshot_schedule')),
+      approval_mode TEXT NOT NULL CHECK (approval_mode IN ('manual_approval', 'dry_run_bounded')),
+      daily_run_cap INTEGER NOT NULL DEFAULT 3 CHECK (daily_run_cap >= 1 AND daily_run_cap <= 50),
+      enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+      last_run_at TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS automation_runs (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      rule_id TEXT NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
+      actor_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      summary_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS wp_site_state (
+      site_id TEXT PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      core_version TEXT NOT NULL DEFAULT '6.7.2',
+      previous_core_version TEXT,
+      pending_updates INTEGER NOT NULL DEFAULT 0,
+      previous_pending_updates INTEGER,
+      staging_url TEXT,
+      staging_created_at TEXT,
+      last_restore_point_sha256 TEXT,
+      last_action TEXT,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS secret_references (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id),
+      label TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      reference_uri TEXT NOT NULL,
+      masked_preview TEXT NOT NULL,
+      encrypted_payload TEXT NOT NULL,
+      key_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      revoked_at TEXT
     );
   `);
 
   const accountColumns = new Set(db.prepare("PRAGMA table_info(accounts)").all().map((column) => column.name));
   if (!accountColumns.has("organization_id")) db.exec("ALTER TABLE accounts ADD COLUMN organization_id TEXT NOT NULL DEFAULT 'org-demo'");
+  if (!accountColumns.has("capability_profile")) db.exec("ALTER TABLE accounts ADD COLUMN capability_profile TEXT NOT NULL DEFAULT 'cpanel_uapi_standard'");
   const jobColumns = new Set(db.prepare("PRAGMA table_info(jobs)").all().map((column) => column.name));
   if (!jobColumns.has("organization_id")) db.exec("ALTER TABLE jobs ADD COLUMN organization_id TEXT NOT NULL DEFAULT 'org-demo'");
   if (!jobColumns.has("requested_by")) db.exec("ALTER TABLE jobs ADD COLUMN requested_by TEXT");
   const auditColumns = new Set(db.prepare("PRAGMA table_info(audit_events)").all().map((column) => column.name));
   if (!auditColumns.has("organization_id")) db.exec("ALTER TABLE audit_events ADD COLUMN organization_id TEXT NOT NULL DEFAULT 'org-demo'");
+  if (!auditColumns.has("prev_hash")) db.exec("ALTER TABLE audit_events ADD COLUMN prev_hash TEXT");
+  if (!auditColumns.has("entry_hash")) db.exec("ALTER TABLE audit_events ADD COLUMN entry_hash TEXT");
   const userColumns = new Set(db.prepare("PRAGMA table_info(users)").all().map((column) => column.name));
   if (!userColumns.has("mfa_enabled")) db.exec("ALTER TABLE users ADD COLUMN mfa_enabled INTEGER NOT NULL DEFAULT 0 CHECK (mfa_enabled IN (0, 1))");
   const sessionColumns = new Set(db.prepare("PRAGMA table_info(sessions)").all().map((column) => column.name));
   if (!sessionColumns.has("mfa_verified")) db.exec("ALTER TABLE sessions ADD COLUMN mfa_verified INTEGER NOT NULL DEFAULT 0 CHECK (mfa_verified IN (0, 1))");
+  const outboxColumns = new Set(db.prepare("PRAGMA table_info(notification_outbox)").all().map((column) => column.name));
+  if (!outboxColumns.has("attempts")) db.exec("ALTER TABLE notification_outbox ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0");
+  if (!outboxColumns.has("last_error")) db.exec("ALTER TABLE notification_outbox ADD COLUMN last_error TEXT");
+  if (!outboxColumns.has("idempotency_key")) db.exec("ALTER TABLE notification_outbox ADD COLUMN idempotency_key TEXT");
+  if (!outboxColumns.has("updated_at")) db.exec("ALTER TABLE notification_outbox ADD COLUMN updated_at TEXT");
+  const migrationColumns = new Set(db.prepare("PRAGMA table_info(migration_plans)").all().map((column) => column.name));
+  if (!migrationColumns.has("checkpoint_percent")) db.exec("ALTER TABLE migration_plans ADD COLUMN checkpoint_percent INTEGER NOT NULL DEFAULT 0");
+  if (!migrationColumns.has("failed_at_stage")) db.exec("ALTER TABLE migration_plans ADD COLUMN failed_at_stage TEXT");
+  const storageColumns = new Set(db.prepare("PRAGMA table_info(storage_policies)").all().map((column) => column.name));
+  if (!storageColumns.has("last_drill_status")) db.exec("ALTER TABLE storage_policies ADD COLUMN last_drill_status TEXT");
+  if (!storageColumns.has("last_drill_at")) db.exec("ALTER TABLE storage_policies ADD COLUMN last_drill_at TEXT");
 
   const now = new Date().toISOString();
+  db.prepare("INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (1, 'initial_inventory_auth', ?)").run(now);
+  db.prepare("INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (2, 'preflight_contacts_capabilities_migrations_storage', ?)").run(now);
+  db.prepare("INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (3, 'team_rbac_site_snapshots_restore_drill', ?)").run(now);
+  db.prepare("INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (4, 'automation_rules_storage_drills_migration_checkpoints', ?)").run(now);
+  db.prepare("INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (5, 'wordpress_lifecycle_staging_and_rollback', ?)").run(now);
+  db.prepare("INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (6, 'audit_chain_and_job_recovery', ?)").run(now);
+  db.prepare("INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (7, 'secret_references_and_deployment_readiness', ?)").run(now);
   db.prepare("INSERT OR IGNORE INTO organizations (id, name, created_at) VALUES ('org-demo', 'Pella Global', ?)").run(now);
 
   const accountCount = db.prepare("SELECT COUNT(*) AS count FROM accounts").get().count;
   if (accountCount === 0) {
     const insertAccount = db.prepare(`INSERT INTO accounts
-      (id, label, provider, host, username, health, used_bytes, quota_bytes, last_synced_at, source)
-      VALUES (?, ?, 'cPanel', ?, ?, ?, ?, ?, ?, 'mock_fixture')`);
+      (id, label, provider, host, username, health, used_bytes, quota_bytes, last_synced_at, source, capability_profile)
+      VALUES (?, ?, 'cPanel', ?, ?, ?, ?, ?, ?, 'mock_fixture', ?)`);
     const insertSite = db.prepare(`INSERT INTO sites
       (id, account_id, domain, kind, document_root, php_version, status)
       VALUES (?, ?, ?, ?, ?, ?, ?)`);
+    const insertSnapshot = db.prepare(`INSERT INTO capability_snapshots
+      (id, account_id, organization_id, profile_name, capabilities_json, source, fetched_at)
+      VALUES (?, ?, 'org-demo', ?, ?, 'mock_fixture', ?)`);
     db.exec("BEGIN IMMEDIATE");
     try {
       for (const account of fixture.accounts) {
-        insertAccount.run(account.id, account.label, account.host, account.username, account.health, account.usedBytes, account.quotaBytes, fixture.metadata.fetchedAt);
+        const profileName = account.health === "attention" ? "cpanel_uapi_restricted" : "cpanel_uapi_standard";
+        insertAccount.run(account.id, account.label, account.host, account.username, account.health, account.usedBytes, account.quotaBytes, fixture.metadata.fetchedAt, profileName);
+        insertSnapshot.run(randomUUID(), account.id, profileName, JSON.stringify(CAPABILITY_PROFILES[profileName]), fixture.metadata.fetchedAt);
         for (const site of account.sites) {
           insertSite.run(site.id, account.id, site.domain, site.kind, site.documentRoot, site.phpVersion, site.status);
         }
       }
+      const seededAt = fixture.metadata.fetchedAt;
+      db.prepare(`INSERT OR IGNORE INTO migration_plans (id, organization_id, site_id, source_account_id, target_account_id, strategy, state, checkpoint_percent, failed_at_stage, preflight_json, checksum_sha256, rollback_note, blocker_reason, created_by, created_at, updated_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed-demo', ?, ?)`).run(
+        "demo-mig-01",
+        "site-copperline-blog",
+        "acct-copperline",
+        "acct-fieldwork",
+        "wordpress_optimized",
+        "ready_for_cutover",
+        85,
+        null,
+        JSON.stringify({ sameAccount: false, estimatedSiteBytes: 4294967296, targetFreeBytes: 29527900160, quotaFit: true, phpVersion: "8.1", dnsSeparateWorkstream: true, whmRequired: false, whmPermitted: false, dryRunOnly: true }),
+        "d4f8c9a1b2e3745198c0a1e2f3456789abcdef0123456789abcdef0123456789",
+        "Source files remain untouched until post-cutover retention gate.",
+        null,
+        seededAt,
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO migration_plans (id, organization_id, site_id, source_account_id, target_account_id, strategy, state, checkpoint_percent, failed_at_stage, preflight_json, checksum_sha256, rollback_note, blocker_reason, created_by, created_at, updated_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed-demo', ?, ?)`).run(
+        "demo-mig-02",
+        "site-northstar-preview",
+        "acct-northstar",
+        "acct-fieldwork",
+        "generic_php",
+        "failed",
+        30,
+        "transfer",
+        JSON.stringify({ sameAccount: false, estimatedSiteBytes: 2684354560, targetFreeBytes: 29527900160, quotaFit: true, phpVersion: "8.1", dnsSeparateWorkstream: true, whmRequired: false, whmPermitted: false, dryRunOnly: true }),
+        null,
+        "Source files remain untouched until post-cutover retention gate.",
+        "Simulated 30% archive stream timeout — resume idempotently from checkpoint.",
+        seededAt,
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO storage_policies (id, organization_id, account_id, mode, target_endpoint, target_bucket, threshold_percent, estimated_reclaim_bytes, status, last_drill_status, last_drill_at, created_by, created_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed-demo', ?)`).run(
+        "demo-pol-01",
+        "acct-copperline",
+        "media_offload",
+        "https://s3.eu-central-1.example.invalid",
+        "orbicore-copperline-media-archive",
+        80,
+        34200000000,
+        "dry_run_only",
+        "rehydration_verified",
+        seededAt,
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO storage_policies (id, organization_id, account_id, mode, target_endpoint, target_bucket, threshold_percent, estimated_reclaim_bytes, status, last_drill_status, last_drill_at, created_by, created_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed-demo', ?)`).run(
+        "demo-pol-02",
+        "acct-northstar",
+        "backup_archival",
+        "https://s3.us-east-1.example.invalid",
+        "orbicore-northstar-backups",
+        85,
+        28900000000,
+        "paused",
+        "outage_fail_closed_verified",
+        seededAt,
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO site_snapshots (id, organization_id, site_id, action, status, checksum_sha256, details_json, created_by, created_at)
+        VALUES (?, 'org-demo', ?, ?, 'completed', ?, ?, 'seed-demo', ?)`).run(
+        "demo-snap-01",
+        "site-northstar-main",
+        "archive_backup",
+        "a1b2c3d4e5f60123456789abcdef0123456789abcdef0123456789abcdef0123",
+        JSON.stringify({ domain: "northstar-studio.example", archiveScope: "wp_content_and_db", dryRun: true, sizeEstimateMb: 640 }),
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO site_snapshots (id, organization_id, site_id, action, status, checksum_sha256, details_json, created_by, created_at)
+        VALUES (?, 'org-demo', ?, ?, 'completed', ?, ?, 'seed-demo', ?)`).run(
+        "demo-snap-02",
+        "site-copperline-main",
+        "preflight_check",
+        "b2c3d4e5f60123456789abcdef0123456789abcdef0123456789abcdef01234a",
+        JSON.stringify({ domain: "copperline.example", phpRecommendation: "8.3", dryRun: true }),
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO wp_site_state (site_id, organization_id, core_version, previous_core_version, pending_updates, previous_pending_updates, staging_url, staging_created_at, last_restore_point_sha256, last_action, updated_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        "site-northstar-shop",
+        "6.7.2",
+        "6.6.4",
+        1,
+        3,
+        "https://staging.shop.northstar-studio.example",
+        seededAt,
+        "c3d4e5f60123456789abcdef0123456789abcdef0123456789abcdef01234ab1",
+        "staging_create",
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO wp_site_state (site_id, organization_id, core_version, previous_core_version, pending_updates, previous_pending_updates, staging_url, staging_created_at, last_restore_point_sha256, last_action, updated_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        "site-copperline-main",
+        "6.6.4",
+        null,
+        2,
+        null,
+        null,
+        null,
+        null,
+        "preflight_scanned",
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO automation_rules (id, organization_id, name, rule_type, approval_mode, daily_run_cap, enabled, last_run_at, created_by, created_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, 1, ?, 'seed-demo', ?)`).run(
+        "demo-rule-01",
+        "Stale cPanel inventory check (Demo)",
+        "inventory_stale_refresh",
+        "dry_run_bounded",
+        5,
+        seededAt,
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO automation_rules (id, organization_id, name, rule_type, approval_mode, daily_run_cap, enabled, last_run_at, created_by, created_at)
+        VALUES (?, 'org-demo', ?, ?, ?, ?, 1, ?, 'seed-demo', ?)`).run(
+        "demo-rule-02",
+        "Quota >85% offload advisory (Demo)",
+        "quota_threshold_alert",
+        "manual_approval",
+        3,
+        seededAt,
+        seededAt,
+      );
+      db.prepare(`INSERT OR IGNORE INTO automation_runs (id, organization_id, rule_id, actor_id, status, summary_json, created_at)
+        VALUES (?, 'org-demo', ?, 'seed-demo', 'completed', ?, ?)`).run(
+        "demo-run-01",
+        "demo-rule-01",
+        JSON.stringify({ dryRun: true, evaluatedAccounts: 3, candidateRefreshIds: ["acct-northstar", "acct-copperline", "acct-fieldwork"] }),
+        seededAt,
+      );
       db.exec("COMMIT");
     } catch (error) {
       db.exec("ROLLBACK");
@@ -280,6 +568,7 @@ function accountFromRow(row) {
     quotaBytes: row.quota_bytes,
     lastSyncedAt: row.last_synced_at,
     source: row.source,
+    capabilityProfile: row.capability_profile ?? "cpanel_uapi_standard",
   };
 }
 
@@ -297,9 +586,35 @@ function jobFromRow(row) {
   };
 }
 
-export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:3000" } = {}) {
+export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaPreviousKeys = process.env.ORBICORE_MFA_PREVIOUS_KEYS, mfaKeyId = process.env.ORBICORE_MFA_KEY_ID ?? "k1", notificationAdapter = createLocalNotificationAdapter(), mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:3000" } = {}) {
   const fixture = readFixture(fixturePath);
   const db = createDatabase(dbPath, fixture);
+  const orphanedJobs = db.prepare("SELECT id, organization_id, account_id, requested_by FROM jobs WHERE status = 'running'").all();
+  if (orphanedJobs.length > 0) {
+    const recoveredAt = new Date().toISOString();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("UPDATE jobs SET status = 'queued', error = 'recovered_after_restart' WHERE status = 'running'").run();
+      for (const orphan of orphanedJobs) {
+        appendAuditEvent(db, {
+          organizationId: orphan.organization_id,
+          actor: orphan.requested_by ?? "system",
+          action: "job.crash_recovery",
+          targetId: orphan.id,
+          outcome: "requeued",
+          createdAt: recoveredAt,
+          details: { accountId: orphan.account_id, previousStatus: "running" },
+        });
+      }
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+  const mockCpanelAdapter = createMockCpanelAdapter(fixture);
+  const liveAdapterBoundary = new LiveCpanelAdapterBoundary();
+  const packageJson = JSON.parse(readFileSync(resolve(here, "../../package.json"), "utf8"));
   const accountQuery = db.prepare(`SELECT a.*, COUNT(s.id) AS site_count FROM accounts a
     LEFT JOIN sites s ON s.account_id = a.id WHERE a.organization_id = ? GROUP BY a.id ORDER BY a.label`);
   const jobQuery = db.prepare(`SELECT j.*, a.label AS account_label FROM jobs j
@@ -319,7 +634,8 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
   }
   const authFailures = new Map();
   const secureCookie = process.env.ORBICORE_COOKIE_SECURE === "1";
-  const mfaKey = mfaEncryptionKey(suppliedMfaKey);
+  let mfaKeyring = parseMfaKeyring({ primary: suppliedMfaKey ?? process.env.ORBICORE_MFA_ENCRYPTION_KEY, previous: mfaPreviousKeys, primaryId: mfaKeyId });
+  const getMfaKey = () => mfaKeyring?.primaryKey ?? null;
 
   function actorFor(request) {
     const token = cookieValue(request.headers.cookie, "orbicore_session");
@@ -408,16 +724,17 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const account = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(candidate.account_id, candidate.organization_id);
       if (!account) throw new Error("The hosting account no longer exists.");
       const fixtureAccount = fixture.accounts.find((entry) => entry.id === account.id);
-      if (!fixtureAccount) throw new Error("The mock adapter has no fixture for this account.");
+      if (!fixtureAccount && account.source !== "mock_fixture") throw new Error("The mock adapter has no fixture for this account.");
+      const siteCount = fixtureAccount
+        ? fixtureAccount.sites.length
+        : db.prepare("SELECT COUNT(*) AS count FROM sites WHERE account_id = ?").get(account.id).count;
       const now = new Date().toISOString();
-      const result = { source: "mock_fixture", live: false, accountId: account.id, sites: fixtureAccount.sites.length, fetchedAt: now };
+      const result = { source: "mock_fixture", live: false, accountId: account.id, sites: siteCount, fetchedAt: now };
       transaction(() => {
         db.prepare("UPDATE accounts SET last_synced_at = ?, source = 'mock_fixture' WHERE id = ? AND organization_id = ?").run(now, account.id, candidate.organization_id);
         db.prepare("UPDATE jobs SET status = 'completed', completed_at = ?, result_json = ?, error = NULL WHERE id = ?")
           .run(now, JSON.stringify(result), candidate.id);
-        db.prepare(`INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json)
-          VALUES (?, ?, ?, 'inventory.refresh', ?, 'completed', ?, ?)`)
-          .run(randomUUID(), candidate.organization_id, actor.id, account.id, now, JSON.stringify({ source: "mock_fixture", live: false, jobId: candidate.id }));
+        appendAuditEvent(db, { organizationId: candidate.organization_id, actor: actor.id, action: "inventory.refresh", targetId: account.id, outcome: "completed", createdAt: now, details: { source: "mock_fixture", live: false, jobId: candidate.id } });
       });
       return { id: candidate.id, status: "completed", result };
     } catch (error) {
@@ -425,9 +742,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const safeError = error instanceof Error ? error.message.slice(0, 240) : "Refresh failed.";
       transaction(() => {
         db.prepare("UPDATE jobs SET status = 'failed', completed_at = ?, error = ? WHERE id = ?").run(now, safeError, candidate.id);
-        db.prepare(`INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json)
-          VALUES (?, ?, ?, 'inventory.refresh', ?, 'failed', ?, ?)`)
-          .run(randomUUID(), candidate.organization_id, candidate.requested_by ?? "system", candidate.account_id, now, JSON.stringify({ jobId: candidate.id, reason: safeError }));
+        appendAuditEvent(db, { organizationId: candidate.organization_id, actor: candidate.requested_by ?? "system", action: "inventory.refresh", targetId: candidate.account_id, outcome: "failed", createdAt: now, details: { jobId: candidate.id, reason: safeError } });
       });
       return { id: candidate.id, status: "failed", error: safeError };
     }
@@ -484,8 +799,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           db.prepare("INSERT INTO users (id, organization_id, email, password_salt, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, 'owner', ?)")
             .run(user.id, user.organizationId, email, salt, passwordHash(password, salt), now);
           db.prepare("DELETE FROM bootstrap_tokens").run();
-          db.prepare("INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json) VALUES (?, ?, ?, 'auth.bootstrap', ?, 'completed', ?, '{}')")
-            .run(randomUUID(), user.organizationId, user.id, user.id, now);
+          appendAuditEvent(db, { organizationId: user.organizationId, actor: user.id, action: "auth.bootstrap", targetId: user.id, outcome: "completed", createdAt: now, details: {} });
           db.exec("COMMIT");
         } catch (error) { db.exec("ROLLBACK"); throw error; }
         if (bootstrapTokenPath && existsSync(bootstrapTokenPath)) unlinkSync(bootstrapTokenPath);
@@ -520,8 +834,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const now = new Date().toISOString();
         const removed = db.prepare("DELETE FROM passkeys WHERE credential_id = ? AND user_id = ?").run(credentialId, actor.id);
         if (removed.changes !== 1) return json(response, 404, { error: "passkey_not_found" });
-        db.prepare("INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json) VALUES (?, ?, ?, 'auth.passkey.revoke', ?, 'completed', ?, ?)")
-          .run(randomUUID(), actor.organizationId, actor.id, credentialId, now, JSON.stringify({ passwordReauthenticated: true }));
+        appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.passkey.revoke", targetId: credentialId, outcome: "completed", createdAt: now, details: { passwordReauthenticated: true } });
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
         return json(response, 200, { revoked: true, credentialId });
       } catch (error) {
@@ -597,8 +910,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         db.prepare("INSERT INTO passkeys (credential_id, user_id, public_key, counter, transports_json, device_type, backed_up, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
           .run(credential.id, actor.id, Buffer.from(credential.publicKey).toString("base64"), credential.counter,
             JSON.stringify(credential.transports ?? []), info.credentialDeviceType, info.credentialBackedUp ? 1 : 0, createdAt);
-        db.prepare("INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json) VALUES (?, ?, ?, 'auth.passkey.enroll', ?, 'completed', ?, ?)")
-          .run(randomUUID(), actor.organizationId, actor.id, credential.id, createdAt, JSON.stringify({ deviceType: info.credentialDeviceType, backedUp: info.credentialBackedUp }));
+        appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.passkey.enroll", targetId: credential.id, outcome: "completed", createdAt, details: { deviceType: info.credentialDeviceType, backedUp: info.credentialBackedUp } });
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
         return json(response, 201, { enrolled: true, credentialId: credential.id, deviceType: info.credentialDeviceType, backedUp: info.credentialBackedUp });
       } catch (error) {
@@ -690,6 +1002,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!actor) return json(response, 401, { error: "authentication_required" });
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       if (authRateLimited(request, response)) return;
+      const mfaKey = getMfaKey();
       if (!mfaKey) return json(response, 503, { error: "mfa_key_unavailable" });
       try {
         const body = await readJson(request);
@@ -710,7 +1023,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const expires = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
       db.prepare(`INSERT INTO authenticators (user_id, encrypted_secret, enabled, pending_expires_at, last_totp_step)
         VALUES (?, ?, 0, ?, -1) ON CONFLICT(user_id) DO UPDATE SET encrypted_secret = excluded.encrypted_secret, enabled = 0, pending_expires_at = excluded.pending_expires_at, last_totp_step = -1`)
-        .run(actor.id, encryptMfaSecret(secret, mfaKey), expires);
+        .run(actor.id, encryptMfaSecret(secret, mfaKey, mfaKeyring.primaryId), expires);
       const label = encodeURIComponent(`VSN ORBICORE:${actor.email}`);
       const uri = `otpauth://totp/${label}?secret=${secret}&issuer=VSN%20ORBICORE&algorithm=SHA1&digits=6&period=30`;
       return json(response, 201, { secret, otpauthUri: uri, expiresAt: expires, assurance: "totp_fallback_not_phishing_resistant" });
@@ -720,12 +1033,12 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const actor = actorFor(request);
       if (!actor) return json(response, 401, { error: "authentication_required" });
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
-      if (!mfaKey) return json(response, 503, { error: "mfa_key_unavailable" });
+      if (!mfaKeyring) return json(response, 503, { error: "mfa_key_unavailable" });
       try {
         const body = await readJson(request);
         const pending = db.prepare("SELECT encrypted_secret, pending_expires_at FROM authenticators WHERE user_id = ? AND enabled = 0").get(actor.id);
         if (!pending || !pending.pending_expires_at || pending.pending_expires_at <= new Date().toISOString()) return json(response, 410, { error: "mfa_enrollment_expired" });
-        const secret = decryptMfaSecret(pending.encrypted_secret, mfaKey);
+        const secret = decryptMfaSecretWithFallback(pending.encrypted_secret, mfaKeyring);
         const acceptedStep = verifyTotp(secret, body.code, mfaClock());
         if (acceptedStep === null) {
           registerAuthFailure(request);
@@ -740,9 +1053,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           db.prepare("DELETE FROM recovery_codes WHERE user_id = ?").run(actor.id);
           const insertCode = db.prepare("INSERT INTO recovery_codes (user_id, code_hash) VALUES (?, ?)");
           for (const code of codes) insertCode.run(actor.id, recoveryCodeHash(code));
-          db.prepare(`INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json)
-            VALUES (?, ?, ?, 'auth.mfa.enroll', ?, 'completed', ?, ?)`)
-            .run(randomUUID(), actor.organizationId, actor.id, actor.id, now, JSON.stringify({ method: "totp_fallback", recoveryCodesIssued: codes.length }));
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.mfa.enroll", targetId: actor.id, outcome: "completed", createdAt: now, details: { method: "totp_fallback", recoveryCodesIssued: codes.length } });
         });
         issueSession(actor, response, true, request);
         return json(response, 200, { enabled: true, recoveryCodes: codes, assurance: "totp_fallback_not_phishing_resistant" });
@@ -763,7 +1074,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const challenge = db.prepare(`SELECT c.user_id, c.expires_at, u.organization_id, u.email, u.role, u.mfa_enabled
           FROM login_challenges c JOIN users u ON u.id = c.user_id WHERE c.token_hash = ? AND c.expires_at > ? AND u.disabled = 0`)
           .get(challengeHash, new Date().toISOString());
-        if (!challenge || !challenge.mfa_enabled || !mfaKey) {
+        if (!challenge || !challenge.mfa_enabled || !mfaKeyring) {
           registerAuthFailure(request);
           return json(response, 401, { error: "invalid_mfa_challenge" });
         }
@@ -776,33 +1087,44 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           const codeRow = db.prepare("SELECT code_hash FROM recovery_codes WHERE user_id = ? AND code_hash = ? AND used_at IS NULL")
             .get(challenge.user_id, recoveryCodeHash(normalized));
           if (codeRow) recovery = true;
-        } else if (mfaKey) {
-          acceptedStep = verifyTotp(decryptMfaSecret(authenticator.encrypted_secret, mfaKey), body.code, mfaClock(), authenticator.last_totp_step);
+        } else if (mfaKeyring) {
+          acceptedStep = verifyTotp(decryptMfaSecretWithFallback(authenticator.encrypted_secret, mfaKeyring), body.code, mfaClock(), authenticator.last_totp_step);
         }
         if (!recovery && acceptedStep === null) {
           registerAuthFailure(request);
           return json(response, 401, { error: "invalid_mfa_code" });
         }
         const now = new Date().toISOString();
+        let notificationResult = null;
         transaction(() => {
           db.prepare("DELETE FROM login_challenges WHERE token_hash = ?").run(challengeHash);
           if (recovery) {
             db.prepare("UPDATE recovery_codes SET used_at = ? WHERE user_id = ? AND code_hash = ? AND used_at IS NULL").run(now, challenge.user_id, recoveryCodeHash(normalized));
             db.prepare("DELETE FROM sessions WHERE user_id = ?").run(challenge.user_id);
-            db.prepare(`INSERT INTO notification_outbox (id, user_id, event, recipient, status, created_at)
-              VALUES (?, ?, 'auth.mfa_recovery_code_used', ?, 'blocked_unverified_contact', ?)`)
-              .run(randomUUID(), challenge.user_id, challenge.email, now);
-            db.prepare(`INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json)
-              VALUES (?, ?, ?, 'auth.mfa_recovery_code_used', ?, 'completed', ?, '{"sessionsRevoked":true,"notification":"queued_contact_unverified"}')`)
-              .run(randomUUID(), challenge.organization_id, challenge.user_id, challenge.user_id, now);
           } else {
             db.prepare("UPDATE authenticators SET last_totp_step = ? WHERE user_id = ? AND last_totp_step < ?").run(acceptedStep, challenge.user_id, acceptedStep);
           }
         });
+        if (recovery) {
+          notificationResult = await dispatchRecoveryNotification(db, notificationAdapter, {
+            userId: challenge.user_id,
+            event: "auth.mfa_recovery_code_used",
+            fallbackRecipient: challenge.email,
+            idempotencyKey: `recovery:${challengeHash}`,
+          });
+          const noticeSummary = notificationResult.status === "blocked_unverified_contact"
+            ? "queued_contact_unverified"
+            : notificationResult.status;
+          appendAuditEvent(db, { organizationId: challenge.organization_id, actor: challenge.user_id, action: "auth.mfa_recovery_code_used", targetId: challenge.user_id, outcome: "completed", createdAt: now, details: { sessionsRevoked: true, notification: noticeSummary } });
+        }
         const user = { id: challenge.user_id, email: challenge.email, role: challenge.role, organizationId: challenge.organization_id, mfaEnabled: true };
         issueSession(user, response, true, request);
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
-        return json(response, 200, { user, recoveryCodeUsed: recovery, notification: recovery ? "queued_contact_unverified" : undefined });
+        return json(response, 200, {
+          user,
+          recoveryCodeUsed: recovery,
+          notification: recovery ? (notificationResult.status === "blocked_unverified_contact" ? "queued_contact_unverified" : notificationResult.status) : undefined,
+        });
       } catch (error) {
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
@@ -813,14 +1135,14 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!actor) return json(response, 401, { error: "authentication_required" });
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       if (authRateLimited(request, response)) return;
-      if (!mfaKey || !actor.mfaEnabled) return json(response, 409, { error: "mfa_not_enabled_or_key_unavailable" });
+      if (!mfaKeyring || !actor.mfaEnabled) return json(response, 409, { error: "mfa_not_enabled_or_key_unavailable" });
       try {
         const body = await readJson(request);
         const userRow = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
         const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, userRow?.password_salt ?? "orbicore-no-user-salt") : "";
         const authenticator = db.prepare("SELECT encrypted_secret, last_totp_step FROM authenticators WHERE user_id = ? AND enabled = 1").get(actor.id);
         const acceptedStep = authenticator && typeof body.code === "string"
-          ? verifyTotp(decryptMfaSecret(authenticator.encrypted_secret, mfaKey), body.code, mfaClock(), authenticator.last_totp_step)
+          ? verifyTotp(decryptMfaSecretWithFallback(authenticator.encrypted_secret, mfaKeyring), body.code, mfaClock(), authenticator.last_totp_step)
           : null;
         if (!userRow || !safeEqual(candidate, userRow.password_hash) || acceptedStep === null) {
           registerAuthFailure(request);
@@ -833,9 +1155,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           db.prepare("DELETE FROM recovery_codes WHERE user_id = ?").run(actor.id);
           db.prepare("DELETE FROM login_challenges WHERE user_id = ?").run(actor.id);
           db.prepare("DELETE FROM sessions WHERE user_id = ?").run(actor.id);
-          db.prepare(`INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json)
-            VALUES (?, ?, ?, 'auth.mfa.disable', ?, 'completed', ?, '{"sessionsRevoked":true,"reauthenticated":true}')`)
-            .run(randomUUID(), actor.organizationId, actor.id, actor.id, now);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.mfa.disable", targetId: actor.id, outcome: "completed", createdAt: now, details: { sessionsRevoked: true, reauthenticated: true } });
         });
         setSessionCookie(response, null, secureCookie, request);
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
@@ -864,7 +1184,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const user = { id: userRow.id, email: userRow.email, role: userRow.role, organizationId: userRow.organization_id };
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
         if (userRow.mfa_enabled) {
-          if (!mfaKey) return json(response, 503, { error: "mfa_key_unavailable" });
+          if (!mfaKeyring) return json(response, 503, { error: "mfa_key_unavailable" });
           const challenge = randomBytes(32).toString("base64url");
           const now = new Date();
           const expires = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
@@ -898,9 +1218,13 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       const requestedLimit = Number(url.searchParams.get("limit") ?? 50);
       const limit = Number.isInteger(requestedLimit) ? Math.min(100, Math.max(1, requestedLimit)) : 50;
-      const rows = db.prepare(`SELECT id, actor, action, target_id AS targetId, outcome, created_at AS createdAt, details_json
-        FROM audit_events WHERE organization_id = ? ORDER BY created_at DESC, id DESC LIMIT ?`).all(actor.organizationId, limit);
+      const rows = db.prepare(`SELECT id, actor, action, target_id AS targetId, outcome, created_at AS createdAt, details_json, prev_hash AS prevHash, entry_hash AS entryHash
+        FROM audit_events WHERE organization_id = ? ORDER BY rowid DESC LIMIT ?`).all(actor.organizationId, limit);
       return json(response, 200, { events: rows.map((row) => ({ ...row, details: JSON.parse(row.details_json), details_json: undefined })) });
+    }
+    if (request.method === "GET" && url.pathname === "/api/audit/verify") {
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      return json(response, 200, verifyAuditChain(db, actor.organizationId));
     }
     const sitesMatch = url.pathname.match(/^\/api\/accounts\/([^/]+)\/sites$/);
     if (request.method === "GET" && sitesMatch) {
@@ -927,9 +1251,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         transaction(() => {
           db.prepare("INSERT INTO jobs (id, type, organization_id, account_id, requested_by, status, idempotency_key, created_at) VALUES (?, 'inventory_refresh', ?, ?, ?, 'queued', ?, ?)")
             .run(id, actor.organizationId, account.id, actor.id, idempotencyKey, now);
-          db.prepare(`INSERT INTO audit_events (id, organization_id, actor, action, target_id, outcome, created_at, details_json)
-            VALUES (?, ?, ?, 'inventory.refresh', ?, 'queued', ?, ?)`)
-            .run(randomUUID(), actor.organizationId, actor.id, account.id, now, JSON.stringify({ source: "mock_fixture", live: false, jobId: id }));
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "inventory.refresh", targetId: account.id, outcome: "queued", createdAt: now, details: { source: "mock_fixture", live: false, jobId: id } });
         });
         return json(response, 202, { jobId: id, status: "queued", source: "mock_fixture", live: false });
       } catch (error) {
@@ -940,6 +1262,876 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     if (request.method === "GET" && jobMatch) {
       const row = db.prepare("SELECT j.*, a.label AS account_label FROM jobs j JOIN accounts a ON a.id = j.account_id WHERE j.id = ? AND j.organization_id = ?").get(decodeURIComponent(jobMatch[1]), actor.organizationId);
       return row ? json(response, 200, { job: jobFromRow(row) }) : json(response, 404, { error: "job_not_found" });
+    }
+    if (request.method === "GET" && url.pathname === "/api/system/preflight") {
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      return json(response, 200, runPreflight({ db, dbPath, mfaKeyring, webauthnRPID, webauthnOrigin }));
+    }
+    if (request.method === "GET" && url.pathname === "/api/system/deployment-readiness") {
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      return json(response, 200, buildDeploymentReadiness({ mfaKeyring, webauthnOrigin, webauthnRPID }));
+    }
+    if (request.method === "GET" && url.pathname === "/api/secrets") {
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      const secrets = db.prepare(`SELECT id, label, kind, reference_uri AS referenceUri, masked_preview AS maskedPreview, key_id AS keyId, status, created_by AS createdBy, created_at AS createdAt, revoked_at AS revokedAt
+        FROM secret_references WHERE organization_id = ? ORDER BY created_at DESC`).all(actor.organizationId);
+      return json(response, 200, {
+        encryptionReady: Boolean(mfaKeyring),
+        activeKeyId: mfaKeyring?.primaryId ?? null,
+        secrets,
+      });
+    }
+    if (request.method === "POST" && url.pathname === "/api/secrets") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      if (!mfaKeyring) return json(response, 503, { error: "mfa_key_unavailable" });
+      try {
+        const body = await readJson(request);
+        const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
+        const kind = ["cpanel_uapi_token", "s3_access_key", "smtp_credential"].includes(body.kind) ? body.kind : "";
+        const referenceUri = typeof body.referenceUri === "string" ? body.referenceUri.trim().slice(0, 180) : "";
+        const secretValue = typeof body.secretValue === "string" ? body.secretValue.trim() : "";
+        if (!label || !kind || !referenceUri || secretValue.length < 8 || secretValue.length > 512 || /[\r\n\0]/.test(referenceUri)) {
+          return json(response, 400, { error: "invalid_secret_reference" });
+        }
+        if (/^https?:\/\//i.test(referenceUri)) {
+          const check = validateExternalEndpoint(referenceUri);
+          if (!check.valid) return json(response, 400, { error: check.reason });
+        }
+        const id = `sec-${randomBytes(5).toString("hex")}`;
+        const encryptedPayload = encryptMfaSecret(secretValue, mfaKeyring.primaryKey, mfaKeyring.primaryId);
+        const maskedPreview = `••••${secretValue.slice(-4)}`;
+        const createdAt = new Date().toISOString();
+        transaction(() => {
+          db.prepare(`INSERT INTO secret_references
+            (id, organization_id, label, kind, reference_uri, masked_preview, encrypted_payload, key_id, status, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`)
+            .run(id, actor.organizationId, label, kind, referenceUri, maskedPreview, encryptedPayload, mfaKeyring.primaryId, actor.id, createdAt);
+          appendAuditEvent(db, {
+            organizationId: actor.organizationId,
+            actor: actor.id,
+            action: "secret.reference.create",
+            targetId: id,
+            outcome: "completed",
+            createdAt,
+            details: { label, kind, keyId: mfaKeyring.primaryId, maskedPreview },
+          });
+        });
+        return json(response, 201, {
+          secret: { id, label, kind, referenceUri, maskedPreview, keyId: mfaKeyring.primaryId, status: "active", createdBy: actor.id, createdAt, revokedAt: null },
+        });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const secretRevokeMatch = url.pathname.match(/^\/api\/secrets\/([^/]+)\/revoke$/);
+    if (request.method === "POST" && secretRevokeMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (actor.role !== "owner") return json(response, 403, { error: "permission_denied" });
+      const secretId = decodeURIComponent(secretRevokeMatch[1]);
+      const existing = db.prepare("SELECT id, label, kind FROM secret_references WHERE id = ? AND organization_id = ?").get(secretId, actor.organizationId);
+      if (!existing) return json(response, 404, { error: "secret_not_found" });
+      const now = new Date().toISOString();
+      transaction(() => {
+        db.prepare("UPDATE secret_references SET status = 'revoked', encrypted_payload = '', revoked_at = ? WHERE id = ? AND organization_id = ?")
+          .run(now, secretId, actor.organizationId);
+        appendAuditEvent(db, {
+          organizationId: actor.organizationId,
+          actor: actor.id,
+          action: "secret.reference.revoke",
+          targetId: secretId,
+          outcome: "completed",
+          createdAt: now,
+          details: { label: existing.label, kind: existing.kind },
+        });
+      });
+      return json(response, 200, { id: secretId, status: "revoked", revokedAt: now });
+    }
+    if (request.method === "POST" && url.pathname === "/api/system/backup") {
+      if (!allowSameOrigin(request, response)) return;
+      if (actor.role !== "owner") return json(response, 403, { error: "permission_denied" });
+      if (dbPath === ":memory:") return json(response, 400, { error: "in_memory_db_unsupported" });
+      try {
+        const backupsDir = resolve(dirname(dbPath), "backups");
+        mkdirSync(backupsDir, { recursive: true });
+        const fileName = `orbicore-${Date.now()}-${randomBytes(4).toString("hex")}.sqlite`;
+        const destinationPath = resolveContainedPath(backupsDir, fileName);
+        const backup = createDatabaseBackup(db, { dbPath, destinationPath });
+        const verification = verifyBackupFile(destinationPath, backup.sha256);
+        const now = new Date().toISOString();
+        appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "system.backup", targetId: fileName, outcome: verification.valid ? "completed" : "failed", createdAt: now, details: { sha256: backup.sha256, sizeBytes: backup.sizeBytes, valid: verification.valid } });
+        return json(response, 201, { fileName, sizeBytes: backup.sizeBytes, sha256: backup.sha256, verified: verification.valid, createdAt: backup.createdAt });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: "backup_failed" });
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/system/mfa/rotate-keys") {
+      if (!allowSameOrigin(request, response)) return;
+      if (actor.role !== "owner") return json(response, 403, { error: "permission_denied" });
+      if (authRateLimited(request, response)) return;
+      if (!mfaKeyring) return json(response, 503, { error: "mfa_key_unavailable" });
+      try {
+        const body = await readJson(request);
+        const userRow = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
+        const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, userRow?.password_salt ?? "orbicore-no-user-salt") : "";
+        if (!userRow || !safeEqual(candidate, userRow.password_hash)) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "reauthentication_required" });
+        }
+        const nextKey = mfaEncryptionKey(body.newKey);
+        const nextKeyId = typeof body.newKeyId === "string" && /^[a-zA-Z0-9_-]{2,24}$/.test(body.newKeyId) ? body.newKeyId : `k${Date.now()}`;
+        if (!nextKey) return json(response, 400, { error: "invalid_new_key" });
+        const rows = db.prepare(`SELECT a.user_id, a.encrypted_secret FROM authenticators a
+          JOIN users u ON u.id = a.user_id WHERE u.organization_id = ?`).all(actor.organizationId);
+        const reencrypted = rows.map((row) => {
+          const plaintext = decryptMfaSecretWithFallback(row.encrypted_secret, mfaKeyring);
+          return { userId: row.user_id, encryptedSecret: encryptMfaSecret(plaintext, nextKey, nextKeyId) };
+        });
+        const now = new Date().toISOString();
+        transaction(() => {
+          const update = db.prepare("UPDATE authenticators SET encrypted_secret = ? WHERE user_id = ?");
+          for (const item of reencrypted) update.run(item.encryptedSecret, item.userId);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.mfa.key_rotate", targetId: nextKeyId, outcome: "completed", createdAt: now, details: { rotatedCount: reencrypted.length, newKeyId: nextKeyId } });
+        });
+        const nextKeysMap = new Map(mfaKeyring.keys);
+        nextKeysMap.set(nextKeyId, nextKey);
+        mfaKeyring = { primaryId: nextKeyId, primaryKey: nextKey, keys: nextKeysMap };
+        return json(response, 200, { rotated: reencrypted.length, activeKeyId: nextKeyId });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "key_rotation_failed" });
+      }
+    }
+    if (request.method === "GET" && url.pathname === "/api/auth/recovery-contacts") {
+      const contacts = db.prepare(`SELECT id, channel, address, verified_at AS verifiedAt, verification_expires_at AS verificationExpiresAt, created_at AS createdAt
+        FROM recovery_contacts WHERE user_id = ? ORDER BY created_at DESC`).all(actor.id);
+      const outbox = db.prepare(`SELECT id, event, recipient, status, attempts, last_error AS lastError, created_at AS createdAt
+        FROM notification_outbox WHERE user_id = ? ORDER BY created_at DESC LIMIT 10`).all(actor.id);
+      return json(response, 200, { contacts, outbox, adapterMode: notificationAdapter.mode, liveDelivery: false });
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/recovery-contacts") {
+      if (!allowSameOrigin(request, response)) return;
+      if (authRateLimited(request, response)) return;
+      try {
+        const body = await readJson(request);
+        const userRow = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
+        const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, userRow?.password_salt ?? "orbicore-no-user-salt") : "";
+        if (!userRow || !safeEqual(candidate, userRow.password_hash)) {
+          registerAuthFailure(request);
+          return json(response, 401, { error: "reauthentication_required" });
+        }
+        const issued = issueRecoveryContactVerification(db, { userId: actor.id, address: body.address });
+        const now = new Date().toISOString();
+        appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.recovery_contact.update", targetId: issued.contactId, outcome: "pending_verification", createdAt: now, details: { channel: issued.channel } });
+        return json(response, 201, {
+          contactId: issued.contactId,
+          channel: issued.channel,
+          address: issued.address,
+          expiresAt: issued.expiresAt,
+          localVerificationToken: issued.verificationToken,
+          liveDelivery: false,
+        });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.code ?? (error.status ? "invalid_request" : "internal_error") });
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/recovery-contacts/verify") {
+      if (!allowSameOrigin(request, response)) return;
+      try {
+        const body = await readJson(request);
+        const result = verifyRecoveryContactToken(db, { userId: actor.id, token: body.token });
+        if (!result.verified) return json(response, 400, { error: result.reason });
+        appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.recovery_contact.verify", targetId: result.contactId, outcome: "completed", createdAt: result.verifiedAt, details: { channel: result.channel } });
+        return json(response, 200, result);
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/accounts/sandbox") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
+        const username = typeof body.username === "string" ? body.username.trim().slice(0, 40) : "";
+        const profileName = typeof body.capabilityProfile === "string" && body.capabilityProfile in CAPABILITY_PROFILES ? body.capabilityProfile : "cpanel_uapi_standard";
+        const quotaGb = Number(body.quotaGb ?? 50);
+        const hostCheck = validateExternalEndpoint(body.host, { requireHttps: false });
+        if (!label || !/^[a-zA-Z0-9_-]{2,32}$/.test(username) || !hostCheck.valid || !Number.isFinite(quotaGb) || quotaGb < 1 || quotaGb > 5000) {
+          return json(response, 400, { error: hostCheck.valid ? "invalid_sandbox_account" : hostCheck.reason });
+        }
+        const id = `acct-${randomBytes(4).toString("hex")}`;
+        const now = new Date().toISOString();
+        const quotaBytes = Math.round(quotaGb * 1024 ** 3);
+        const usedBytes = Math.round(quotaBytes * 0.18);
+        const siteDomain = `${username.toLowerCase()}.${hostCheck.hostname}`;
+        transaction(() => {
+          db.prepare(`INSERT INTO accounts (id, organization_id, label, provider, host, username, health, used_bytes, quota_bytes, last_synced_at, source, capability_profile)
+            VALUES (?, ?, ?, 'cPanel', ?, ?, 'healthy', ?, ?, ?, 'mock_fixture', ?)`)
+            .run(id, actor.organizationId, label, hostCheck.hostname, username, usedBytes, quotaBytes, now, profileName);
+          db.prepare(`INSERT INTO sites (id, account_id, domain, kind, document_root, php_version, status)
+            VALUES (?, ?, ?, 'wordpress', ?, '8.3', 'active')`)
+            .run(`site-${randomBytes(4).toString("hex")}`, id, siteDomain, `/home/${username}/public_html`);
+          db.prepare(`INSERT INTO capability_snapshots (id, account_id, organization_id, profile_name, capabilities_json, source, fetched_at)
+            VALUES (?, ?, ?, ?, ?, 'mock_fixture', ?)`)
+            .run(randomUUID(), id, actor.organizationId, profileName, JSON.stringify(CAPABILITY_PROFILES[profileName]), now);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "account.sandbox.create", targetId: id, outcome: "completed", createdAt: now, details: { host: hostCheck.hostname, profile: profileName, live: false } });
+        });
+        const row = db.prepare(`SELECT a.*, COUNT(s.id) AS site_count FROM accounts a LEFT JOIN sites s ON s.account_id = a.id WHERE a.id = ? GROUP BY a.id`).get(id);
+        return json(response, 201, { account: accountFromRow(row), source: "mock_fixture", live: false });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const capabilityMatch = url.pathname.match(/^\/api\/accounts\/([^/]+)\/capabilities$/);
+    if (request.method === "GET" && capabilityMatch) {
+      const accountId = decodeURIComponent(capabilityMatch[1]);
+      const account = db.prepare("SELECT id, label, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?").get(accountId, actor.organizationId);
+      if (!account) return json(response, 404, { error: "account_not_found" });
+      const snapshot = db.prepare("SELECT profile_name AS profileName, capabilities_json AS capabilitiesJson, source, fetched_at AS fetchedAt FROM capability_snapshots WHERE account_id = ? AND organization_id = ? ORDER BY fetched_at DESC LIMIT 1").get(accountId, actor.organizationId);
+      const capabilities = snapshot ? JSON.parse(snapshot.capabilitiesJson) : CAPABILITY_PROFILES[account.capabilityProfile] ?? CAPABILITY_PROFILES.cpanel_uapi_standard;
+      return json(response, 200, {
+        accountId: account.id,
+        accountLabel: account.label,
+        profileName: snapshot?.profileName ?? account.capabilityProfile,
+        capabilities,
+        source: snapshot?.source ?? "mock_fixture",
+        fetchedAt: snapshot?.fetchedAt ?? null,
+        live: false,
+      });
+    }
+    if (request.method === "GET" && url.pathname === "/api/sites") {
+      const sites = db.prepare(`SELECT s.id, s.account_id AS accountId, a.label AS accountLabel, a.host AS accountHost, s.domain, s.kind, s.document_root AS documentRoot, s.php_version AS phpVersion, s.status
+        FROM sites s JOIN accounts a ON a.id = s.account_id WHERE a.organization_id = ? ORDER BY s.domain`).all(actor.organizationId);
+      return json(response, 200, { sites, source: "mock_fixture", live: false });
+    }
+    if (request.method === "GET" && url.pathname === "/api/migrations") {
+      const rows = db.prepare(`SELECT m.*, s.domain AS site_domain, sa.label AS source_label, ta.label AS target_label
+        FROM migration_plans m
+        JOIN sites s ON s.id = m.site_id
+        JOIN accounts sa ON sa.id = m.source_account_id
+        JOIN accounts ta ON ta.id = m.target_account_id
+        WHERE m.organization_id = ? ORDER BY m.updated_at DESC`).all(actor.organizationId);
+      return json(response, 200, {
+        migrations: rows.map((row) => ({
+          id: row.id,
+          siteId: row.site_id,
+          siteDomain: row.site_domain,
+          sourceAccountId: row.source_account_id,
+          sourceAccountLabel: row.source_label,
+          targetAccountId: row.target_account_id,
+          targetAccountLabel: row.target_label,
+          strategy: row.strategy,
+          state: row.state,
+          checkpointPercent: row.checkpoint_percent ?? 0,
+          failedAtStage: row.failed_at_stage ?? null,
+          preflight: JSON.parse(row.preflight_json),
+          checksumSha256: row.checksum_sha256,
+          rollbackNote: row.rollback_note,
+          blockerReason: row.blocker_reason,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          mode: "dry_run_simulation",
+        })),
+      });
+    }
+    if (request.method === "POST" && url.pathname === "/api/migrations") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const site = db.prepare(`SELECT s.*, a.organization_id, a.used_bytes, a.quota_bytes FROM sites s
+          JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(body.siteId, actor.organizationId);
+        const target = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(body.targetAccountId, actor.organizationId);
+        if (!site || !target) return json(response, 404, { error: "site_or_target_not_found" });
+        const strategy = ["wordpress_optimized", "generic_php", "whm_account_package"].includes(body.strategy) ? body.strategy : "wordpress_optimized";
+        const freeTargetBytes = Math.max(0, target.quota_bytes - target.used_bytes);
+        const estimatedSiteBytes = Math.max(512 * 1024 * 1024, Math.round(site.used_bytes * 0.35));
+        const sameAccount = site.account_id === target.id;
+        const targetProfile = CAPABILITY_PROFILES[target.capability_profile ?? "cpanel_uapi_standard"] ?? [];
+        const whmAllowed = targetProfile.find((c) => c.capability === "whm.account_transfer")?.level === "supported";
+        const whmBlocked = strategy === "whm_account_package" && !whmAllowed;
+        const preflight = {
+          sameAccount,
+          estimatedSiteBytes,
+          targetFreeBytes: freeTargetBytes,
+          quotaFit: freeTargetBytes >= estimatedSiteBytes,
+          phpVersion: site.php_version,
+          dnsSeparateWorkstream: true,
+          whmRequired: strategy === "whm_account_package",
+          whmPermitted: whmAllowed,
+          dryRunOnly: true,
+        };
+        const blockerReason = sameAccount
+          ? "Source and destination hosting accounts must differ."
+          : !preflight.quotaFit
+            ? "Destination account lacks estimated free quota for safe snapshot restore."
+            : whmBlocked
+              ? "Target account capability profile does not permit WHM account packaging."
+              : null;
+        const id = randomUUID();
+        const now = new Date().toISOString();
+        const initialState = blockerReason ? "blocked" : "planned";
+        transaction(() => {
+          db.prepare(`INSERT INTO migration_plans (id, organization_id, site_id, source_account_id, target_account_id, strategy, state, preflight_json, blocker_reason, rollback_note, created_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(id, actor.organizationId, site.id, site.account_id, target.id, strategy, initialState, JSON.stringify(preflight), blockerReason, "Source files remain untouched until post-cutover retention gate.", actor.id, now, now);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "migration.plan.create", targetId: id, outcome: initialState, createdAt: now, details: { siteDomain: site.domain, strategy, dryRun: true } });
+        });
+        return json(response, 201, { id, state: initialState, checkpointPercent: 0, preflight, blockerReason });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const migrationAdvanceMatch = url.pathname.match(/^\/api\/migrations\/([^/]+)\/advance$/);
+    if (request.method === "POST" && migrationAdvanceMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const migrationId = decodeURIComponent(migrationAdvanceMatch[1]);
+        const row = db.prepare("SELECT * FROM migration_plans WHERE id = ? AND organization_id = ?").get(migrationId, actor.organizationId);
+        if (!row) return json(response, 404, { error: "migration_not_found" });
+
+        const now = new Date().toISOString();
+        if (body.simulatePartialFailure === true && row.state === "transfer") {
+          const reason = "Simulated transfer interruption at 30% checkpoint; delta block manifest preserved for idempotent resume.";
+          transaction(() => {
+            db.prepare("UPDATE migration_plans SET state = 'failed', checkpoint_percent = 30, failed_at_stage = 'transfer', blocker_reason = ?, updated_at = ? WHERE id = ? AND organization_id = ?")
+              .run(reason, now, row.id, actor.organizationId);
+            appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "migration.partial_failure", targetId: row.id, outcome: "failed", createdAt: now, details: { stage: "transfer", checkpointPercent: 30, dryRun: true } });
+          });
+          return json(response, 200, { id: row.id, state: "failed", checkpointPercent: 30, failedAtStage: "transfer", blockerReason: reason });
+        }
+
+        const transitions = {
+          planned: "preflight",
+          preflight: "snapshot",
+          snapshot: "transfer",
+          failed: row.failed_at_stage === "transfer" ? "restore" : null,
+          transfer: "restore",
+          restore: "verify",
+          verify: "ready_for_cutover",
+          ready_for_cutover: "cutover",
+          cutover: "monitor",
+          monitor: "completed",
+        };
+        const nextState = transitions[row.state];
+        if (!nextState) return json(response, 409, { error: "migration_cannot_advance", state: row.state });
+        if (nextState === "cutover" && body.confirmCutover !== true) {
+          return json(response, 409, { error: "cutover_authorization_required" });
+        }
+        const nextCheckpoint = ["restore", "verify", "ready_for_cutover", "cutover", "monitor", "completed"].includes(nextState)
+          ? 100
+          : nextState === "transfer"
+            ? 30
+            : row.checkpoint_percent ?? 0;
+        const checksum = row.checksum_sha256 ?? (nextState === "snapshot" ? sha256(`${row.id}:${row.site_id}:${now}`) : null);
+        transaction(() => {
+          db.prepare("UPDATE migration_plans SET state = ?, checksum_sha256 = ?, checkpoint_percent = ?, failed_at_stage = NULL, blocker_reason = NULL, updated_at = ? WHERE id = ? AND organization_id = ?")
+            .run(nextState, checksum, nextCheckpoint, now, row.id, actor.organizationId);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "migration.state.advance", targetId: row.id, outcome: "completed", createdAt: now, details: { from: row.state, to: nextState, checkpointPercent: nextCheckpoint, dryRun: true } });
+        });
+        return json(response, 200, { id: row.id, state: nextState, checkpointPercent: nextCheckpoint, checksumSha256: checksum });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const migrationRollbackMatch = url.pathname.match(/^\/api\/migrations\/([^/]+)\/rollback$/);
+    if (request.method === "POST" && migrationRollbackMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      const migrationId = decodeURIComponent(migrationRollbackMatch[1]);
+      const row = db.prepare("SELECT * FROM migration_plans WHERE id = ? AND organization_id = ?").get(migrationId, actor.organizationId);
+      if (!row) return json(response, 404, { error: "migration_not_found" });
+      if (row.state === "completed" || row.state === "rolled_back") return json(response, 409, { error: "rollback_unavailable" });
+      const now = new Date().toISOString();
+      transaction(() => {
+        db.prepare("UPDATE migration_plans SET state = 'rolled_back', updated_at = ? WHERE id = ? AND organization_id = ?")
+          .run(now, row.id, actor.organizationId);
+        appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "migration.rollback", targetId: row.id, outcome: "completed", createdAt: now, details: { previousState: row.state, dryRun: true } });
+      });
+      return json(response, 200, { id: row.id, state: "rolled_back" });
+    }
+    if (request.method === "GET" && url.pathname === "/api/storage/summary") {
+      const accounts = accountQuery.all(actor.organizationId).map(accountFromRow);
+      const policies = db.prepare(`SELECT p.*, a.label AS account_label FROM storage_policies p
+        JOIN accounts a ON a.id = p.account_id WHERE p.organization_id = ? ORDER BY p.created_at DESC`).all(actor.organizationId);
+      return json(response, 200, {
+        accounts: accounts.map((account) => ({
+          ...account,
+          utilizationPercent: account.quotaBytes ? Math.round((account.usedBytes / account.quotaBytes) * 100) : 0,
+          estimatedOffloadableBytes: Math.round(account.usedBytes * 0.28),
+        })),
+        policies: policies.map((policy) => ({
+          id: policy.id,
+          accountId: policy.account_id,
+          accountLabel: policy.account_label,
+          mode: policy.mode,
+          targetEndpoint: policy.target_endpoint,
+          targetBucket: policy.target_bucket,
+          thresholdPercent: policy.threshold_percent,
+          estimatedReclaimBytes: policy.estimated_reclaim_bytes,
+          status: policy.status,
+          lastDrillStatus: policy.last_drill_status ?? null,
+          lastDrillAt: policy.last_drill_at ?? null,
+          createdAt: policy.created_at,
+        })),
+        sharedDiskPoolingSupported: false,
+        note: "Account quotas are separate per-provider limits; remote object storage does not mount as local cPanel disk.",
+      });
+    }
+    if (request.method === "POST" && url.pathname === "/api/storage/policies") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const account = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
+        if (!account) return json(response, 404, { error: "account_not_found" });
+        const mode = ["media_offload", "backup_archival", "static_assets"].includes(body.mode) ? body.mode : "backup_archival";
+        const endpointCheck = validateExternalEndpoint(body.targetEndpoint, { requireHttps: true });
+        if (!endpointCheck.valid) return json(response, 400, { error: endpointCheck.reason });
+        const bucket = typeof body.targetBucket === "string" && /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(body.targetBucket.trim()) ? body.targetBucket.trim() : "";
+        const threshold = Number(body.thresholdPercent ?? 80);
+        if (!bucket || !Number.isInteger(threshold) || threshold < 50 || threshold > 99) {
+          return json(response, 400, { error: "invalid_storage_policy" });
+        }
+        const ratio = mode === "media_offload" ? 0.32 : mode === "backup_archival" ? 0.24 : 0.18;
+        const estimatedReclaimBytes = Math.round(account.used_bytes * ratio);
+        const id = randomUUID();
+        const now = new Date().toISOString();
+        transaction(() => {
+          db.prepare(`INSERT INTO storage_policies (id, organization_id, account_id, mode, target_endpoint, target_bucket, threshold_percent, estimated_reclaim_bytes, status, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'dry_run_only', ?, ?)`)
+            .run(id, actor.organizationId, account.id, mode, endpointCheck.origin, bucket, threshold, estimatedReclaimBytes, actor.id, now);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "storage.policy.create", targetId: id, outcome: "completed", createdAt: now, details: { mode, targetBucket: bucket, estimatedReclaimBytes, dryRunOnly: true } });
+        });
+        return json(response, 201, { id, mode, targetEndpoint: endpointCheck.origin, targetBucket: bucket, thresholdPercent: threshold, estimatedReclaimBytes, status: "dry_run_only" });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    if (request.method === "GET" && url.pathname === "/api/team/members") {
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      const members = db.prepare(`SELECT id, email, role, disabled, mfa_enabled AS mfaEnabled, created_at AS createdAt
+        FROM users WHERE organization_id = ? ORDER BY created_at, email`).all(actor.organizationId);
+      return json(response, 200, { members });
+    }
+    if (request.method === "POST" && url.pathname === "/api/team/members") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+        const password = body.password;
+        const role = typeof body.role === "string" ? body.role : "operator";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return json(response, 400, { error: "invalid_email" });
+        if (typeof password !== "string" || password.length < 12 || password.length > 256) return json(response, 400, { error: "password_policy" });
+        if (!["admin", "operator", "viewer", "owner"].includes(role)) return json(response, 400, { error: "invalid_role" });
+        if (role === "owner" && actor.role !== "owner") return json(response, 403, { error: "owner_role_required" });
+        const existing = db.prepare("SELECT id FROM users WHERE organization_id = ? AND email = ?").get(actor.organizationId, email);
+        if (existing) return json(response, 409, { error: "member_already_exists" });
+        const id = randomUUID();
+        const salt = randomBytes(16).toString("hex");
+        const now = new Date().toISOString();
+        transaction(() => {
+          db.prepare(`INSERT INTO users (id, organization_id, email, password_salt, password_hash, role, disabled, mfa_enabled, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)`)
+            .run(id, actor.organizationId, email, salt, passwordHash(password, salt), role, now);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "team.member.create", targetId: id, outcome: "completed", createdAt: now, details: { role } });
+        });
+        return json(response, 201, { member: { id, email, role, disabled: 0, mfaEnabled: 0, createdAt: now } });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const teamMemberMatch = url.pathname.match(/^\/api\/team\/members\/([^/]+)$/);
+    if (request.method === "PATCH" && teamMemberMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const targetId = decodeURIComponent(teamMemberMatch[1]);
+        const target = db.prepare("SELECT id, email, role, disabled, mfa_enabled AS mfaEnabled, created_at AS createdAt FROM users WHERE id = ? AND organization_id = ?")
+          .get(targetId, actor.organizationId);
+        if (!target) return json(response, 404, { error: "member_not_found" });
+        const body = await readJson(request);
+        const nextRole = typeof body.role === "string" ? body.role : target.role;
+        const nextDisabled = typeof body.disabled === "boolean" ? (body.disabled ? 1 : 0) : target.disabled;
+        if (!["owner", "admin", "operator", "viewer"].includes(nextRole)) return json(response, 400, { error: "invalid_role" });
+        if (target.id === actor.id && (nextDisabled === 1 || nextRole !== actor.role)) {
+          return json(response, 400, { error: "cannot_modify_own_access" });
+        }
+        if ((target.role === "owner" || nextRole === "owner") && actor.role !== "owner") {
+          return json(response, 403, { error: "owner_role_required" });
+        }
+        if (target.role === "owner" && (nextRole !== "owner" || nextDisabled === 1)) {
+          const activeOwners = db.prepare("SELECT COUNT(*) AS count FROM users WHERE organization_id = ? AND role = 'owner' AND disabled = 0").get(actor.organizationId).count;
+          if (activeOwners <= 1) return json(response, 409, { error: "last_owner_protected" });
+        }
+        const now = new Date().toISOString();
+        transaction(() => {
+          db.prepare("UPDATE users SET role = ?, disabled = ? WHERE id = ? AND organization_id = ?").run(nextRole, nextDisabled, target.id, actor.organizationId);
+          if (nextDisabled === 1 || nextRole !== target.role) {
+            db.prepare("DELETE FROM sessions WHERE user_id = ?").run(target.id);
+          }
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "team.member.update", targetId: target.id, outcome: "completed", createdAt: now, details: { role: nextRole, disabled: Boolean(nextDisabled) } });
+        });
+        return json(response, 200, { member: { ...target, role: nextRole, disabled: nextDisabled } });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const siteInspectionMatch = url.pathname.match(/^\/api\/sites\/([^/]+)\/inspection$/);
+    if (request.method === "GET" && siteInspectionMatch) {
+      const siteId = decodeURIComponent(siteInspectionMatch[1]);
+      const site = db.prepare(`SELECT s.id, s.account_id AS accountId, s.domain, s.kind, s.document_root AS documentRoot, s.php_version AS phpVersion, s.status
+        FROM sites s JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(siteId, actor.organizationId);
+      if (!site) return json(response, 404, { error: "site_not_found" });
+      const account = db.prepare("SELECT id, label, host, source, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?")
+        .get(site.accountId, actor.organizationId);
+      const snapshots = db.prepare(`SELECT id, action, status, checksum_sha256 AS checksumSha256, details_json AS detailsJson, created_at AS createdAt
+        FROM site_snapshots WHERE site_id = ? AND organization_id = ? ORDER BY created_at DESC LIMIT 10`).all(site.id, actor.organizationId)
+        .map((row) => ({ ...row, details: JSON.parse(row.detailsJson), detailsJson: undefined }));
+      const wpState = db.prepare(`SELECT core_version AS coreVersion, previous_core_version AS previousCoreVersion,
+        pending_updates AS pendingUpdates, staging_url AS stagingUrl, staging_created_at AS stagingCreatedAt,
+        last_restore_point_sha256 AS lastRestorePointSha256, last_action AS lastAction
+        FROM wp_site_state WHERE site_id = ? AND organization_id = ?`).get(site.id, actor.organizationId) ?? null;
+      return json(response, 200, mockCpanelAdapter.inspectSiteHealth({ site, account, snapshots, wpState }));
+    }
+    const wpStagingMatch = url.pathname.match(/^\/api\/sites\/([^/]+)\/wordpress\/staging$/);
+    if (request.method === "POST" && wpStagingMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const siteId = decodeURIComponent(wpStagingMatch[1]);
+        const site = db.prepare(`SELECT s.id, s.account_id AS accountId, s.domain, s.kind, s.status
+          FROM sites s JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(siteId, actor.organizationId);
+        if (!site) return json(response, 404, { error: "site_not_found" });
+        if (!/wordpress|woo/i.test(site.kind)) return json(response, 400, { error: "not_a_wordpress_site" });
+        const body = await readJson(request);
+        if (!["create", "destroy"].includes(body.action)) return json(response, 400, { error: "invalid_staging_action" });
+        const now = new Date().toISOString();
+        const existing = db.prepare("SELECT * FROM wp_site_state WHERE site_id = ? AND organization_id = ?").get(site.id, actor.organizationId);
+        const stagingUrl = body.action === "create" ? `https://staging.${site.domain}` : null;
+        const stagingCreatedAt = body.action === "create" ? now : null;
+        const restoreSha = existing?.last_restore_point_sha256 ?? sha256(`wp-staging:${site.id}:${now}`);
+        const initialPending = existing ? existing.pending_updates : (site.status === "attention" ? 3 : 0);
+        const coreVersion = existing?.core_version ?? "6.7.2";
+        transaction(() => {
+          db.prepare(`INSERT INTO wp_site_state (site_id, organization_id, core_version, previous_core_version, pending_updates, previous_pending_updates, staging_url, staging_created_at, last_restore_point_sha256, last_action, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(site_id) DO UPDATE SET staging_url = excluded.staging_url, staging_created_at = excluded.staging_created_at, last_restore_point_sha256 = excluded.last_restore_point_sha256, last_action = excluded.last_action, updated_at = excluded.updated_at`)
+            .run(site.id, actor.organizationId, coreVersion, existing?.previous_core_version ?? null, initialPending, existing?.previous_pending_updates ?? null, stagingUrl, stagingCreatedAt, restoreSha, `staging_${body.action}`, now);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: `wordpress.staging.${body.action}`, targetId: site.id, outcome: "completed", createdAt: now, details: { domain: site.domain, stagingUrl, sourceFilesUntouched: true, dryRun: true } });
+        });
+        return json(response, 200, { siteId: site.id, stagingUrl, stagingCreatedAt, restorePointSha256: restoreSha, dryRun: true });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const wpUpdateMatch = url.pathname.match(/^\/api\/sites\/([^/]+)\/wordpress\/update$/);
+    if (request.method === "POST" && wpUpdateMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const siteId = decodeURIComponent(wpUpdateMatch[1]);
+        const site = db.prepare(`SELECT s.id, s.account_id AS accountId, s.domain, s.kind, s.status
+          FROM sites s JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(siteId, actor.organizationId);
+        if (!site) return json(response, 404, { error: "site_not_found" });
+        if (!/wordpress|woo/i.test(site.kind)) return json(response, 400, { error: "not_a_wordpress_site" });
+        const body = await readJson(request);
+        if (!["apply_updates", "rollback"].includes(body.action)) return json(response, 400, { error: "invalid_wordpress_action" });
+        const now = new Date().toISOString();
+        const existing = db.prepare("SELECT * FROM wp_site_state WHERE site_id = ? AND organization_id = ?").get(site.id, actor.organizationId);
+
+        if (body.action === "rollback") {
+          if (!existing?.previous_core_version) return json(response, 409, { error: "no_restore_point_available" });
+          const restoredCore = existing.previous_core_version;
+          const restoredPending = existing.previous_pending_updates ?? 0;
+          transaction(() => {
+            db.prepare(`UPDATE wp_site_state SET core_version = ?, previous_core_version = NULL, pending_updates = ?, previous_pending_updates = NULL, last_action = 'rollback', updated_at = ?
+              WHERE site_id = ? AND organization_id = ?`)
+              .run(restoredCore, restoredPending, now, site.id, actor.organizationId);
+            appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "wordpress.update.rollback", targetId: site.id, outcome: "completed", createdAt: now, details: { domain: site.domain, restoredCoreVersion: restoredCore, restoredPendingUpdates: restoredPending, dryRun: true } });
+          });
+          return json(response, 200, { siteId: site.id, action: "rollback", coreVersion: restoredCore, pendingUpdates: restoredPending, canRollback: false, dryRun: true });
+        }
+
+        const prevCore = existing?.core_version ?? "6.7.2";
+        const prevPending = existing ? existing.pending_updates : (site.status === "attention" ? 3 : 1);
+        const restoreSha = sha256(`wp-restore:${site.id}:${prevCore}:${now}`);
+        const nextCore = "6.8.1";
+        transaction(() => {
+          db.prepare(`INSERT INTO wp_site_state (site_id, organization_id, core_version, previous_core_version, pending_updates, previous_pending_updates, staging_url, staging_created_at, last_restore_point_sha256, last_action, updated_at)
+            VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, 'apply_updates', ?)
+            ON CONFLICT(site_id) DO UPDATE SET previous_core_version = excluded.previous_core_version, core_version = excluded.core_version, previous_pending_updates = excluded.previous_pending_updates, pending_updates = 0, last_restore_point_sha256 = excluded.last_restore_point_sha256, last_action = 'apply_updates', updated_at = excluded.updated_at`)
+            .run(site.id, actor.organizationId, nextCore, prevCore, prevPending, existing?.staging_url ?? null, existing?.staging_created_at ?? null, restoreSha, now);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "wordpress.update.dry_run", targetId: site.id, outcome: "completed", createdAt: now, details: { domain: site.domain, fromVersion: prevCore, toVersion: nextCore, restorePointSha256: restoreSha, dryRun: true } });
+        });
+        return json(response, 200, { siteId: site.id, action: "apply_updates", coreVersion: nextCore, pendingUpdates: 0, restorePointSha256: restoreSha, canRollback: true, dryRun: true });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const siteActionMatch = url.pathname.match(/^\/api\/sites\/([^/]+)\/actions$/);
+    if (request.method === "POST" && siteActionMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const siteId = decodeURIComponent(siteActionMatch[1]);
+        const site = db.prepare(`SELECT s.id, s.account_id AS accountId, s.domain, s.kind, s.document_root AS documentRoot, s.php_version AS phpVersion, s.status
+          FROM sites s JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(siteId, actor.organizationId);
+        if (!site) return json(response, 404, { error: "site_not_found" });
+        const account = db.prepare("SELECT id, label, host, source, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?")
+          .get(site.accountId, actor.organizationId);
+        const body = await readJson(request);
+        if (!["backup_dry_run", "wp_preflight", "dns_ssl_check"].includes(body.action)) {
+          return json(response, 400, { error: "unsupported_site_action" });
+        }
+        const execution = mockCpanelAdapter.executeDryRunSiteAction({ site, account, action: body.action });
+        if (!execution.allowed) {
+          return json(response, 403, { error: execution.reason, message: execution.message });
+        }
+        const snapshotId = randomUUID();
+        transaction(() => {
+          db.prepare(`INSERT INTO site_snapshots (id, organization_id, site_id, action, status, checksum_sha256, details_json, created_by, created_at)
+            VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`)
+            .run(snapshotId, actor.organizationId, site.id, body.action, execution.checksumSha256, JSON.stringify(execution.details), actor.id, execution.createdAt);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: `site.${body.action}`, targetId: site.id, outcome: "completed", createdAt: execution.createdAt, details: { domain: site.domain, dryRun: true, checksumSha256: execution.checksumSha256 } });
+        });
+        return json(response, 201, { id: snapshotId, action: body.action, status: "completed", checksumSha256: execution.checksumSha256, details: execution.details, createdAt: execution.createdAt });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    if (request.method === "GET" && url.pathname === "/api/system/backups") {
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      if (dbPath === ":memory:") return json(response, 200, { backups: [], inMemory: true });
+      const backupsDir = resolve(dirname(dbPath), "backups");
+      return json(response, 200, { backups: listBackups(backupsDir), inMemory: false });
+    }
+    if (request.method === "POST" && url.pathname === "/api/system/restore-drill") {
+      if (!allowSameOrigin(request, response)) return;
+      if (actor.role !== "owner") return json(response, 403, { error: "permission_denied" });
+      if (dbPath === ":memory:") return json(response, 400, { error: "in_memory_db_unsupported" });
+      try {
+        const body = await readJson(request);
+        if (typeof body.fileName !== "string" || !/^[a-zA-Z0-9_.-]+\.sqlite$/.test(body.fileName)) {
+          return json(response, 400, { error: "invalid_backup_filename" });
+        }
+        const backupsDir = resolve(dirname(dbPath), "backups");
+        const targetPath = resolveContainedPath(backupsDir, body.fileName);
+        if (!existsSync(targetPath)) return json(response, 404, { error: "backup_not_found" });
+        const drill = runRestoreDrill(targetPath, { mfaKeyring });
+        const now = new Date().toISOString();
+        appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "system.restore_drill", targetId: body.fileName, outcome: drill.passed ? "completed" : "failed", createdAt: now, details: { sha256: drill.sha256, schemaVersion: drill.schemaVersion, mfaSecretsVerified: drill.mfaSecretsVerified, passed: drill.passed } });
+        return json(response, 200, drill);
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "restore_drill_failed" });
+      }
+    }
+    if (request.method === "GET" && url.pathname === "/api/system/diagnostics/bundle") {
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      const bundle = buildDiagnosticBundle({ db, dbPath, mfaKeyring, webauthnRPID, webauthnOrigin, packageJson });
+      bundle.adapterBoundary = { mockMode: mockCpanelAdapter.mode, liveBoundary: liveAdapterBoundary.mode, liveConnections: 0 };
+      return json(response, 200, bundle);
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/recovery-contacts/outbox/retry") {
+      if (!allowSameOrigin(request, response)) return;
+      try {
+        const body = await readJson(request);
+        if (typeof body.outboxId !== "string") return json(response, 400, { error: "invalid_outbox_id" });
+        const entry = db.prepare("SELECT id, event, recipient, status FROM notification_outbox WHERE id = ? AND user_id = ?").get(body.outboxId, actor.id);
+        if (!entry) return json(response, 404, { error: "outbox_item_not_found" });
+        const delivery = await dispatchRecoveryNotification(db, notificationAdapter, {
+          userId: actor.id,
+          event: entry.event,
+          fallbackRecipient: entry.recipient,
+          idempotencyKey: `retry:${entry.id}:${Date.now()}`,
+        });
+        return json(response, 200, { retriedFrom: entry.id, ...delivery });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const storageDrillMatch = url.pathname.match(/^\/api\/storage\/policies\/([^/]+)\/drill$/);
+    if (request.method === "POST" && storageDrillMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const policyId = decodeURIComponent(storageDrillMatch[1]);
+        const policy = db.prepare("SELECT * FROM storage_policies WHERE id = ? AND organization_id = ?").get(policyId, actor.organizationId);
+        if (!policy) return json(response, 404, { error: "storage_policy_not_found" });
+        const drillType = body.drillType;
+        if (!["dry_run_offload", "simulate_outage", "rehydrate_verify"].includes(drillType)) {
+          return json(response, 400, { error: "unsupported_storage_drill" });
+        }
+        const now = new Date().toISOString();
+        const drillStatus = drillType === "simulate_outage"
+          ? "remote_outage_fail_closed"
+          : drillType === "rehydrate_verify"
+            ? "rehydration_checksum_verified"
+            : "dry_run_manifest_verified";
+        const nextPolicyStatus = drillType === "simulate_outage" ? "paused" : "dry_run_only";
+        transaction(() => {
+          db.prepare("UPDATE storage_policies SET status = ?, last_drill_status = ?, last_drill_at = ? WHERE id = ? AND organization_id = ?")
+            .run(nextPolicyStatus, drillStatus, now, policy.id, actor.organizationId);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: `storage.drill.${drillType}`, targetId: policy.id, outcome: drillType === "simulate_outage" ? "failed_safe" : "completed", createdAt: now, details: { drillStatus, nextPolicyStatus, sourceFilesUntouched: true } });
+        });
+        return json(response, 200, { id: policy.id, status: nextPolicyStatus, lastDrillStatus: drillStatus, lastDrillAt: now, sourceFilesUntouched: true });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    if (request.method === "GET" && url.pathname === "/api/automation/insights") {
+      return json(response, 200, generateAdvisoryInsights(db, actor.organizationId));
+    }
+    if (request.method === "GET" && url.pathname === "/api/automation/rules") {
+      const rules = db.prepare(`SELECT id, name, rule_type AS ruleType, approval_mode AS approvalMode, daily_run_cap AS dailyRunCap, enabled, last_run_at AS lastRunAt, created_at AS createdAt
+        FROM automation_rules WHERE organization_id = ? ORDER BY created_at DESC`).all(actor.organizationId);
+      const runs = db.prepare(`SELECT r.id, r.rule_id AS ruleId, ar.name AS ruleName, r.status, r.summary_json AS summaryJson, r.created_at AS createdAt
+        FROM automation_runs r JOIN automation_rules ar ON ar.id = r.rule_id
+        WHERE r.organization_id = ? ORDER BY r.created_at DESC LIMIT 20`).all(actor.organizationId)
+        .map((row) => ({ ...row, summary: JSON.parse(row.summaryJson), summaryJson: undefined }));
+      return json(response, 200, { rules, runs });
+    }
+    if (request.method === "POST" && url.pathname === "/api/automation/rules") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
+        const ruleType = RULE_TYPES.includes(body.ruleType) ? body.ruleType : "";
+        const approvalMode = APPROVAL_MODES.includes(body.approvalMode) ? body.approvalMode : "manual_approval";
+        const dailyRunCap = Number(body.dailyRunCap ?? 3);
+        if (!name || !ruleType || !Number.isInteger(dailyRunCap) || dailyRunCap < 1 || dailyRunCap > 50) {
+          return json(response, 400, { error: "invalid_automation_rule" });
+        }
+        const id = randomUUID();
+        const createdAt = new Date().toISOString();
+        transaction(() => {
+          db.prepare(`INSERT INTO automation_rules (id, organization_id, name, rule_type, approval_mode, daily_run_cap, enabled, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`)
+            .run(id, actor.organizationId, name, ruleType, approvalMode, dailyRunCap, actor.id, createdAt);
+          appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "automation.rule.create", targetId: id, outcome: "completed", createdAt, details: { ruleType, approvalMode, dailyRunCap } });
+        });
+        return json(response, 201, { rule: { id, name, ruleType, approvalMode, dailyRunCap, enabled: 1, lastRunAt: null, createdAt } });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    const ruleRunMatch = url.pathname.match(/^\/api\/automation\/rules\/([^/]+)\/run$/);
+    if (request.method === "POST" && ruleRunMatch) {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      const ruleId = decodeURIComponent(ruleRunMatch[1]);
+      const rule = db.prepare("SELECT * FROM automation_rules WHERE id = ? AND organization_id = ?").get(ruleId, actor.organizationId);
+      if (!rule) return json(response, 404, { error: "automation_rule_not_found" });
+      const result = executePolicyRuleDryRun(db, { organizationId: actor.organizationId, actorId: actor.id, rule });
+      if (!result.executed) return json(response, 429, result);
+      return json(response, 201, result);
+    }
+    if (request.method === "POST" && url.pathname === "/api/accounts/cpanel/probe") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      try {
+        const body = await readJson(request);
+        const host = typeof body.host === "string" ? body.host.trim() : "";
+        const endpoint = validateExternalEndpoint(`https://${host}:2083`, { requireHttps: true });
+        if (!host || !endpoint.valid) return json(response, 400, { error: endpoint.reason || "invalid_host" });
+        const boundary = await liveAdapterBoundary.discoverCapabilities({ host: endpoint.hostname, authorized: false });
+        return json(response, 200, {
+          host: endpoint.hostname,
+          ssrfPolicyPassed: true,
+          liveConnections: 0,
+          probe: boundary,
+        });
+      } catch (error) {
+        return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
+      }
+    }
+    if (request.method === "GET" && url.pathname === "/api/agency/report") {
+      return json(response, 200, buildAgencyReadinessReport(db, actor.organizationId));
+    }
+    if (request.method === "POST" && url.pathname === "/api/system/demo-seed") {
+      if (!allowSameOrigin(request, response)) return;
+      if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
+      const now = new Date().toISOString();
+      const extraAccounts = [
+        {
+          id: "acct-bluewave",
+          label: "Bluewave Agency",
+          host: "cp-sin-02.example.invalid",
+          username: "bluewave_demo",
+          health: "healthy",
+          usedBytes: 68_719_476_736,
+          quotaBytes: 161_061_273_600,
+          profile: "cpanel_uapi_standard",
+          sites: [
+            { id: "site-bluewave-main", domain: "bluewave.example", kind: "WordPress", root: "/home/bluewave/public_html", php: "8.3", status: "active" },
+            { id: "site-bluewave-cdn", domain: "cdn.bluewave.example", kind: "Static", root: "/home/bluewave/cdn", php: "N/A", status: "active" },
+          ],
+        },
+        {
+          id: "acct-summit",
+          label: "Summit Cloud Sandbox",
+          host: "whm-tor-04.example.invalid",
+          username: "summit_whm",
+          health: "attention",
+          usedBytes: 94_489_280_512,
+          quotaBytes: 107_374_182_400,
+          profile: "whm_reseller",
+          sites: [
+            { id: "site-summit-portal", domain: "portal.summit-cloud.example", kind: "WooCommerce", root: "/home/summit/portal", php: "8.2", status: "attention" },
+          ],
+        },
+      ];
+      let accountsAdded = 0;
+      let sitesAdded = 0;
+      let teamAdded = 0;
+      transaction(() => {
+        for (const acc of extraAccounts) {
+          const accRes = db.prepare(`INSERT OR IGNORE INTO accounts
+            (id, organization_id, label, provider, host, username, health, used_bytes, quota_bytes, last_synced_at, source, capability_profile)
+            VALUES (?, ?, ?, 'cPanel', ?, ?, ?, ?, ?, ?, 'mock_fixture', ?)`)
+            .run(acc.id, actor.organizationId, acc.label, acc.host, acc.username, acc.health, acc.usedBytes, acc.quotaBytes, now, acc.profile);
+          if (accRes.changes > 0) {
+            accountsAdded += 1;
+            db.prepare(`INSERT OR IGNORE INTO capability_snapshots (id, account_id, organization_id, profile_name, capabilities_json, source, fetched_at)
+              VALUES (?, ?, ?, ?, ?, 'mock_fixture', ?)`)
+              .run(randomUUID(), acc.id, actor.organizationId, acc.profile, JSON.stringify(CAPABILITY_PROFILES[acc.profile]), now);
+            db.prepare(`INSERT OR IGNORE INTO jobs (id, type, organization_id, account_id, requested_by, status, idempotency_key, created_at, started_at, completed_at, result_json)
+              VALUES (?, 'inventory_refresh', ?, ?, ?, 'completed', ?, ?, ?, ?, ?)`)
+              .run(randomUUID(), actor.organizationId, acc.id, actor.id, `demo-seed-${acc.id}`, now, now, now, JSON.stringify({ source: "mock_fixture", live: false, accountId: acc.id, sites: acc.sites.length, fetchedAt: now }));
+          }
+          for (const s of acc.sites) {
+            const siteRes = db.prepare(`INSERT OR IGNORE INTO sites (id, account_id, domain, kind, document_root, php_version, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`).run(s.id, acc.id, s.domain, s.kind, s.root, s.php, s.status);
+            if (siteRes.changes > 0) sitesAdded += 1;
+          }
+        }
+        const demoMembers = [
+          { id: "demo-user-ops", email: "ops-demo@orbicore.example", role: "operator" },
+          { id: "demo-user-viewer", email: "auditor-demo@orbicore.example", role: "viewer" },
+        ];
+        for (const dm of demoMembers) {
+          const salt = randomBytes(16).toString("hex");
+          const hash = passwordHash(randomBytes(24).toString("base64url"), salt);
+          const mRes = db.prepare(`INSERT OR IGNORE INTO users (id, organization_id, email, password_salt, password_hash, role, disabled, mfa_enabled, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)`).run(dm.id, actor.organizationId, dm.email, salt, hash, dm.role, now);
+          if (mRes.changes > 0) teamAdded += 1;
+        }
+        appendAuditEvent(db, {
+          organizationId: actor.organizationId,
+          actor: actor.id,
+          action: "system.demo_seed",
+          targetId: actor.organizationId,
+          outcome: "completed",
+          createdAt: now,
+          details: { accountsAdded, sitesAdded, teamAdded, source: "mock_fixture", live: false },
+        });
+      });
+      return json(response, 200, { seeded: true, accountsAdded, sitesAdded, teamAdded, source: "mock_fixture", liveConnections: 0 });
     }
     return json(response, 404, { error: "not_found" });
   });
@@ -953,6 +2145,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
   return {
     server,
     db,
+    notificationAdapter,
     processNextJob,
     getOverview,
     close() {

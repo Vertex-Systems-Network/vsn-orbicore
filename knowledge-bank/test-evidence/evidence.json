@@ -125,41 +125,41 @@
     {
       "id": "MIG-DNS-GATE-001",
       "test": "DNS cutover requires approval and a rollback record",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Dry-run migration workflow in local SQLite; live provider DNS remains disabled"
       ]
     },
     {
       "id": "MIG-PREFLIGHT-001",
       "test": "Migration preflight blocks unsupported privileges and incompatible destinations",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Fixture capability profiles only; no live WHM/cPanel calls"
       ]
     },
     {
       "id": "MIG-RESUME-001",
       "test": "Migration resumes only at a verified checkpoint",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Simulated 30% transfer partial failure and SQLite checkpoint resume; no live file stream"
       ]
     },
     {
       "id": "MIG-ROLLBACK-001",
       "test": "Migration rollback restores a verified snapshot and prior DNS records",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "State-machine rollback verified locally; live DNS zone restoration remains external"
       ]
     },
     {
@@ -235,31 +235,31 @@
     {
       "id": "INSTALL-FRESH-001",
       "test": "Fresh idempotent installation and first-admin bootstrap",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test && npm run smoke",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Local SQLite schema v1-v5 idempotency verified; production PostgreSQL/Redis pending CI services"
       ]
     },
     {
       "id": "INSTALL-RECOVERY-001",
       "test": "Interrupted install resumes safely and redacts secrets",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Redacted diagnostics bundle and SQLite preflight verified locally"
       ]
     },
     {
       "id": "SEC-SSRF-001",
       "test": "Provider adapter rejects loopback, private, link-local, and disallowed URL targets",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/SECURITY_THREAT_MODEL.md",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/security.test.mjs tests/platform-slices.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Design record only; no executed test evidence"
+        "Unit/API SSRF tests executed against mock transport; live egress firewall rules remain deployment-specific"
       ]
     },
     {
@@ -317,9 +317,9 @@
       "test": "Audit events are organization-scoped, queryable by owner/admin, and omit bootstrap/password secrets",
       "status": "MOCK-TESTED",
       "command": "npm test",
-      "evidence_path": "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Local append-only-by-API SQLite log; tamper evidence, retention, and external export are not implemented"
+        "SHA-256 hash chain (prev_hash/entry_hash) & direct tamper detection verified via /api/audit/verify in SQLite; external WORM archive remains future production hardening"
       ]
     },
     {
@@ -370,103 +370,103 @@
     {
       "id": "AUTH-WEBAUTHN-REPLAY-001",
       "test": "WebAuthn wrong RP/origin, challenge expiry and credential replay rejection",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/mfa.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "HTTP API challenge/origin/replay checks verified in Node; Chromium virtual-authenticator E2E remains open"
       ]
     },
     {
       "id": "AUTH-NOTIFY-001",
       "test": "Verified-contact recovery notification delivery behavior",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "Simulated local delivery adapter only; external SMTP remains disabled"
       ]
     },
     {
       "id": "AUTH-NOTIFY-RETRY-001",
       "test": "Notification failure, retry and idempotency behavior",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "Outbox retry tested against simulated failure injection locally"
       ]
     },
     {
       "id": "AUTH-KEY-ROTATE-001",
       "test": "TOTP encryption-key rotation preserves existing authenticator access",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "Local keyring rotation verified; external KMS remains production deferred"
       ]
     },
     {
       "id": "AUTH-RESTORE-001",
       "test": "Encrypted consistent database backup and authentication restore drill",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "SQLite backup integrity & MFA seed decryptability verified locally"
       ]
     },
     {
       "id": "SEC-PATH-001",
       "test": "Path traversal inputs are contained or rejected",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/security.test.mjs tests/platform-slices.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "Local backup & restore-drill path containment tests pass"
       ]
     },
     {
       "id": "SEC-INJECTION-001",
       "test": "Untrusted data cannot reach SQL, command or template injection sinks",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/security.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "Negative SQL/shell/HTML payload assertions added alongside parameterized queries; external DAST/fuzzing remains CI/manual"
       ]
     },
     {
       "id": "SEC-REPLAY-001",
       "test": "Signed/scoped operations reject repeated replay tokens",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm test",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "WebAuthn one-time challenge & TOTP step replay tested locally"
       ]
     },
     {
       "id": "SEC-SUPPLY-CHAIN-001",
       "test": "Secret, dependency, SBOM and license checks run in pull-request CI",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "npm run security:check",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "Local secret/license/SBOM check passes and is wired into .github/workflows/ci.yml; GitHub runner execution pending PR"
       ]
     },
     {
       "id": "INSTALL-UPGRADE-001",
       "test": "Installer upgrade and rollback recover database state safely",
-      "status": "DESIGNED",
-      "command": "Not yet implemented",
-      "evidence_path": "docs/TEST_STRATEGY.md",
+      "status": "MOCK-TESTED",
+      "command": "node --test tests/platform-slices.test.mjs",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-21-local-slices.md",
       "limitations": [
-        "Acceptance target only; no execution evidence yet"
+        "SQLite legacy pre-v5 upgrade recovery and corrupt backup fail-closed restore-drill verified locally; production PostgreSQL upgrade path awaits ORB-016"
       ]
     }
   ],
-  "status_note": "Contains 18 passing local tests, including fixture API/auth/audit, MFA fallback, recovery-code, replay, challenge lockout/expiry and authenticator revocation coverage, plus the Vite proxy smoke. TOTP is a compatibility fallback only; WebAuthn/passkeys, verified-contact notification delivery, external production key management, browser-rendered accessibility, live provider, PostgreSQL/Redis, and production deployment remain unverified."
+  "status_note": "42 passing automated tests + security:check + smoke + doctor verify local SQLite/API/UI vertical slices across Phases 0–8 (including SHA-256 audit hash chain, interrupted job crash recovery, production deployment readiness wizard, AES-GCM encrypted secret references, and synthetic demo seeding). External live cPanel credentials, external SMTP, Chromium browser E2E (.github/workflows/ci-browser.yml), and Docker PostgreSQL/Redis containers (.github/workflows/ci-services.yml) remain unverified in this environment."
 }

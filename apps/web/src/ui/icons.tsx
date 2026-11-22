@@ -2,8 +2,24 @@ import type { ReactNode, SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
-export function Icon({ name, ...props }: IconProps & { name: "grid" | "server" | "globe" | "move" | "database" | "bell" | "search" | "refresh" | "arrow" | "check" | "clock" | "plus" }) {
-  const paths: Record<string, ReactNode> = {
+export type IconName =
+  | "grid"
+  | "server"
+  | "globe"
+  | "move"
+  | "database"
+  | "bell"
+  | "search"
+  | "refresh"
+  | "arrow"
+  | "check"
+  | "clock"
+  | "plus"
+  | "shield"
+  | "alert";
+
+export function Icon({ name, ...props }: IconProps & { name: IconName }) {
+  const paths: Record<IconName, ReactNode> = {
     grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
     server: <><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/><path d="M7 7h.01M7 17h.01M11 7h6M11 17h6"/></>,
     globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></>,
@@ -16,6 +32,8 @@ export function Icon({ name, ...props }: IconProps & { name: "grid" | "server" |
     check: <path d="m5 12 4 4L19 6"/>,
     clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
+    shield: <path d="M12 3 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-3Z"/>,
+    alert: <><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3.5h.01"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths[name]}</svg>;
 }

@@ -253,3 +253,55 @@ test("passkey inventory is private and revocation requires password reauthentica
   assert.equal(app.db.prepare("SELECT COUNT(*) AS count FROM passkeys WHERE user_id = ?").get(userId).count, 0);
   assert.equal(app.db.prepare("SELECT action FROM audit_events WHERE action = 'auth.passkey.revoke'").get().action, "auth.passkey.revoke");
 });
+
+test("passkey login verification rejects wrong origin, one-time replay, and expired challenges", async () => {
+  await setup();
+  const userId = app.db.prepare("SELECT id FROM users WHERE email = 'owner@example.test'").get().id;
+  app.db.prepare("INSERT INTO passkeys (credential_id, user_id, public_key, counter, transports_json, device_type, backed_up, created_at) VALUES (?, ?, ?, 2, '[]', 'singleDevice', 0, ?)")
+    .run("login-cred-1", userId, Buffer.from("test-public-key").toString("base64"), new Date(clockMs).toISOString());
+
+  const optRes = await fetch(`${baseUrl}/api/auth/passkeys/login/options`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "owner@example.test" }),
+  });
+  assert.equal(optRes.status, 200);
+  const { challengeHandle, options } = await optRes.json();
+
+  // Wrong origin assertion fails 401 and consumes challenge handle
+  const evilClientData = Buffer.from(JSON.stringify({
+    type: "webauthn.get",
+    challenge: options.challenge,
+    origin: "https://evil.example",
+    crossOrigin: false,
+  })).toString("base64url");
+  const badVerify = await fetch(`${baseUrl}/api/auth/passkeys/login/verify`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      challengeHandle,
+      response: { id: "login-cred-1", rawId: Buffer.from("login-cred-1").toString("base64url"), type: "public-key", response: { clientDataJSON: evilClientData, authenticatorData: "", signature: "" } },
+    }),
+  });
+  assert.equal(badVerify.status, 401);
+
+  // Replaying consumed challenge fails closed with 401 invalid_passkey_challenge
+  const replay = await fetch(`${baseUrl}/api/auth/passkeys/login/verify`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ challengeHandle, response: {} }),
+  });
+  assert.equal(replay.status, 401);
+  assert.deepEqual(await replay.json(), { error: "invalid_passkey_challenge" });
+
+  // Expired challenge fails closed with 401 invalid_passkey_challenge
+  const opt2 = await fetch(`${baseUrl}/api/auth/passkeys/login/options`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "owner@example.test" }),
+  }).then((r) => r.json());
+  app.db.prepare("UPDATE webauthn_challenges SET expires_at = '2000-01-01T00:00:00.000Z' WHERE handle_hash = ?")
+    .run(createHash("sha256").update(opt2.challengeHandle).digest("hex"));
+  const expired = await fetch(`${baseUrl}/api/auth/passkeys/login/verify`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ challengeHandle: opt2.challengeHandle, response: {} }),
+  });
+  assert.equal(expired.status, 401);
+  assert.deepEqual(await expired.json(), { error: "invalid_passkey_challenge" });
+});
