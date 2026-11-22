@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T07:11:12Z",
+  "updated_at": "2026-11-22T07:17:02Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -168,20 +168,24 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#6",
         "AI_Native_Multi_Hosting_Master_Prompt.md#16"
       ],
-      "commit_hash": "33eaebafb6aee7eac133700f75e764a771089c18",
+      "commit_hash": "57dec33e52c64e9c4bf5ea00a6382eb725512983",
       "evidence_paths": [
         "db/migrations/001_postgres_job_leases.sql",
         "scripts/verify-leased-jobs.sh",
         ".github/workflows/ci-services.yml",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-lease-contract-ci.md",
+        "apps/api/postgres-jobs.mjs",
+        "scripts/verify-postgres-job-repository.mjs",
+        "tests/postgres-jobs.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-004-node-postgres-repository.md"
       ],
       "blockers": [
-        "Tested PostgreSQL lease/fencing/concurrent claim and Redis Streams pending-message redelivery on disposable CI services, but the ORBICORE API still uses SQLite; live app database adapter, Redis worker, transactional outbox, full tenant policy and container restart drills are not implemented."
+        "Real Node PostgreSQL job repository passed injected pg.Pool service integration tests (47 project tests). Still not wired into createApp or Redis worker; pg is test-only, transactional outbox and full process/container restart recovery remain unverified."
       ],
       "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T07:11:12Z",
+      "last_updated": "2026-11-22T07:17:02Z",
       "verification_level": "integration_tested",
       "blocker_type": "technical"
     },

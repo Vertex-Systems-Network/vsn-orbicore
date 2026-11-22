@@ -7,6 +7,8 @@ on:
       - "db/**"
       - "scripts/verify-service-containers.sh"
       - "scripts/verify-leased-jobs.sh"
+      - "scripts/verify-postgres-job-repository.mjs"
+      - "apps/api/postgres-jobs.mjs"
       - ".github/workflows/ci-services.yml"
   workflow_dispatch:
 permissions:
@@ -57,6 +59,30 @@ jobs:
           PGDATABASE: orbicore
           PGPASSWORD: ci-test-password
         run: bash scripts/verify-leased-jobs.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install pinned test-only PostgreSQL client
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit pg@8.16.3
+      - name: Verify real Node PostgreSQL job repository and independent reconnect
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: orbicore
+          PGDATABASE: orbicore
+          PGPASSWORD: ci-test-password
+        run: node scripts/verify-postgres-job-repository.mjs > .data/ci/orb-004-postgres-repository.json
+      - name: Upload Node repository integration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-004-postgres-job-repository
+          path: .data/ci/orb-004-postgres-repository.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload job-lease recovery evidence
         if: always()
         uses: actions/upload-artifact@v4
