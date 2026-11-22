@@ -20,7 +20,11 @@ function redisFields(raw) {
 }
 function parseStreamReply(reply, reclaim) {
   if (!reply) return null;
-  const entries = reclaim ? reply[1] : reply[0]?.[1];
+  // node-redis 6 can decode XREADGROUP as a stream-keyed object;
+  // older RESP2 decoders return a nested tuple array.
+  const entries = reclaim
+    ? (Array.isArray(reply) ? reply[1] : reply?.messages)
+    : (Array.isArray(reply) ? reply[0]?.[1] : reply?.[Object.keys(reply)[0]]);
   if (!Array.isArray(entries) || !entries.length) return null;
   const entry = entries[0];
   if (!Array.isArray(entry) || typeof entry[0] !== "string") throw new Error("invalid_stream_entry");
