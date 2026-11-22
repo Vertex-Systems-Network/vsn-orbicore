@@ -205,6 +205,38 @@ try {
   assert.equal((await runner.publishOne()).jobId, missingJob);
   assert.equal((await runner.consumeOne()).status, "completed");
 
+  // A separate opt-in service process must also publish and complete a
+  // queued synthetic job, not just the in-process library test harness.
+  const cliJob = await enqueue("standalone-cli-" + randomUUID());
+  const cliWorker = spawn(process.execPath, ["apps/api/synthetic-worker-runner.mjs"], {
+    env: {
+      ...process.env,
+      ORBICORE_ENABLE_SYNTHETIC_REDIS_WORKER: "1",
+      ORBICORE_WORKER_ORGANIZATION_ID: organizationId,
+      ORBICORE_WORKER_ID: "ci-standalone",
+      ORBICORE_WORKER_ONCE: "1",
+      ORBICORE_REDIS_URL: "redis://127.0.0.1:6379",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let cliStdout = "";
+  let cliStderr = "";
+  cliWorker.stdout.on("data", (chunk) => { cliStdout += String(chunk); });
+  cliWorker.stderr.on("data", (chunk) => { cliStderr += String(chunk).slice(0, 400); });
+  const cliExit = await Promise.race([
+    new Promise((resolve, reject) => {
+      cliWorker.once("error", reject);
+      cliWorker.once("exit", resolve);
+    }),
+    new Promise((_, reject) => setTimeout(() => {
+      cliWorker.kill("SIGKILL");
+      reject(new Error("standalone_worker_timeout"));
+    }, 15000)),
+  ]);
+  assert.equal(cliExit, 0, "standalone synthetic worker: " + cliStderr);
+  assert.equal(JSON.parse(cliStdout).mode, "synthetic_only");
+  assert.equal((await repository.getJob({ organizationId, id: cliJob })).status, "completed");
+
   const httpJob = await api("/api/jobs/" + crashJob);
   assert.equal(httpJob.status, 200);
   assert.equal(httpJob.data.job.status, "completed");
@@ -218,6 +250,7 @@ try {
     failedRedisPublishNoJobLoss: "passed",
     duplicateDeliveryFenced: "passed",
     workerProcessSigkillThenReclaim: "passed",
+    optInStandaloneWorkerProcess: "passed",
     postgresActorRevocationDenied: "passed",
     missingRedisSignalReconciliation: "passed",
     authenticatedHttpJobState: "passed",
