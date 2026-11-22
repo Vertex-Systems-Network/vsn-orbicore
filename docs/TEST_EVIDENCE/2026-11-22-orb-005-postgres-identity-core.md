@@ -1,0 +1,33 @@
+# ORB-005 — PostgreSQL core identity snapshot and tenant read isolation — 2026-11-22
+
+## Tested commit and hosted evidence
+
+- Repository: `Vertex-Systems-Network/vsn-orbicore`; [PR #16](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/16).
+- **Tested functional head:** `8a96b2357ec3cbb6fa5a0725d0daa62a33900c90`.
+- [Service integration run #45003751423](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751423) **success** on that SHA, with separate PostgreSQL 16 identity/RLS, prior PG/Redis integration and disposable Compose persistence jobs all green.
+- [Standard CI #45003751433](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751433) **success**: **55 tests passed, 0 failed**; audit/build/lint/smoke/doctor/security checks and npm high/critical audit zero findings at run time. CycloneDX lockfile-only inventory: 189 components, 0 unresolved entries.
+- [Hosted Chromium virtual-authenticator run #45003751489](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751489) **success**, protecting unchanged default SQLite API/auth UI.
+- [Identity-core evidence JSON artifact ID 14747235280](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45003751423/artifacts/14747235280), ZIP digest `sha256:dc0dcee794d036bc7a4ce4572e59537d82753e655745fa1ef500e7a008903713`.
+- Commands in disposable GitHub job: `npm ci`; `psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql`, migrations 001 + 002 and **migration 003 applied twice**; `node scripts/verify-postgres-identity-core.mjs > .data/ci/orb-005-identity-core.json`. Runtime Node.js 24, `postgres:16-alpine`, official locked pg client.
+
+## Verified scope
+
+1. **Additive PostgreSQL schema:** `003_postgres_identity_core_rls.sql` adds tenant-scoped `sessions` with a composite `(user_id, organization_id)` FK; user composite uniqueness; case-folded global email uniqueness consistent with current globally-addressed login (a future multi-tenant login redesign is still required); exact audit-source JSON text field with JSONB consistency check. The DDL was safe to reapply on the same disposable database.
+2. **Read-only tenant RLS proof:** a NOLOGIN/NOBYPASSRLS `orbicore_tenant_readonly` role has row-level SELECT policies over organizations, users, accounts, sites, jobs, audit events, job outbox and sessions. Missing tenant context returns zero accounts, and setting tenant context inside a PostgreSQL transaction only exposes that tenant's accounts, sites, users, etc. Cross-tenant session FK is rejected, role UPDATE is rejected.
+3. **Credential-column confinement:** although scoped users/sessions are readable by that role, password salts/hashes and session-token hashes are **not granted**; real queries for `users.password_hash` and `sessions.token_hash` returned permission-denied. This is a proof role with **no login**, not yet the application's runtime identity role.
+4. **Guarded synthetic offline snapshot:** `copySyntheticIdentitySnapshot` requires explicit `fixture_only_offline_copy` consent and a SQLite `BEGIN IMMEDIATE` source snapshot; rejects live-account sources, **any existing jobs (queued/running or historical)**, nonempty destination, unbootstrapped identity, duplicate case-folded emails, tampered/legacy-unverifiable audit chains and unsupported MFA/passkey/recovery/secret-reference/notification state. Reads organizations, users, accounts, sites, sessions and audit events; inserts them in **one PostgreSQL SERIALIZABLE transaction** with advisory lock and verifies counts and exact serialized audit text, without modifying SQLite. No plaintext passwords, cookie tokens or credential material are placed in test output.
+5. **PostgreSQL identity reader:** new `actorForSession` accepts only a SHA-256 token hash; checks expiration, disabled user, matching tenant-scoped session/user join and MFA verification; denial cases were exercised on actual Postgres rows. `accountForTenant` binds organization/account IDs and rejects cross-tenant lookup.
+6. **Audit chain preservation:** original JSON string and JSONB use **different SQL bind parameters** so PostgreSQL cannot inadvertently canonicalize the stored raw string; recomputing the legacy `computeAuditEntryHash` from imported raw text returned the stored chain entry hash. Earlier failed service checks revealed this coercion issue; the final tested head fixed it.
+
+## Boundaries — NOT a production identity migration
+
+- The existing HTTP API, MFA, passkeys, authorization, audit and inventory still use SQLite by default. PostgreSQL session reader is **not wired into the application HTTP request path**. The snapshot tool is a **synthetic-only, offline, empty-target demonstration**, not a live cutover or synchronized dual-write mechanism.
+- Critical SQLite v7 entities not copied include passkeys, TOTP authenticators, recovery codes/contacts, login/WebAuthn challenges, notifications, bootstrap tokens and secret references; other feature tables (automation, migration, storage, WordPress and snapshots) are also not migrated. The copy **refuses nonempty unsupported security state**.
+- RLS role only proves scoped read access. SQL custom tenant context is set by a privileged trusted connection in CI; a direct untrusted SQL user could spoof a custom GUC, so production must use **trusted request context, non-bypass runtime DB identities, DB role isolation, write policies and adversarial tests**. The existing application PG pool in prior jobs uses a superuser fixture; it is not restricted by these read policies.
+- Read-only role grants safe subset of identity/session columns; do not mistake scoped access proof for production field-level authorization, revocation consistency, MFA cutover, distributed authentication or secret management.
+- The copy is not an atomic cross-database cutover; SQLite writes are blocked during copying but **PG COMMIT and any later SQLite switch are not one atomic operation**. No nonfixture identity, live provider token or hosting action was touched.
+- ORB-005 stays `in_progress/mock_tested`, ORB-004/016 `testing/integration_tested`. The evidence file was added after the tested functional SHA; check final PR head and merged CI before claiming completion.
+
+## Next exit
+
+Implement complete SQLite v7 -> PostgreSQL schema/backfill for auth, WebAuthn/passkeys, MFA/recovery/notification/secrets, all application feature tables and audit, then wire a fully PostgreSQL-backed HTTP identity/auth boundary with verified session revocation, tenant database write policies, test-only cutover/rollback and off-host backup drills. Keep real provider actions disabled until authorized.
