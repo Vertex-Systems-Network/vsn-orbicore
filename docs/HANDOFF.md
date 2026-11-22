@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-23 — ORB-004 signed and PG-anchored synthetic Redis notifications (PR #37)
+
+- [PR #37](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/37) functional SHA `4b177f1b208967dc832d2fa502da694f02e66e0c` passed [23/23 hosted PG16/Redis7/Compose jobs #45074234074](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074234074), [PR CI #45074234088](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074234088), [branch CI #45074229626](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074229626), [Chromium #45074234106](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074234106). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-signed-wakeup.md); redacted artifact #14774252996.
+- Explicitly CI-only, in-memory HMAC-SHA256 signature binds Redis wakeup to org, job and PostgreSQL outbox UUID. Nonowner SQL then checks **the exact committed Redis entry ID**, so copied MAC in a new XADD entry fails before job claim. Rejection reasons are metadata-only and persisted before XACK. Real CI tests verify unsigned/tampered/extra fields, previous/retired signing keys, outbox replay denial, PG EXECUTE-loss pending+reclaim, and cross-tenant signed replay denial.
+- Two initial runs exposed restricted-reason allowlist incompatibility and a SQL-string replacement bug; both were fixed with **new migration 017**, old migrations unchanged, then 23-job suite reran green at `4b177f1b208967dc832d2fa502da694f02e66e0c`.
+- CI fixture only: no independent HMAC key custodian, production Redis network ACL, distributed key rotation, actual provider jobs, full operational DLQ or PostgreSQL HTTP login cutover. ORB-004 remains `testing/integration_tested`. Verify final docs-head and postmerge main CI separately.
+
+
 ## 2026-11-23 — ORB-004 full nonowner synthetic worker gateway (PR #36)
 
 - [PR #36](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/36) functional SHA `aa13769395402b933f8b1bde196c20b6bb79824c` passed [all 22 PostgreSQL/Redis/Compose service jobs #45072644838](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072644838), [PR CI #45072644782](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072644782), [branch CI #45072639938](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072639938) and [Chromium #45072644791](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45072644791). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-full-worker-gateway.md); redacted artifact #14773818726.
