@@ -186,8 +186,12 @@ try{
         outcome:row.outcome,detailsJson:row.details_raw_json,
         createdAt:row.created_at.toISOString(),
       }),"Node and PostgreSQL audit SHA disagree");
-      assert.equal(row.details_raw_json.includes("password"),false,
-        "audit details must not include raw password field");
+      for(const secret of [
+        ...Object.values(passwords),...recoveryCodes,
+      ]) assert.equal(row.details_raw_json.includes(secret),false,
+        "audit details must not contain credentials or recovery codes");
+      assert.equal(Object.hasOwn(JSON.parse(row.details_raw_json),"password"),false,
+        "audit details must not contain a password property");
       head.set(row.organization_id,row.entry_hash);
     }
     return rows;
