@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22T06:52:11Z",
+  "updated_at": "2026-11-22T06:56:59Z",
   "tasks": [
     {
       "id": "ORB-001",
@@ -495,7 +495,8 @@
         "tests/mfa.test.mjs",
         "docs/TEST_EVIDENCE/2026-11-09-mfa-local.md",
         "docs/TEST_EVIDENCE/2026-11-10-github-ci.md",
-        "docs/AUTHENTICATOR_OPERATIONS.md"
+        "docs/AUTHENTICATOR_OPERATIONS.md",
+        "tests/recovery-code-edge.test.mjs"
       ],
       "blockers": [
         "verified-contact delivery, tested key rotation/restore, distributed throttling and production identity controls remain open."
@@ -503,7 +504,7 @@
       "started_at": "2026-11-09T23:10:00+05:00",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T06:46:19Z",
+      "last_updated": "2026-11-22T06:56:59Z",
       "verification_level": "unit",
       "blocker_type": "environment"
     },
@@ -672,7 +673,7 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "5e0cf94130e36c803a94c61b8d9f8a1828d13670",
+      "commit_hash": "011317d2be346868356e2956e95676a6bea347c6",
       "evidence_paths": [
         "apps/api/security.mjs",
         "scripts/security-gate.mjs",
@@ -689,7 +690,7 @@
       "started_at": "2026-11-21T00:00:00Z",
       "completed_at": "2026-11-22T06:52:11Z",
       "verified_at": "2026-11-22T06:52:11Z",
-      "last_updated": "2026-11-22T06:52:11Z"
+      "last_updated": "2026-11-22T06:56:59Z"
     },
     {
       "id": "ORB-016",
