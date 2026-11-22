@@ -15,11 +15,14 @@ services:
       retries: 10
     volumes:
       - ./db/postgres-schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+      - orbicore_postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - orbicore_redis_data:/data
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
@@ -27,3 +30,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+volumes:
+  orbicore_postgres_data:
+  orbicore_redis_data:
