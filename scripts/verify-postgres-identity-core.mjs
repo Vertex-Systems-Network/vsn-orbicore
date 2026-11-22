@@ -187,7 +187,7 @@ try {
     const accounts = await client.query("SELECT id FROM accounts ORDER BY id");
     const sites = await client.query("SELECT id FROM sites ORDER BY id");
     const users = await client.query("SELECT id FROM users ORDER BY id");
-    const sessions = await client.query("SELECT token_hash FROM sessions");
+    const sessions = await client.query("SELECT user_id FROM sessions");
     const orgs = await client.query("SELECT id FROM organizations");
     const otherOrgJob = await client.query("SELECT id FROM jobs");
     assert.deepEqual(accounts.rows.map(r => r.id), ["account-other-ci"]);
@@ -202,6 +202,15 @@ try {
     "UPDATE users SET disabled=TRUE WHERE id=$1", [owner.id],
   )), (error) => error.code === "42501");
 
+  // Tenant isolation must not expose even same-tenant secret-bearing columns.
+  await assert.rejects(
+    asTenant("org-demo", (client) => client.query("SELECT password_hash FROM users")),
+    (error) => error.code === "42501",
+  );
+  await assert.rejects(
+    asTenant("org-demo", (client) => client.query("SELECT token_hash FROM sessions")),
+    (error) => error.code === "42501",
+  );
   // Default-safe rerun does not merge partially or overwrite identities.
   await assert.rejects(copySyntheticIdentitySnapshot({
     sqlite: app.db, postgres: pool, consent: "fixture_only_offline_copy",
@@ -222,6 +231,7 @@ try {
     postgresTenantAndSitesRls: "passed",
     rlsMissingTenantFailsClosed: true,
     roleCannotUpdate: true,
+    readRoleCannotReadPasswordOrSessionHashes: true,
     crossTenantSessionForeignKey: "passed",
     originalAuditHashChainPreserved: true,
     productionCutover: false,
