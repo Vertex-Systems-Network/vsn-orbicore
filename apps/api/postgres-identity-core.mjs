@@ -38,7 +38,8 @@ export function createPostgresIdentityCoreReader(database) {
       return result.rows[0] ?? null;
     },
     async accountForTenant({ organizationId, accountId }) {
-      if (!ID.test(organizationId ?? "") || !ID.test(accountId ?? "")) {
+      if (typeof organizationId !== "string" || typeof accountId !== "string" ||
+          !ID.test(organizationId) || !ID.test(accountId)) {
         throw new TypeError("organizationId/accountId must be valid identifiers");
       }
       const result = await database.query(
@@ -56,6 +57,11 @@ function verifySyntheticSource(sqlite) {
   for (const table of SQL_TABLES) scoped[table] = sqlite.prepare("SELECT * FROM " + table).all();
 
   if (scoped.users.length === 0) throw new Error("identity_snapshot_requires_bootstrapped_user");
+  // Jobs and their execution history are outside this *identity core* copy.
+  // Refuse a source with any jobs rather than silently orphan work at cutover.
+  if (sqlite.prepare("SELECT 1 FROM jobs LIMIT 1").get()) {
+    throw new Error("source_jobs_not_supported_by_identity_core");
+  }
   if (scoped.accounts.some((row) => row.source !== "mock_fixture")) {
     throw new Error("live_account_copy_refused");
   }
