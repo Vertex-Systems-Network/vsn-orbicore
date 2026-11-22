@@ -1,11 +1,11 @@
 # Handoff
 
-## 2026-11-22 — ORB-005 reversible scrypt transition design checkpoint
+## 2026-11-22 — ORB-005 reversible scrypt compatibility slice (PR #23)
 
-- [ADR-0003](DECISIONS/ADR-0003-credential-transition.md) documents the required credential authority state machine, fresh-password reauthentication or verified reset, verifier secrecy/role gates, identity+credential epoch fencing, MFA/session/audit continuity and rollback invariants. Follow-on implementation is sliced into legacy verifier contract tests, private shadow store, opt-in synthetic reauthentication, and only then verified cutover.
-- This change is **documentation-only**. No production PostgreSQL login, SQLite scrypt migration, new tests, key transfer, live credential handling or real provider operations have been implemented by this checkpoint. ORB-005 remains `in_progress / integration_tested` on earlier hosted CI evidence.
-- **Next:** implement ADR-0003 Slice A with fixed KDF fixtures and negative tests; do not enable target auth routing, copy production verifiers or claim tested cutover.
-
+- [ADR-0003](DECISIONS/ADR-0003-credential-transition.md) defines the required SQLite → PostgreSQL authority state machine, fresh-password reauthentication/reset, private verifier custody, tenant+credential epoch, MFA/session/audit continuity and rollback gates.
+- [PR #23](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/23) functional head `1ac44ad8a3220ed0a3b9bed09fc7c681b1c96726` passed [standard PR CI #45055406351](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055406351), [branch CI #45055379223](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055379223) and [Chromium #45055406339](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45055406339). See [detailed evidence](TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md).
+- Only the **read-only** legacy SQLite compatibility helper and six synthetic regression cases were added; default SQLite login, CI-only PostgreSQL bcrypt, production data and hosting connections are untouched. No production migration is proven. ORB-005 remains `in_progress / integration_tested`.
+- **Next:** ADR-0003 Slice B private synthetic shadow credential schema and non-owner grants/negative tests; no target authority change. Verify latest docs head CI and postmerge main independently before reporting merge.
 
 ## 2026-11-22 — ORB-005 CI-only PostgreSQL atomic authentication audit (PR #22)
 

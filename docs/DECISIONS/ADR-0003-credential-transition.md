@@ -1,6 +1,6 @@
 # ADR-0003: Reversible SQLite scrypt → PostgreSQL credential transition
 
-**Status:** proposed design only; implementation and production cutover **not approved**  
+**Status:** proposed migration design; read-only Slice A compatibility verifier CI-tested, production cutover **not approved**  
 **Date:** 2026-11-22  
 **Owner task:** ORB-005 (dependent ORB-004 / ORB-016 / ORB-017)
 
@@ -38,7 +38,7 @@ Transitions must be durable, monotonic, tenant-scoped and observable. Retain a r
 
 ## Required implementation slices (ordered)
 
-**Slice A — verifier contract and threat tests (no writes):** pin/test the exact legacy scrypt parameters and salt/hash encoding; reject malformed and unsupported verifier formats *before* expensive KDF work; validate user/tenant mapping; prove no API/SQL/log verifier disclosure. No production SQL auth function changes.
+**Slice A — verifier contract and threat tests (no writes):** the separate [compatibility verifier](../../apps/api/legacy-scrypt-verifier.mjs) and [six unit cases](../../tests/legacy-scrypt-verifier.test.mjs) now pin the historical Node scrypt format with [hosted CI evidence](../TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md). **Remaining:** tenant/user provenance and end-to-end HTTP/SQL/log confidentiality controls; do not wire the helper into normal login. No production SQL auth functions were changed.
 
 **Slice B — restricted shadow credential storage:** add a versioned private table, least-privilege non-owner writer/read-verifier roles, tenant FK and credential epoch; exercise rerunnable DDL, no public EXECUTE, negative role/tenant access and deliberate transaction faults in hosted PostgreSQL 16.
 
@@ -48,7 +48,7 @@ Transitions must be durable, monotonic, tenant-scoped and observable. Retain a r
 
 ## Acceptance and adversarial evidence gate
 
-- [ ] Exact legacy KDF outputs are reproduced using non-secret fixtures for Unicode passwords and differing salt encodings, with fixed parameters and timing-safe comparison.
+- [x] Exact legacy KDF outputs reproduced using synthetic Unicode/ASCII/empty-password fixtures, UTF-8 hex-text versus decoded salt checks, fixed parameters and timing-safe comparison; [CI evidence](../TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md).
 - [ ] Malformed salt/verifier, unsupported versions, oversized input, disabled user and wrong tenant fail closed without stack traces or verifier exposure.
 - [ ] Wrong-password and unknown-user responses are indistinguishable at the API contract level; attempt throttling and keyed pseudonymization have independent negative tests.
 - [ ] Fresh successful reauthentication produces a new versioned PG verifier; bulk hash-copy and hash-as-password attempts are explicitly rejected.
@@ -65,4 +65,4 @@ Transitions must be durable, monotonic, tenant-scoped and observable. Retain a r
 
 This approach requires users to reauthenticate or reset; dormant accounts cannot silently become PostgreSQL-ready. That cost is intentional: the project must not expand access to legacy password hashes, claim a bcrypt fixture proves scrypt compatibility, or cross an unverified security boundary. Inactive accounts should remain disabled for target login pending verified recovery, not become inaccessible without a recovery path.
 
-**Current checkpoint:** design only. No schema or authentication code changes, no new security test execution, no migration proof, no real credentials, no authority cutover. ORB-005 stays `in_progress / integration_tested` based on earlier fixture CI evidence, not on this ADR.
+**Current checkpoint:** the migration design remains proposed, while a separate read-only scrypt compatibility helper and six synthetic unit tests passed [hosted standard and browser CI](../TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md). No changes to default SQLite HTTP login, PostgreSQL schema/authentication, user data or actual migration; no real credentials or authority cutover. ORB-005 stays `in_progress / integration_tested`; the broader security gates are open.
