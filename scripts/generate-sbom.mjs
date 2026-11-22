@@ -75,7 +75,10 @@ export function buildLockfileSbom(packageJson, lockfile) {
     const dependedOn = normalizedDependencies(meta, path === "").map((dependencyName) => {
       const targetPath = findInstalledPath(packages, path, dependencyName);
       if (!targetPath) {
-        unresolved.push({ parent: path || ".", dependency: dependencyName });
+        // npm may omit optional packages and optional peers on this platform.
+        const optional = Object.hasOwn(meta.optionalDependencies ?? {}, dependencyName)
+          || meta.peerDependenciesMeta?.[dependencyName]?.optional === true;
+        if (!optional) unresolved.push({ parent: path || ".", dependency: dependencyName });
         return null;
       }
       return "lockfile:" + targetPath;
