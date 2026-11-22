@@ -1,5 +1,14 @@
 # Handoff
 
+## 2026-11-22 — ORB-004 authenticated PostgreSQL HTTP job slice (PR #12)
+
+- Tested feature SHA `04b396f05611594012a84998581e91172a5fcd6e`. [Hosted PostgreSQL/Redis #44998235408](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998235408), [49-test standard CI #44998235385](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998235385) and [virtual browser E2E #44998235393](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998235393) all passed.
+- `apps/api/server.mjs` accepts **explicit** `jobRepository` only with `startWorker:false` to avoid mixing the legacy SQLite worker with PostgreSQL jobs. Authenticated `POST /api/jobs/refresh`, `GET /api/jobs`, `GET /api/jobs/:id` and overview use the repository with role/tenant checks, idempotency handling and redacted backend failures. Default SQLite is unchanged. `apps/api/postgres-jobs.mjs` now offers listJobs. Unit tests and `scripts/verify-postgres-job-http.mjs` exercise real PG with synthetic account/tenant fixtures.
+- [HTTP evidence artifact 14745205043](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44998235408/artifacts/14745205043). Source/evidence: `docs/TEST_EVIDENCE/2026-11-22-orb-004-postgres-http-ci.md`.
+- **Major limitations:** This is test-only hybrid SQLite auth/accounts/audit + PostgreSQL jobs with non-atomic auditing. No PostgreSQL job executor is running; test harness completes the job manually. No declared runtime PG package, Redis worker, transactional outbox, real process or Compose persistence test. **Do not turn this mode on for production.**
+- PR [#11](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/11) merged as `8a8762cecf78c1350d4f9130d808502b291593a5`. PR #12 final docs commit still requires CI and verified merge.
+- **Next:** production-shaped PostgreSQL identity/accounts + transactional job/outbox + Redis worker with restart/recovery, then complete accessibility and deployment gates. No live cPanel credentials or provider operations used.
+
 ## 2026-11-22 — ORB-004 real Node PostgreSQL job repository (PR #11)
 
 - Tested feature SHA `57dec33e52c64e9c4bf5ea00a6382eb725512983`; [service integration run 44997469316](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997469316) passed with `pg@8.16.3` installed in CI only. [Standard CI 44997469273](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997469273) passed **47 tests**, all other checks and [browser 44997469354](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997469354) passed.
