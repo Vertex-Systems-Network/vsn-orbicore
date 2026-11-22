@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
-import { readFileSync, mkdirSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { readFileSync, mkdirSync, writeFileSync, existsSync, unlinkSync, statSync } from "node:fs";
+import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID, randomBytes, createHash, scryptSync, timingSafeEqual } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
@@ -9,6 +9,21 @@ import { decryptMfaSecret, encodeBase32, encryptMfaSecret, mfaEncryptionKey, new
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultFixturePath = resolve(here, "fixtures/cpanel-uapi-inventory.json");
+const distWebDir = resolve(here, "../../dist/web");
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".mjs": "application/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const AUTH_FAILURE_WINDOW_MS = 10 * 60 * 1000;
 const AUTH_FAILURE_LIMIT = 10;
@@ -26,16 +41,26 @@ function cookieValue(header, name) {
   return (header ?? "").split(";").map((part) => part.trim()).find((part) => part.startsWith(prefix))?.slice(prefix.length) ?? null;
 }
 
-function setSessionCookie(response, token, secure) {
-  const flags = `Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${secure ? "; Secure" : ""}`;
-  response.setHeader("set-cookie", token ? `orbicore_session=${token}; ${flags}` : `orbicore_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure ? "; Secure" : ""}`);
+function isForwardedHttps(request) {
+  const proto = request?.headers?.["x-forwarded-proto"];
+  return typeof proto === "string" && proto.split(",")[0].trim().toLowerCase() === "https";
+}
+
+function setSessionCookie(response, token, secure, request = null) {
+  const crossSiteHttps = isForwardedHttps(request);
+  const useSecure = secure || crossSiteHttps;
+  const sameSite = crossSiteHttps ? "None" : "Strict";
+  const flags = `Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${useSecure ? "; Secure" : ""}`;
+  response.setHeader("set-cookie", token ? `orbicore_session=${token}; ${flags}` : `orbicore_session=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0${useSecure ? "; Secure" : ""}`);
 }
 
 function allowSameOrigin(request, response) {
   const origin = request.headers.origin;
   if (!origin) return true;
   try {
-    if (new URL(origin).host === (request.headers["x-forwarded-host"] ?? request.headers.host)) return true;
+    const forwardedHost = request.headers["x-forwarded-host"];
+    const expectedHost = (typeof forwardedHost === "string" ? forwardedHost.split(",")[0].trim() : request.headers.host) ?? "";
+    if (new URL(origin).host === expectedHost) return true;
   } catch { /* rejected below */ }
   json(response, 403, { error: "origin_denied" });
   return false;
@@ -272,7 +297,7 @@ function jobFromRow(row) {
   };
 }
 
-export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:41750" } = {}) {
+export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:3000" } = {}) {
   const fixture = readFixture(fixturePath);
   const db = createDatabase(dbPath, fixture);
   const accountQuery = db.prepare(`SELECT a.*, COUNT(s.id) AS site_count FROM accounts a
@@ -305,13 +330,13 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     return row ?? null;
   }
 
-  function issueSession(user, response, mfaVerified = false) {
+  function issueSession(user, response, mfaVerified = false, request = null) {
     const token = randomBytes(32).toString("base64url");
     const now = new Date();
     const expires = new Date(now.getTime() + SESSION_TTL_MS).toISOString();
     db.prepare("INSERT INTO sessions (token_hash, user_id, expires_at, mfa_verified, created_at) VALUES (?, ?, ?, ?, ?)")
       .run(sha256(token), user.id, expires, mfaVerified ? 1 : 0, now.toISOString());
-    setSessionCookie(response, token, secureCookie);
+    setSessionCookie(response, token, secureCookie, request);
   }
 
   function transaction(operation) {
@@ -410,6 +435,25 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
 
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
+    if (!url.pathname.startsWith("/api/") && (request.method === "GET" || request.method === "HEAD")) {
+      const indexFile = resolve(distWebDir, "index.html");
+      if (existsSync(indexFile)) {
+        let pathname = "/";
+        try { pathname = decodeURIComponent(url.pathname); } catch { return json(response, 400, { error: "invalid_path" }); }
+        const relativePath = pathname.replace(/^\/+/, "");
+        const candidate = relativePath ? resolve(distWebDir, relativePath) : indexFile;
+        const safeInsideDist = candidate === distWebDir || candidate.startsWith(`${distWebDir}${sep}`);
+        let targetFile = indexFile;
+        if (safeInsideDist && existsSync(candidate) && statSync(candidate).isFile()) {
+          targetFile = candidate;
+        }
+        const contentType = MIME_TYPES[extname(targetFile).toLowerCase()] ?? "application/octet-stream";
+        const body = readFileSync(targetFile);
+        response.writeHead(200, { "content-type": contentType, "content-length": body.byteLength });
+        return response.end(request.method === "HEAD" ? undefined : body);
+      }
+      return json(response, 404, { error: "not_found" });
+    }
     if (request.method === "GET" && url.pathname === "/api/health") {
       return json(response, 200, { status: "ok", database: "sqlite_local", source: "mock_fixture", liveConnections: 0 });
     }
@@ -445,7 +489,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           db.exec("COMMIT");
         } catch (error) { db.exec("ROLLBACK"); throw error; }
         if (bootstrapTokenPath && existsSync(bootstrapTokenPath)) unlinkSync(bootstrapTokenPath);
-        issueSession(user, response);
+        issueSession(user, response, false, request);
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
         return json(response, 201, { user });
       } catch (error) {
@@ -632,7 +676,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           .run(info.newCounter, now, credential.credential_id, credential.counter);
         if (updated.changes !== 1) return json(response, 401, { error: "webauthn_counter_replay" });
         const user = { id: pending.id, email: pending.email, role: pending.role, organizationId: pending.organization_id, mfaEnabled: pending.mfa_enabled };
-        issueSession(user, response, true);
+        issueSession(user, response, true, request);
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
         return json(response, 200, { user, method: "passkey" });
       } catch (error) {
@@ -700,7 +744,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
             VALUES (?, ?, ?, 'auth.mfa.enroll', ?, 'completed', ?, ?)`)
             .run(randomUUID(), actor.organizationId, actor.id, actor.id, now, JSON.stringify({ method: "totp_fallback", recoveryCodesIssued: codes.length }));
         });
-        issueSession(actor, response, true);
+        issueSession(actor, response, true, request);
         return json(response, 200, { enabled: true, recoveryCodes: codes, assurance: "totp_fallback_not_phishing_resistant" });
       } catch (error) {
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
@@ -756,7 +800,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           }
         });
         const user = { id: challenge.user_id, email: challenge.email, role: challenge.role, organizationId: challenge.organization_id, mfaEnabled: true };
-        issueSession(user, response, true);
+        issueSession(user, response, true, request);
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
         return json(response, 200, { user, recoveryCodeUsed: recovery, notification: recovery ? "queued_contact_unverified" : undefined });
       } catch (error) {
@@ -793,7 +837,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
             VALUES (?, ?, ?, 'auth.mfa.disable', ?, 'completed', ?, '{"sessionsRevoked":true,"reauthenticated":true}')`)
             .run(randomUUID(), actor.organizationId, actor.id, actor.id, now);
         });
-        setSessionCookie(response, null, secureCookie);
+        setSessionCookie(response, null, secureCookie, request);
         authFailures.delete(request.socket.remoteAddress ?? "unknown");
         return json(response, 200, { disabled: true, sessionsRevoked: true });
       } catch (error) {
@@ -829,7 +873,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
             .run(sha256(challenge), user.id, expires, now.toISOString());
           return json(response, 202, { mfaRequired: true, challenge, expiresAt: expires });
         }
-        issueSession(user, response);
+        issueSession(user, response, false, request);
         return json(response, 200, { user, mfaEnabled: false });
       } catch (error) {
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
@@ -839,7 +883,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       const token = cookieValue(request.headers.cookie, "orbicore_session");
       if (token) db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(sha256(token));
-      setSessionCookie(response, null, secureCookie);
+      setSessionCookie(response, null, secureCookie, request);
       return json(response, 200, { loggedOut: true });
     }
     if (request.method === "GET" && url.pathname === "/api/auth/me") {
@@ -920,10 +964,11 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const port = Number(process.env.ORBICORE_API_PORT ?? 41751);
+  const port = Number(process.env.ORBICORE_API_PORT ?? process.env.PORT ?? 3000);
+  const host = "0.0.0.0";
   const app = createApp();
-  app.server.listen(port, "127.0.0.1", () => {
-    console.log(`ORBICORE local API listening at http://127.0.0.1:${port} (synthetic data; no live connections)`);
+  app.server.listen(port, host, () => {
+    console.log(`ORBICORE server listening at http://${host}:${port} (synthetic data; no live connections)`);
   });
   const stop = () => { app.close(); process.exit(0); };
   process.on("SIGINT", stop);

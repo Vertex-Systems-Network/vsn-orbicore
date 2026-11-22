@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev": "npm run build && node apps/api/server.mjs",
+    "start": "node apps/api/server.mjs",
     "dev:api": "node apps/api/server.mjs",
     "dev:web": "vite --config apps/web/vite.config.ts",
     "test": "node --test tests/*.test.mjs",
