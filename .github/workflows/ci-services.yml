@@ -120,6 +120,7 @@ jobs:
         run: node scripts/verify-postgres-job-http.mjs > .data/ci/orb-004-postgres-http.json
       - name: Verify transactional outbox and Redis synthetic worker process-crash recovery
         env:
+          ORBICORE_CI_DEBUG_STREAMS: "1"
           PGHOST: 127.0.0.1
           PGPORT: 5432
           PGUSER: orbicore
