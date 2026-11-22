@@ -486,7 +486,7 @@
       "dependencies": [
         "ORB-002"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [
         "A supported browser can access the local app"
@@ -506,16 +506,19 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": null,
+      "commit_hash": "8080346bff39c7b18b4f6b6325582284c54b055d",
       "evidence_paths": [
-        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md"
+        "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md"
       ],
-      "blockers": [],
+      "blockers": [
+        "Browser keyboard/collapsed navigation/focus and 390/768px layout are tested, but manual WCAG screen reader/contrast, 320px/200% reflow, error/stale/empty and permission matrix review remain."
+      ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T06:46:19Z",
-      "verification_level": "none",
+      "last_updated": "2026-11-23T00:00:00Z",
+      "verification_level": "browser_tested",
       "blocker_type": null
     },
     {
@@ -869,7 +872,7 @@
         "ORB-005",
         "ORB-007"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -887,15 +890,19 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
+      "commit_hash": "8080346bff39c7b18b4f6b6325582284c54b055d",
+      "evidence_paths": [
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md"
+      ],
+      "blockers": [
+        "PG login remains SQLite-authoritative; real production installer/upgrade, transactional backfill, external immutable audit, full encrypted off-host restore and human-approved cutover still required. Configuration-only readiness is now correctly blocked."
+      ],
       "blocker_type": null,
-      "verification_level": "none",
+      "verification_level": "unit",
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-10"
+      "last_updated": "2026-11-23T00:00:00Z"
     },
     {
       "id": "ORB-018",
@@ -908,7 +915,7 @@
       "dependencies": [
         "ORB-002"
       ],
-      "status": "ready",
+      "status": "testing",
       "owner_agent": "codex",
       "assumptions": [],
       "acceptance_criteria": [
@@ -926,15 +933,19 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": null,
-      "evidence_paths": [],
-      "blockers": [],
+      "commit_hash": "8080346bff39c7b18b4f6b6325582284c54b055d",
+      "evidence_paths": [
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md"
+      ],
+      "blockers": [
+        "Browser keyboard/collapsed navigation/focus and 390/768px layout are tested, but manual WCAG screen reader/contrast, 320px/200% reflow, error/stale/empty and permission matrix review remain."
+      ],
       "blocker_type": null,
-      "verification_level": "none",
+      "verification_level": "browser_tested",
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-10"
+      "last_updated": "2026-11-23T00:00:00Z"
     },
     {
       "id": "ORB-019",

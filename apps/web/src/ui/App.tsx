@@ -185,15 +185,46 @@ function MfaSetup({ enabled, onEnabled, onDisabled, onClose }: { enabled: boolea
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not disable MFA."); }
     finally { setBusy(false); }
   };
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    dialog?.querySelector<HTMLButtonElement>(".mfa-close")?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeRef.current();
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = [...dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => element.getClientRects().length > 0);
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const current = document.activeElement;
+      if (event.shiftKey && (current === first || !dialog.contains(current))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (current === last || !dialog.contains(current))) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
 
-  return <div className="mfa-backdrop"><section className="mfa-panel" role="dialog" aria-modal="true" aria-labelledby="mfa-title">
+  return <div className="mfa-backdrop"><section ref={dialogRef} tabIndex={-1} className="mfa-panel" role="dialog" aria-modal="true" aria-labelledby="mfa-title">
     <button className="mfa-close" onClick={onClose} aria-label="Close security setup">×</button><div className="eyebrow">ACCOUNT SECURITY</div><h2 id="mfa-title">Authenticator setup</h2>
     <button type="button" className="secondary-button" onClick={() => setShowPasskeySetup((value) => !value)}>{showPasskeySetup ? "Hide passkey setup" : "Add a passkey"}</button>
     {showPasskeySetup && <div className="passkey-setup"><p>Use a device passkey or security key. Confirm your password to register or remove one.</p><label>Current password<input type="password" autoComplete="current-password" value={passkeyPassword} onChange={(event) => setPasskeyPassword(event.target.value)} /></label><button type="button" className="primary-button" disabled={busy || !passkeyPassword} onClick={() => void enrollPasskey()}>{busy ? "Waiting for authenticator…" : "Register passkey"}</button><h3>Registered passkeys</h3>{passkeys.length ? <ul>{passkeys.map((item) => <li key={item.credentialId}><span>{item.deviceType}{item.backedUp ? " · synced backup" : ""}{item.lastUsedAt ? ` · used ${new Date(item.lastUsedAt).toLocaleDateString()}` : ""}</span><button type="button" disabled={busy || !passkeyPassword} onClick={() => void revokePasskey(item.credentialId)}>Remove</button></li>)}</ul> : <p>No passkeys registered.</p>}{passkeyStatus && <p role="status">{passkeyStatus}</p>}</div>}
@@ -404,16 +435,17 @@ export function App() {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return <div className="app-shell">
+    <a className="skip-link" href="#main-content">Skip to main content</a>
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="brand-lockup"><span className="brand-symbol"><i /><i /><i /></span><span><strong>ORBICORE</strong><small>BY VSN</small></span></div>
       <button className="org-switcher" aria-label="Current workspace: Pella Global" onClick={() => setActiveNav("Overview")}><span className="org-avatar">P</span><span><strong>Pella Global</strong><small>Agency workspace</small></span><span className="chevron">⌄</span></button>
       <nav className="primary-nav">
-        {navGroups.map((group) => <div className="nav-group" key={group.label}><span className="nav-group-label">{group.label}</span>{group.items.map((item) => <button key={item.label} onClick={() => setActiveNav(item.label)} className={`nav-item ${activeNav === item.label ? "active" : ""}`}><Icon name={item.icon} /><span>{item.label}</span>{item.label === "Jobs & activity" && jobs.length > 0 && <em>{jobs.length}</em>}</button>)}</div>)}
+        {navGroups.map((group) => <div className="nav-group" key={group.label}><span className="nav-group-label">{group.label}</span>{group.items.map((item) => <button key={item.label} type="button" aria-label={item.label} aria-current={activeNav === item.label ? "page" : undefined} onClick={() => setActiveNav(item.label)} className={`nav-item ${activeNav === item.label ? "active" : ""}`}><Icon name={item.icon} /><span>{item.label}</span>{item.label === "Jobs & activity" && jobs.length > 0 && <em>{jobs.length}</em>}</button>)}</div>)}
       </nav>
       <div className="sidebar-bottom">{isAdmin && <button className="nav-item settings-item" onClick={() => setShowMfaSetup(true)}><span className="settings-gear">⚿</span><span>{actor.mfaEnabled ? "Manage MFA" : "Set up MFA"}</span></button>}<div className="user-profile"><span className="user-avatar">{actor.email.slice(0, 1).toUpperCase()}</span><span><strong>{actor.email}</strong><small>{actor.role} · local workspace</small></span><button className="logout-button" onClick={() => void logout()} title="Sign out" aria-label="Sign out">↗</button></div></div>
     </aside>
 
-    <main className="main-content">
+    <main id="main-content" tabIndex={-1} className="main-content">
       <header className="topbar">
         <div className="breadcrumbs"><span>Workspace</span><span className="crumb-divider">/</span><strong>{activeNav}</strong></div>
         <div className="topbar-actions"><label className="global-search"><Icon name="search" /><input ref={searchInputRef} aria-label="Search accounts or websites" placeholder="Search accounts or sites..." value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘ K</kbd></label><button type="button" className="theme-toggle" aria-pressed={theme === "dark"} aria-label="Toggle color theme" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button><button className="icon-button alert-button" aria-label="Jobs and activity" title="View jobs & activity" onClick={() => setActiveNav("Jobs & activity")}><Icon name="bell" /><i /></button><span className="topbar-avatar" aria-label={actor.email}>{initials}</span></div>

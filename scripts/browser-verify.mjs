@@ -70,6 +70,46 @@ try {
   assert.deepEqual(domAudit.duplicateIds, []);
   assert.equal(domAudit.unnamedButtons, 0);
 
+  // ORB-009/018: skip-link is keyboard-visible and targets the one main.
+  await page.locator(".skip-link").focus();
+  // Use actual keyboard navigation to enter the :focus-visible modality.
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  assert.equal(await page.locator(".skip-link").evaluate((el) =>
+    getComputedStyle(el).position), "fixed");
+  await page.keyboard.press("Enter");
+  assert.equal(new URL(page.url()).hash, "#main-content");
+  assert.equal(await page.locator("#main-content").count(), 1);
+
+  // All sections expose their active state, including when nav text is
+  // visually hidden by the narrow sidebar.
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  assert.equal(await page.getByRole("button", { name: "Overview", exact: true })
+    .getAttribute("aria-current"), "page");
+  for (const size of [{ width: 390, height: 844 }, { width: 768, height: 1024 }]) {
+    await page.setViewportSize(size);
+    const counts = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+      unnamed: [...document.querySelectorAll(".primary-nav button")].filter(
+        (button) => !button.getAttribute("aria-label")
+      ).length,
+    }));
+    assert.equal(counts.unnamed, 0, "collapsed navigation requires accessible names");
+    assert.ok(counts.content <= counts.viewport + 2,
+      "dashboard must not create page-wide horizontal overflow at " + size.width);
+    await page.getByRole("button", { name: "Websites", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: "Websites", exact: true })
+      .getAttribute("aria-current"), "page");
+    // Only synthetic fixture inventory and no secret-bearing security dialog.
+    mkdirSync(".data/browser-evidence", { recursive: true });
+    await page.screenshot({
+      path: `.data/browser-evidence/orb-018-responsive-${size.width}.png`,
+      fullPage: true,
+    });
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+
   for (const label of ["Hosting accounts", "Websites", "Migrations", "Storage", "Jobs & activity", "Automation & reports", "System & security"]) {
     await page.getByRole("button", { name: label }).click();
   }
@@ -81,12 +121,21 @@ try {
 
   // Enroll passkey via virtual authenticator & verify Escape dismissal
   await page.locator(".sidebar-bottom .settings-item").click();
+  assert.equal(await page.locator(".mfa-close").evaluate((el) =>
+    document.activeElement === el), true, "modal must move focus inside");
+  await page.keyboard.press("Shift+Tab");
+  assert.equal(await page.locator(".mfa-panel").evaluate((el) =>
+    el.contains(document.activeElement)), true, "reverse Tab must stay inside dialog");
+  await page.keyboard.press("Tab");
+  assert.equal(await page.locator(".mfa-panel").evaluate((el) =>
+    el.contains(document.activeElement)), true, "Tab must remain trapped inside dialog");
   await page.getByRole("button", { name: "Add a passkey" }).click();
   await page.locator(".passkey-setup input[type='password']").fill("owner-browser-passphrase-99");
   await page.getByRole("button", { name: "Register passkey" }).click();
   await page.getByText(/Passkey enrolled on this device/i).waitFor({ timeout: 10_000 });
   await page.keyboard.press("Escape");
-
+  assert.equal(await page.locator(".sidebar-bottom .settings-item").evaluate(
+    (el) => document.activeElement === el), true, "Escape restores dialog opener focus");
 
   // ORB-012: use the actual browser virtual authenticator for a passwordless assertion.
   const registered = app.db.prepare("SELECT credential_id, counter FROM passkeys").get();
@@ -203,13 +252,17 @@ try {
   mkdirSync(evidenceDir, { recursive: true });
   await page.screenshot({ path: evidenceDir + "/orb-012-dashboard.png", fullPage: true });
   const runtime = {
-    testIds: ["AUTH-WEBAUTHN-E2E-001", "AUTH-WEBAUTHN-REPLAY-001"],
+    testIds: ["AUTH-WEBAUTHN-E2E-001", "AUTH-WEBAUTHN-REPLAY-001",
+      "ORB-009-KEYBOARD", "ORB-018-RESPONSIVE"],
     node: process.version, chromium: browser.version(),
     rpId: "localhost", origin: baseUrl, virtualAuthenticator: "ctap2/internal",
     registration: "passed", assertion: "passed", counterUpdate: "passed",
     consumedChallenge: "rejected", wrongOrigin: "rejected", wrongRpHash: "rejected",
     expiredChallenge: "rejected", replayedCounter: "rejected",
+    keyboardSkipLink: "passed", modalFocusTrapAndReturn: "passed",
+    mobileNarrowNavigation: "passed", viewportChecks: [390, 768],
     physicalAuthenticator: "not_tested", liveProvider: "not_tested",
+    manualScreenReaderAudit: "not_tested", fullWcagContrastAudit: "not_tested",
   };
   writeFileSync(evidenceDir + "/runtime.json", JSON.stringify(runtime, null, 2) + "\n");
   console.log(JSON.stringify({ browserVerified: true, ...runtime }));
