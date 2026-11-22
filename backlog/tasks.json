@@ -243,7 +243,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#12",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "3c2043288e39c63ad30bb9bb6f403f5904791324",
+      "commit_hash": "6b215e3de30cc56d7dafc028dc8d097a74ba78fc",
       "evidence_paths": [
         "docs/DATA_MODEL.md",
         "docs/DECISIONS/ADR-0002-authentication.md",
@@ -270,10 +270,15 @@
         "apps/api/postgres-synthetic-gateway.mjs",
         "scripts/verify-postgres-synthetic-gateway.mjs",
         "tests/postgres-synthetic-gateway.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-synthetic-writer.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-synthetic-writer.md",
+        "db/migrations/007_postgres_http_session_probe.sql",
+        "apps/api/postgres-synthetic-http-harness.mjs",
+        "scripts/verify-postgres-synthetic-http.mjs",
+        "tests/postgres-synthetic-http.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-http-csrf.md"
       ],
       "blockers": [
-        "Hosted PostgreSQL 16 migration 006 validates a real ephemeral non-owner DB LOGIN, restricted NOLOGIN submitter role and PostgreSQL-session-verified synthetic job+outbox+Node-compatible audit in one transaction. Six service integration jobs, 65 project tests and Chromium passed on tested feature SHA; actor/tenant/MFA/role revocation, spoofing, concurrent idempotency and full rollback verified. Remaining: default SQLite HTTP auth cutover, production app DB login/role governance and all other PG runtime writes, full legacy audit ordering/multi-writer migration, jobs/secret references/key lifecycle, off-host recovery and authorized live provider/notification testing."
+        "Migration 007 and an explicit CI-only loopback authenticated PostgreSQL HTTP slice passed: disposable real non-owner DB login, PostgreSQL cookie-session probe and fresh writer rechecks, HMAC CSRF, origin/host checks, role/MFA/tenant revocation race, atomic PostgreSQL job/outbox/Node SHA-256 audit; 68 tests and seven service jobs plus Chromium. Default HTTP login, session issuance/MFA still SQLite; missing production PostgreSQL identity/MFA cutover and cookie/CSRF lifecycle, complete historical jobs/audit/secret reference migration, other write-role governance, off-host backup/restore, real notification/provider authorization remain open."
       ],
       "started_at": null,
       "completed_at": null,
