@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-23 — ORB-009/017/018 browser accessibility and production-readiness hardening (PR #31)
+
+- [PR #31](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/31) functional SHA `8080346bff39c7b18b4f6b6325582284c54b055d` passed [Chromium #45066525664](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45066525664), [PR CI #45066525660](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45066525660), and [branch CI #45066521998](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45066521998). [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md), synthetic screenshot artifact #14770739703.
+- UI now has focus-visible skip link, collapsed nav accessible labels/active state, MFA dialog initial focus and Tab trap/Escape focus return; hosted Chromium tested narrow 390px/768px layout and recorded screenshots. No full screen-reader, contrast or 200% zoom audit yet.
+- Deployment readiness **cannot report production-ready** from mere environment configuration; it explicitly shows default SQLite auth and missing PG migration/independent audit/off-host restore. Tests validate all config flags populated but still deny production readiness.
+- ORB-009/018 `testing/browser_tested`, ORB-017 `testing/unit`. No production credentials/authority cutover. Check final docs-head and postmerge main CI independently.
+
+
 ## 2026-11-23 — ORB-005 CI-only cross-runner signed metadata recovery (PR #30)
 
 - [PR #30](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/30) tested functional SHA `b9edaa8d8ca1429b83262a073500578f588e8815` passed [17/17 hosted jobs #45065048221](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45065048221), [PR CI #45065048214](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45065048214), [branch CI #45065042098](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45065042098) and [Chromium #45065048325](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45065048325). [Evidence](TEST_EVIDENCE/2026-11-23-orb-005-ci-cross-runner-evidence.md); metadata artifact #14770679693, proof artifact #14770333788.
