@@ -117,6 +117,15 @@ try{
       [org,recoveryCodeHash(code)],
     );
   }
+  // A synthetically-created legacy-marker record must not be accepted by
+  // this separate CI bcrypt path, even if its stored hash is valid bcrypt.
+  const unsupportedPassword=randomBytes(24).toString("base64url");
+  await ownerPool.query(
+    "INSERT INTO users(id,organization_id,email,password_salt,password_hash,role) " +
+    "VALUES('ci-legacy-marker',$1,'legacy-scrypt@example.test'," +
+    "'ci_legacy_scrypt_only',public.crypt($2,public.gen_salt('bf',10)),'owner')",
+    [org,unsupportedPassword],
+  );
 
   const gateway=createPostgresSyntheticSubmissionGateway(clientPool);
   const auth=createPostgresCiLoginAdapter(clientPool);
@@ -170,6 +179,9 @@ try{
   }})).status,401);
   assert.equal((await call(loginPath,{method:"POST",body:{
     email:"not-present@example.invalid",password:password.owner,
+  }})).status,401);
+  assert.equal((await call(loginPath,{method:"POST",body:{
+    email:"legacy-scrypt@example.test",password:unsupportedPassword,
   }})).status,401);
 
   // Source-controlled credentials are never needed: SQL verifies randomly
@@ -271,6 +283,30 @@ try{
   assert.equal(secondVerified.status,200);
   assert.notEqual(getCookie(secondVerified),secondCookie);
 
+  // Five invalid recovery codes must delete a pending MFA session and
+  // prevent a later valid code from reviving it.
+  const exhaustedPending=await signIn("mfa");
+  assert.equal(exhaustedPending.status,202);
+  const exhaustedCookie=getCookie(exhaustedPending);
+  const exhaustedCsrf=(await exhaustedPending.json()).csrfToken;
+  for(let i=0;i<5;i++){
+    const wrong=randomBytes(16).toString("base64url").toUpperCase();
+    assert.equal((await call(mfaPath,{method:"POST",cookie:exhaustedCookie,
+      csrf:exhaustedCsrf,body:{code:wrong}})).status,401);
+  }
+  assert.equal((await call(mfaPath,{method:"POST",cookie:exhaustedCookie,
+    csrf:exhaustedCsrf,body:{code:codes[2]}})).status,401);
+  const exhaustedState=await ownerPool.query(
+    "SELECT count(*)::integer AS count FROM sessions WHERE token_hash=$1",
+    [sha(exhaustedCookie.split("=")[1])],
+  );
+  assert.equal(exhaustedState.rows[0].count,0);
+  const remainingCode=await ownerPool.query(
+    "SELECT used_at FROM recovery_codes WHERE user_id='ci-fixture-mfa' AND code_hash=$1",
+    [recoveryCodeHash(codes[2])],
+  );
+  assert.equal(remainingCode.rows[0].used_at,null);
+
   // Login rate limit lives in PostgreSQL, not process-local memory.
   for(let i=0;i<5;i++){
     const bad=await signIn("owner",password.other);
@@ -330,6 +366,8 @@ try{
     passwordRateLimitPersistedInPg:true,
     pendingMfaDoesNotAuthorizeWrites:true,
     recoveryCodeSingleUse:true,
+    pendingMfaLockedOutAfterFiveBadCodes:true,
+    legacyCredentialMarkerDenied:true,
     mfaTokenRotated:true,
     sessionAndUserRevocationVerified:true,
     csrfAndOriginAndHostChecks:true,
