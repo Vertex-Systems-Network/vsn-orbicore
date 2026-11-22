@@ -105,28 +105,20 @@ try {
     await pool.query("ALTER TABLE job_outbox DROP CONSTRAINT ci_forbid_one_job");
   }
 
-  const jobA = await enqueue("outbox-" + randomUUID());
+  const fixedKey = "outbox-" + randomUUID();
+  const jobA = await enqueue(fixedKey);
   const duplicate = await api("/api/jobs/refresh", {
-    method: "POST", body: { accountId: "acct-copperline" }, key: await (async () => {
-      // Use an independent idempotency case below; keep first job unchanged.
-      return "retry-" + randomUUID();
-    })(),
+    method: "POST", body: { accountId: "acct-copperline" }, key: fixedKey,
   });
-  assert.equal(duplicate.status, 202);
-  const second = duplicate.data.jobId;
-  const retry = await api("/api/jobs/refresh", {
-    method: "POST", body: { accountId: "acct-copperline" }, key: duplicate.data.jobId,
-  });
-  // The distinct key above creates one additional job; test duplicate via a
-  // fixed key independently next, without conflating HTTP job IDs with keys.
-  assert.equal(retry.status, 202);
-  const jobC = retry.data.jobId;
-
+  assert.equal(duplicate.status, 200);
+  assert.equal(duplicate.data.status, "existing");
+  assert.equal(duplicate.data.jobId, jobA);
+  const jobB = await enqueue("outbox-second-" + randomUUID());
   const outboxCount = await pool.query(
     "SELECT COUNT(*)::int AS n FROM job_outbox WHERE job_id = ANY($1::text[])",
-    [[jobA, second, jobC]],
+    [[jobA, jobB]],
   );
-  assert.equal(outboxCount.rows[0].n, 3);
+  assert.equal(outboxCount.rows[0].n, 2);
 
   // Force the first Redis publication to fail: the intent must remain durable.
   const noRedis = createSyntheticRedisJobRunner({
@@ -153,10 +145,8 @@ try {
   assert.equal((await runner.consumeOne()).status, "already_terminal");
   assert.equal((await repository.getJob({ organizationId, id: jobA })).attempts, 1);
 
-  // Process previously-created queued jobs before testing crash/reclaim.
-  assert.equal((await runner.publishOne()).jobId, second);
-  assert.equal((await runner.consumeOne()).status, "completed");
-  assert.equal((await runner.publishOne()).jobId, jobC);
+  // Process the other pending event before crash/reclaim.
+  assert.equal((await runner.publishOne()).jobId, jobB);
   assert.equal((await runner.consumeOne()).status, "completed");
 
   // Child process claims a real Redis event and PostgreSQL job, then is killed.
