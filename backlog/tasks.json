@@ -243,7 +243,7 @@
         "AI_Native_Multi_Hosting_Master_Prompt.md#12",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "1d6af47567f2112f1335b9d6dce5e82c6c07d647",
+      "commit_hash": "3c2043288e39c63ad30bb9bb6f403f5904791324",
       "evidence_paths": [
         "docs/DATA_MODEL.md",
         "docs/DECISIONS/ADR-0002-authentication.md",
@@ -265,10 +265,15 @@
         "apps/api/postgres-feature-state.mjs",
         "scripts/verify-postgres-feature-state.mjs",
         "tests/postgres-feature-state.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-feature-state.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-feature-state.md",
+        "db/migrations/006_postgres_synthetic_write_gateway.sql",
+        "apps/api/postgres-synthetic-gateway.mjs",
+        "scripts/verify-postgres-synthetic-gateway.mjs",
+        "tests/postgres-synthetic-gateway.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-synthetic-writer.md"
       ],
       "blockers": [
-        "PostgreSQL schema migrations 003-005 and guarded synthetic identity+MFA+operational feature snapshot now have hosted integration evidence (61 project tests, all five service jobs): tenant FKs, read-only metadata RLS, cross-tenant transaction rollback and full fixture row counts. SQLite v7 job history, secret references and migration metadata, live key decryption/provenance, trusted non-bypass runtime PostgreSQL write role, atomic audit/outbox, HTTP identity cutover/rollback, off-host recovery, real notification/provider authorization remain open."
+        "Hosted PostgreSQL 16 migration 006 validates a real ephemeral non-owner DB LOGIN, restricted NOLOGIN submitter role and PostgreSQL-session-verified synthetic job+outbox+Node-compatible audit in one transaction. Six service integration jobs, 65 project tests and Chromium passed on tested feature SHA; actor/tenant/MFA/role revocation, spoofing, concurrent idempotency and full rollback verified. Remaining: default SQLite HTTP auth cutover, production app DB login/role governance and all other PG runtime writes, full legacy audit ordering/multi-writer migration, jobs/secret references/key lifecycle, off-host recovery and authorized live provider/notification testing."
       ],
       "started_at": null,
       "completed_at": null,
