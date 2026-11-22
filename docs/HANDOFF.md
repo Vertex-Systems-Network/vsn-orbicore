@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-22 — ORB-016 Compose named-volume and Redis AOF persistence (PR #15)
+
+- Implementation SHA `93b9b763c36bbb4082235fc403083f4b9d62922e`; [GitHub-hosted service CI 45002668539](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002668539) passed both existing parity and **Docker Compose persistence** jobs; [standard CI 45002668414](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002668414) passed.
+- `scripts/verify-compose-restart.sh` started the actual project Compose Postgres/Redis services with their named volumes, applied 001/002 migrations, seeded synthetic actor/account/job/outbox, and used `scripts/verify-compose-redis-aof.mjs` to confirm Redis local AOF fsync (`WAITAOF 1 0 5000`) with one pending stream event. Both service containers were stopped, **removed**, and recreated with different IDs; PostgreSQL records and Redis AOF pending entry persisted. After natural lease expiry, the opt-in standalone synthetic worker finished on attempt 2, ACKed the event. Unique disposable project and exit trap clean up containers and volumes.
+- [Compose artifact #14746203719](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002668539/artifacts/14746203719); full [evidence](TEST_EVIDENCE/2026-11-22-orb-016-compose-recreation.md). **No production host crash/HA, backups/restore, whole PostgreSQL identity migration or provider operations.** ORB-004/016 still `testing/integration_tested`.
+- PR #14 merged as `95630611d68c1a81d8462cdfc7a07d0e46ecd978` with post-merge [CI 45002405768](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002405768) success. PR #15 final docs commit still requires fresh CI and merge verification.
+- **Next:** full PostgreSQL v7 identity/account/audit migration and tenant DB roles/RLS; then controlled off-host restore and multi-node/host-crash recovery.
+
 ## 2026-11-22 — ORB-004 transactional PG outbox and Redis synthetic worker (PR #14)
 
 - Tested functional head `037e7bd9e00067db6a3f5474099e9598f2472102`: [GitHub service run #45002004269](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002004269) **success**, [52-test standard CI #45002004261](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002004261) **success**, [Chromium #45002004230](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45002004230) **success**. Earlier [functional run #45001980352](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45001980352) uploaded [worker recovery artifact 14746690226](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45001980352/artifacts/14746690226).
