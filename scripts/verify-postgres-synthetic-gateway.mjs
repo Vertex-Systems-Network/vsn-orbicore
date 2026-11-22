@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { computeAuditEntryHash } from "../apps/api/audit.mjs";
 import { createPostgresSyntheticSubmissionGateway } from "../apps/api/postgres-synthetic-gateway.mjs";
@@ -17,7 +17,10 @@ const pool = new Pool({
   password: process.env.PGPASSWORD,
   max: 10, connectionTimeoutMillis: 5000,
 });
-const gateway = createPostgresSyntheticSubmissionGateway(pool);
+// Only a disposable GitHub PostgreSQL superuser provisions the temporary
+// role; all actual submission calls use a real non-owner LOGIN connection.
+let limitedPool;
+let gateway;
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const orgA = "org-synthetic-gateway-a";
 const orgB = "org-synthetic-gateway-b";
@@ -66,6 +69,40 @@ async function expectDenied(operation, code = "42501") {
 }
 
 try {
+  const dbLogin = "orbicore_ci_gateway_login";
+  // Ephemeral password stays in runner memory, never in source/artifacts/logs.
+  const ephemeralPassword = randomBytes(32).toString("hex");
+  await pool.query(
+    "CREATE ROLE orbicore_ci_gateway_login LOGIN NOINHERIT NOBYPASSRLS " +
+    "PASSWORD '" + ephemeralPassword + "'",
+  );
+  await pool.query(
+    "GRANT orbicore_synthetic_submitter TO orbicore_ci_gateway_login " +
+    "WITH SET TRUE, INHERIT FALSE",
+  );
+  limitedPool = new Pool({
+    host: process.env.PGHOST ?? "127.0.0.1",
+    port: Number(process.env.PGPORT ?? 5432),
+    user: dbLogin,
+    database: process.env.PGDATABASE ?? "orbicore",
+    password: ephemeralPassword, max: 6, connectionTimeoutMillis: 5000,
+  });
+  gateway = createPostgresSyntheticSubmissionGateway(limitedPool);
+  const roleProof = await limitedPool.query(
+    "SELECT current_user AS role_name, rolsuper, rolbypassrls " +
+    "FROM pg_roles WHERE rolname=current_user",
+  );
+  assert.deepEqual(roleProof.rows[0], {
+    role_name: dbLogin, rolsuper: false, rolbypassrls: false,
+  });
+  // Even without SET ROLE, the real login has NO direct access to tables or
+  // the protected SECURITY DEFINER function. It must use the wrapper.
+  await expectDenied(limitedPool.query("SELECT id FROM public.jobs"));
+  await expectDenied(limitedPool.query(
+    "SELECT * FROM public.orbicore_submit_synthetic_inventory($1,$2,$3,$4)",
+    [TOKENS.ownerA, orgA, acctA, "unauthorized-direct-function"],
+  ));
+
   for (const [id, name] of [
     [orgA, "CI synthetic tenant A"], [orgB, "CI synthetic tenant B"],
   ]) await pool.query(
@@ -278,6 +315,9 @@ try {
     validatedMfaRoleTenantAccountAndMockSource:true,
     callerControlledTenantContextIgnored:true,
     restrictedNoLoginRoleHasNoTableAccess:true,
+    disposableNonOwnerLoginVerified:true,
+    loginCannotCallProtectedFunctionWithoutRole:true,
+    ephemeralCredentialPersisted:false,
     rawProviderCredentials:false,
     pgJobs:await readCount("jobs"),
     pgOutbox:await readCount("job_outbox"),
@@ -293,5 +333,6 @@ try {
     liveProviderActions:false,
   }));
 } finally {
+  if (limitedPool) await limitedPool.end();
   await pool.end();
 }
