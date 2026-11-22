@@ -309,7 +309,7 @@ try {
     await page.locator(".user-profile small").getByText(/viewer/).waitFor();
     assert.equal(await page.getByRole("button", { name: "Refresh inventory" }).isDisabled(),
       true, "a viewer must not be offered a working refresh enqueue control");
-    await page.getByRole("button", { name: "Hosting accounts", exact: true }).click();
+    await page.locator(".primary-nav").getByRole("button", { name: "Hosting accounts", exact: true }).click();
     assert.equal(await page.getByRole("button", { name: "Add sandbox account" }).count(), 0,
       "a viewer must not see sandbox account creation controls");
   } finally {
