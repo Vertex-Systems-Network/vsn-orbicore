@@ -287,11 +287,17 @@
         "docs/DECISIONS/ADR-0003-credential-transition.md",
         "apps/api/legacy-scrypt-verifier.mjs",
         "tests/legacy-scrypt-verifier.test.mjs",
-        "docs/TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md"
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md",
+        "db/migrations/010_postgres_ci_shadow_schema.sql",
+        "scripts/verify-postgres-ci-shadow-schema.mjs",
+        ".github/workflows/ci-services.yml",
+        "docs/RESEARCH/2026-11-22-postgres-ci-shadow-rls.md",
+        "docs/TEST_EVIDENCE/2026-11-22-orb-005-pg-ci-shadow-schema.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
-        "PR #23 read-only legacy SQLite scrypt format tests passed GitHub CI on functional SHA 1ac44ad8; verifier remains unused by ordinary HTTP. Full migration, nonowner PG shadow store, key custody and production cutover remain unimplemented."
+        "PR #23 read-only legacy SQLite scrypt format tests passed GitHub CI on functional SHA 1ac44ad8; verifier remains unused by ordinary HTTP. Full migration, nonowner PG shadow store, key custody and production cutover remain unimplemented.",
+        "CI-only private PostgreSQL shadow fixture schema/force-RLS/non-owner-denial passed 10-job hosted service integration at f41f78c5; only fake placeholders are accepted. Real verifier custody, credential writer, source reauthentication/epoch fencing, auth audit, full runtime migration and production cutover are unimplemented."
       ],
       "started_at": null,
       "completed_at": null,
