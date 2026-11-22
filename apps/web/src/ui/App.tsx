@@ -53,11 +53,15 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Keep ambiguous credential failures generic; only mark fields when the
+  // server or client has identified the actual invalid input.
+  const [invalidField, setInvalidField] = useState<"token" | "email" | "password" | "code" | null>(null);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
     setError(null);
+    setInvalidField(null);
     try {
       const response = await fetch(mfaChallenge ? "/api/auth/mfa/challenge" : bootstrapRequired ? "/api/auth/bootstrap" : "/api/auth/login", {
         method: "POST", headers: { "content-type": "application/json" },
@@ -69,7 +73,12 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
         setPassword("");
         return;
       }
-      if (!response.ok || !data.user) throw new Error(data.error === "password_policy" ? "Choose a password with at least 12 characters." : data.error === "invalid_bootstrap_token" ? "The setup token is incorrect or has already been used." : "Could not sign in. Check the details and try again.");
+      if (!response.ok || !data.user) {
+        if (data.error === "invalid_bootstrap_token" && bootstrapRequired) setInvalidField("token");
+        else if (data.error === "password_policy" && bootstrapRequired) setInvalidField("password");
+        else if (mfaChallenge) setInvalidField("code");
+        throw new Error(data.error === "password_policy" ? "Choose a password with at least 12 characters." : data.error === "invalid_bootstrap_token" ? "The setup token is incorrect or has already been used." : "Could not sign in. Check the details and try again.");
+      }
       onAuthenticated(data.user);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The local API is unavailable.");
@@ -79,8 +88,12 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
   const signInWithPasskey = async () => {
     setPasskeyBusy(true);
     setError(null);
+    setInvalidField(null);
     try {
-      if (!email.trim()) throw new Error("Enter your email first so ORBICORE can locate your passkey.");
+      if (!email.trim()) {
+        setInvalidField("email");
+        throw new Error("Enter your email first so ORBICORE can locate your passkey.");
+      }
       const optionsResponse = await fetch("/api/auth/passkeys/login/options", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
       const optionsData = await optionsResponse.json() as { challengeHandle?: string; options?: WebAuthnRequestOptions; error?: string };
       if (!optionsResponse.ok || !optionsData.challengeHandle || !optionsData.options) throw new Error("No passkey is available for this account.");
@@ -103,11 +116,11 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
     <div className="eyebrow"><span className="live-indicator" /> LOCAL ADMINISTRATION</div>
     <h1>{bootstrapRequired ? "Set up your workspace" : mfaChallenge ? "Verify your sign-in" : "Welcome back"}</h1>
     <p>{bootstrapRequired ? "Create the first workspace owner. The one-time setup token is stored in .data/first-admin.token." : mfaChallenge ? "Enter a current authenticator code or a one-time recovery code." : "Sign in to your hosting workspace."}</p>
-    {!mfaChallenge && bootstrapRequired && <label>One-time setup token<input autoComplete="off" type="password" required value={token} onChange={(event) => setToken(event.target.value)} /></label>}
-    {!mfaChallenge && <label>Email address<input autoComplete="username" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>}
-    {!mfaChallenge && <label>Password<input autoComplete={bootstrapRequired ? "new-password" : "current-password"} type="password" minLength={bootstrapRequired ? 12 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
-    {mfaChallenge && <><label>Authenticator or recovery code<input autoComplete="one-time-code" inputMode="text" autoFocus required value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} /></label><small>TOTP is a compatibility fallback and is not phishing-resistant. Use a saved recovery code only once.</small><button type="button" className="auth-restart" onClick={() => { setMfaChallenge(""); setMfaCode(""); setError(null); }}>Start sign-in again</button></>}
-    {error && <div className="auth-error" role="alert">{error}</div>}
+    {!mfaChallenge && bootstrapRequired && <label>One-time setup token<input autoComplete="off" type="password" required aria-invalid={invalidField === "token"} aria-describedby={invalidField === "token" && error ? "auth-error" : undefined} value={token} onChange={(event) => setToken(event.target.value)} /></label>}
+    {!mfaChallenge && <label>Email address<input autoComplete="username" type="email" required aria-invalid={invalidField === "email"} aria-describedby={invalidField === "email" && error ? "auth-error" : undefined} value={email} onChange={(event) => setEmail(event.target.value)} /></label>}
+    {!mfaChallenge && <label>Password<input autoComplete={bootstrapRequired ? "new-password" : "current-password"} type="password" minLength={bootstrapRequired ? 12 : undefined} required aria-invalid={invalidField === "password"} aria-describedby={invalidField === "password" && error ? "auth-error" : undefined} value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
+    {mfaChallenge && <><label>Authenticator or recovery code<input autoComplete="one-time-code" inputMode="text" autoFocus required aria-invalid={invalidField === "code"} aria-describedby={invalidField === "code" && error ? "auth-error" : undefined} value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} /></label><small>TOTP is a compatibility fallback and is not phishing-resistant. Use a saved recovery code only once.</small><button type="button" className="auth-restart" onClick={() => { setMfaChallenge(""); setMfaCode(""); setError(null); setInvalidField(null); }}>Start sign-in again</button></>}
+    {error && <div className="auth-error" id="auth-error" role="alert">{error}</div>}
     <button className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait..." : mfaChallenge ? "Verify and sign in" : bootstrapRequired ? "Create workspace owner" : "Sign in"}</button>
     {!bootstrapRequired && !mfaChallenge && <button type="button" className="secondary-button auth-passkey" disabled={passkeyBusy || busy} onClick={() => void signInWithPasskey()}>{passkeyBusy ? "Waiting for passkey..." : "Sign in with a passkey"}</button>}
     <small className="auth-footnote">Local-only prototype. Use a unique password; provider credentials are not configured here.</small>
