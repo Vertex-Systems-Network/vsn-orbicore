@@ -50,3 +50,13 @@ test("ORB-015: nested resolution is deterministic; optional peers are not report
   assert.equal(Number(buildLockfileSbom(pkg, lock).properties[0].value), 1);
   assert.throws(() => buildLockfileSbom({ name: "wrong", version: "1.0.0" }, lock), /Root package metadata/);
 });
+
+test("ORB-010: CI runs an official-schema validation gate before distributing the generated BOM", () => {
+  const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+  const exporter = workflow.indexOf("run: node scripts/generate-sbom.mjs");
+  const validator = workflow.indexOf("run: python scripts/verify-cyclonedx-schema.py .data/ci/orbicore-sbom.cdx.json");
+  const publish = workflow.indexOf("name: Upload SBOM artifact");
+  assert.ok(exporter >= 0 && validator > exporter && publish > validator, "schema validation must precede publishing");
+  assert.match(workflow, /jsonschema==4\.25\.1/, "validator version must be pinned");
+  assert.match(workflow.slice(publish, publish + 90), /if: success\(\)/, "invalid BOM must not be published");
+});

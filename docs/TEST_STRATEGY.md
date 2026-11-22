@@ -10,6 +10,10 @@
 6. Live sandbox: only specifically authorized disposable accounts; least-privilege and negative permission tests; never use production by inference.
 7. Release: performance/resource baselines, tenant isolation, security scans, restore/rollback drill and installation upgrade.
 
+## ORB-010 pinned SBOM schema gate
+
+GitHub CI generates a deterministic CycloneDX 1.5 npm lockfile BOM and validates it with `scripts/verify-cyclonedx-schema.py` using official upstream CycloneDX 1.5 JSON schemas from a fixed upstream commit and three expected Git blob IDs (schema, SPDX and JSF). Failures prevent artifact publishing; regression fixtures verify the official validator rejects malformed BOMs. See [hosted evidence](TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md). A schema-valid lockfile BOM is NOT a deployed-system inventory or a security guarantee.
+
 ## Current evidence rule
 
 The initial fixture-backed API/UI and local persistence are mock/local tests only. Without PostgreSQL/Redis services and provider sandbox, mark those gates blocked; don't convert environment absence into a passing test. Record command, runtime version, duration, exit code, exact fixture and relevant artifacts in `docs/TEST_EVIDENCE/`.

@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-11-22",
+  "updated_at": "2026-11-23",
   "tasks": [
     {
       "id": "ORB-001",
@@ -558,20 +558,24 @@
         "docs/SECURITY_THREAT_MODEL.md",
         "AI_Native_Multi_Hosting_Master_Prompt.md#12"
       ],
-      "commit_hash": null,
+      "commit_hash": "bd6b2cdb0183e036838e8c9ab677e71812cbb7f9",
       "evidence_paths": [
         "docs/SECURITY_THREAT_MODEL.md",
         "docs/TEST_STRATEGY.md",
-        "tests/"
+        "tests/",
+        "scripts/verify-cyclonedx-schema.py",
+        ".github/workflows/ci.yml",
+        "tests/sbom.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-010-official-cyclonedx-schema-ci.md"
       ],
       "blockers": [
-        "ORB-015 npm audit, lockfile SBOM and scoped secret/license gates passed CI. Full production security review, complete secrets scanning, and external CycloneDX schema validation remain outside the completed subtask."
+        "PR #39 official CycloneDX 1.5 schema and SPDX/JSF reference validation passed 109 Node tests and hosted CI for 189 npm-lockfile components at bd6b2cdb, with 3 malformed fixture denials. Still open: deployed-system SBOM/attestations, fully locked CI validator transitive packages, complete secrets scanning, full production security review and external provider/audit/restore gates."
       ],
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22T06:52:11Z",
-      "verification_level": "none",
+      "last_updated": "2026-11-23",
+      "verification_level": "unit",
       "blocker_type": null
     },
     {
