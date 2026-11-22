@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-009/018 truthful workspace states and 320px Chromium QA (PR #38)
+
+- [PR #38](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/38) functional SHA `69dc14ce168707b0bff9eb193062a2fecea204b5` passed [PR CI #45080158115](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080158115), [branch CI #45080153068](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080153068) and [Chromium #45080158093](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45080158093). [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md); synthetic browser artifact #14777235381.
+- Implemented consistent overview/sites reads, explicit last-good/stale and per-account network-error retry states, checked refresh POST status and partial-queue caution, disabled viewer refresh, local fixture identity wording, account selection reset/reconciliation and 320px/reduced-motion CSS. Hosted Chromium checks empty search, HTTP 503 POST/GET and recoveries, viewer downgrade and UI permission gate, and 320/390/640/768px overflow/screenshots.
+- ORB-009/018 remain `testing/browser_tested`: no actual 200% zoom, manual screen reader/contrast/target audit, broad error/permission matrix, production providers or auth cutover. Check final docs-head and postmerge main CI separately.
+
+
 ## 2026-11-23 — ORB-004 signed and PG-anchored synthetic Redis notifications (PR #37)
 
 - [PR #37](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/37) functional SHA `4b177f1b208967dc832d2fa502da694f02e66e0c` passed [23/23 hosted PG16/Redis7/Compose jobs #45074234074](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074234074), [PR CI #45074234088](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074234088), [branch CI #45074229626](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074229626), [Chromium #45074234106](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45074234106). [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-signed-wakeup.md); redacted artifact #14774252996.
