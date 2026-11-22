@@ -14,8 +14,16 @@ const assertId = (value, name) => {
 };
 function redisFields(raw) {
   if (!Array.isArray(raw) || raw.length % 2) throw new Error("invalid_stream_fields");
-  const result = {};
-  for (let i = 0; i < raw.length; i += 2) result[raw[i]] = raw[i + 1];
+  // Null prototype avoids __proto__ confusion from untrusted Redis fields.
+  // Duplicate wire keys are explicitly marked so signed mode rejects them.
+  const result = Object.create(null);
+  for (let i = 0; i < raw.length; i += 2) {
+    const key=raw[i],value=raw[i+1];
+    if(typeof key!=="string"||typeof value!=="string")
+      throw new Error("invalid_stream_fields");
+    if(Object.hasOwn(result,key))result.__duplicate_wire_fields__="1";
+    else result[key]=value;
+  }
   return result;
 }
 function parseStreamReply(reply, reclaim) {
@@ -40,6 +48,7 @@ export function createSyntheticRedisJobRunner({
   afterClaim = async () => {},
   rejectionRecorder = null,
   jobGateway = null,
+  wakeupAttestor = null,
 }) {
   if (!pool || typeof pool.connect !== "function" || typeof pool.query !== "function") {
     throw new TypeError("A PostgreSQL Pool is required.");
@@ -66,6 +75,14 @@ export function createSyntheticRedisJobRunner({
       }
     }
   }
+  if (wakeupAttestor !== null &&
+      (typeof wakeupAttestor.sign !== "function" ||
+       typeof wakeupAttestor.verify !== "function" ||
+       !jobGateway ||
+       typeof jobGateway.verifyPublishedOutbox !== "function" ||
+       !rejectionRecorder)) {
+    throw new TypeError("signed wakeups require scoped gateway and rejection recorder");
+  }
   const stream = "orbicore:synthetic:jobs:v1:" + organizationId;
   const repository = createPostgresJobRepository(pool);
 
@@ -79,7 +96,9 @@ export function createSyntheticRedisJobRunner({
 
   async function publishOne() {
     if (jobGateway) {
-      return jobGateway.publishOne({ organizationId, redis, stream });
+      return jobGateway.publishOne({
+        organizationId,redis,stream,wakeupAttestor,
+      });
     }
     const client = await pool.connect();
     let open = false;
@@ -189,6 +208,25 @@ export function createSyntheticRedisJobRunner({
 
   async function processEvent(event) {
     const { redisId, fields } = event;
+    if (wakeupAttestor) {
+      // An untrusted Redis entry is NEVER accepted as a job command.
+      // Check the in-memory HMAC first, then the exact committed PG outbox
+      // row, which binds this event to its Redis-assigned entry ID.
+      if (!wakeupAttestor.verify({fields})) {
+        await recordRejectedSignal(redisId, "invalid_signature");
+        await ack(redisId);
+        return {status:"rejected_invalid_signature"};
+      }
+      const anchored=await jobGateway.verifyPublishedOutbox({
+        organizationId,jobId:fields.job_id,
+        outboxId:fields.outbox_id,redisId,
+      });
+      if (!anchored) {
+        await recordRejectedSignal(redisId,"outbox_mismatch");
+        await ack(redisId);
+        return {status:"rejected_unanchored_signal"};
+      }
+    }
     if (fields.organization_id !== organizationId || !IDENTIFIER.test(fields.job_id ?? "")) {
       const reason = fields.organization_id !== organizationId
         ? "tenant_mismatch" : "invalid_job_id";

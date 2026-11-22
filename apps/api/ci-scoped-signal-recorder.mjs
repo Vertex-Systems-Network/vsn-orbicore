@@ -2,7 +2,7 @@
 // poison-signal evidence, with *no* table grants or user credentials.
 const ID=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const ENTRY=/^[0-9]{1,20}-[0-9]{1,20}$/;
-const REASONS=new Set(["tenant_mismatch","invalid_job_id","missing_job"]);
+const REASONS=new Set(["tenant_mismatch","invalid_job_id","missing_job","invalid_signature","outbox_mismatch"]);
 function gate(){
   if(process.env.GITHUB_ACTIONS!=="true"||
      process.env.ORBICORE_CI_SYNTHETIC_SIGNAL_SCOPE!=="1")

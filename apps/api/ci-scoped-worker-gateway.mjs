@@ -23,11 +23,13 @@ export function createCiScopedWorkerGateway({database}={}){
     throw new TypeError("ci_worker_gateway_requires_scoped_database");
   let publishing=false;
   return Object.freeze({
-    async publishOne({organizationId,redis,stream}={}){
+    async publishOne({organizationId,redis,stream,wakeupAttestor=null}={}){
       gate();id(organizationId,"org");
       if(stream!=="orbicore:synthetic:jobs:v1:"+organizationId ||
          !redis||typeof redis.sendCommand!=="function")
         throw new TypeError("ci_worker_invalid_stream");
+      if(wakeupAttestor!==null&&typeof wakeupAttestor.sign!=="function")
+        throw new TypeError("ci_worker_invalid_wakeup_attestor");
       // A single, role-initialized PostgreSQL connection is mandatory:
       // holding SELECT FOR UPDATE across Redis XADD prevents two publishers
       // from concurrently selecting the same pending PG outbox entry.
@@ -50,9 +52,18 @@ export function createCiScopedWorkerGateway({database}={}){
         if(typeof event.outbox_id!=="string"||
            !UUID.test(event.outbox_id))
           throw new Error("ci_worker_invalid_outbox_id");
+        const signedFields=wakeupAttestor?
+          wakeupAttestor.sign({
+            organizationId,jobId:event.job_id,outboxId:event.outbox_id,
+          }):null;
         const redisId=await redis.sendCommand([
           "XADD",stream,"*",
           "organization_id",organizationId,"job_id",event.job_id,
+          ...(signedFields?[
+            "outbox_id",event.outbox_id,
+            "origin_key_id",signedFields.origin_key_id,
+            "origin_mac",signedFields.origin_mac,
+          ]:[]),
         ]);
         if(typeof redisId!=="string"||!ENTRY.test(redisId))
           throw new Error("ci_worker_redis_publish_unconfirmed");
@@ -68,6 +79,17 @@ export function createCiScopedWorkerGateway({database}={}){
         if(open)try{await database.query("ROLLBACK")}catch{/* fail closed */}
         throw error;
       }finally{publishing=false}
+    },
+    async verifyPublishedOutbox({organizationId,jobId,outboxId,redisId}={}){
+      gate();id(organizationId,"org");id(jobId,"job");
+      if(typeof outboxId!=="string"||!UUID.test(outboxId)||
+         typeof redisId!=="string"||!ENTRY.test(redisId))
+        throw new TypeError("ci_worker_invalid_wakeup_receipt");
+      const result=await database.query(
+        "SELECT public.orbicore_ci_worker_validate_wakeup($1,$2,$3::uuid,$4) AS trusted",
+        [organizationId,jobId,outboxId,redisId],
+      );
+      return result.rows[0]?.trusted===true;
     },
     async reconcileUnfinished({organizationId,olderThanSeconds=60}={}){
       gate();id(organizationId,"org");

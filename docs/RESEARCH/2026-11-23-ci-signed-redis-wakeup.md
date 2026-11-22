@@ -1,0 +1,9 @@
+# CI-only Redis HMAC signatures and committed PostgreSQL outbox receipts
+
+**Date:** 2026-11-23. **Bounded experiment:** ORB-004, no live hosting/provider actions.
+
+Primary references: [Node.js createHmac and timingSafeEqual](https://nodejs.org/api/crypto.html), [Redis XADD](https://redis.io/docs/latest/commands/xadd/), [Redis XACK](https://redis.io/docs/latest/commands/xack/), [Redis XAUTOCLAIM](https://redis.io/docs/latest/commands/xautoclaim/), [PostgreSQL 16 SECURITY DEFINER](https://www.postgresql.org/docs/16/sql-createfunction.html), [PostgreSQL 16 row locks](https://www.postgresql.org/docs/16/explicit-locking.html).
+
+The previous restricted 22-job worker gateway checked tenant-scoped PostgreSQL job authority, but a Redis Streams message was **not authenticated**. This slice adds a domain-separated HMAC over source-tenant, exact job and PG outbox UUID and requires the authenticated nonowner SQL role to verify the **committed exact Redis-generated stream ID** against that PG outbox row. A forged/altered wakeup is rejected before job claim; a stolen signed envelope copied into a new XADD entry has a new Redis ID and fails the PG anchor. HMAC rotation permits previous keys only while deliberately retained, no grace period inferred. Reject and record a bounded reason in PostgreSQL before ACK, never raw Redis data.
+
+**Threat limits:** The fixture uses a temporary in-memory signing key controlled by one CI runner, not a production KMS/managed signer, Redis ACL or independent security principal. PG and Redis are not one atomic commit; replay to the *same* Redis entry ID is allowed for at-least-once delivery and must be idempotent. Key loss after a process crash makes old messages untrusted until reconciled/re-published with a trusted new key. A compromised key or schema owner is outside this proof. No encryption/immutability or production authentication transition is claimed.
