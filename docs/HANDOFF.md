@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-22 — ORB-005 reversible scrypt transition design checkpoint
+
+- [ADR-0003](DECISIONS/ADR-0003-credential-transition.md) documents the required credential authority state machine, fresh-password reauthentication or verified reset, verifier secrecy/role gates, identity+credential epoch fencing, MFA/session/audit continuity and rollback invariants. Follow-on implementation is sliced into legacy verifier contract tests, private shadow store, opt-in synthetic reauthentication, and only then verified cutover.
+- This change is **documentation-only**. No production PostgreSQL login, SQLite scrypt migration, new tests, key transfer, live credential handling or real provider operations have been implemented by this checkpoint. ORB-005 remains `in_progress / integration_tested` on earlier hosted CI evidence.
+- **Next:** implement ADR-0003 Slice A with fixed KDF fixtures and negative tests; do not enable target auth routing, copy production verifiers or claim tested cutover.
+
+
 ## 2026-11-22 — ORB-005 CI-only PostgreSQL atomic authentication audit (PR #22)
 
 - Functional green SHA `21629439c95e143e46d3b7368fdfaae1fca6afb0`: [nine-job Service Integration #45014979418](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979418) **success**, [75-test standard CI #45014979437](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979437) **success**, [Chromium #45014979422](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979422) **success**. [PG auth audit JSON artifact #14751114463](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45014979418/artifacts/14751114463). [Detailed evidence](TEST_EVIDENCE/2026-11-22-orb-005-pg-atomic-auth-audit.md).

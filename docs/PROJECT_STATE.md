@@ -1,6 +1,7 @@
 # Project state
 
 **Updated:** 2026-11-22
+**Current design addendum:** [ADR-0003](DECISIONS/ADR-0003-credential-transition.md) proposes a reversible SQLite scrypt to PostgreSQL credential transition. **Design only:** the next implementation slice is legacy verifier contract tests; current runtime remains SQLite/scrypt and PostgreSQL login is CI-only bcrypt fixture. No migration/cutover security assurance is implied.
 **Product:** VSN ORBICORE — AI-assisted hosting control plane
 **Canonical repository:** [Vertex-Systems-Network/vsn-orbicore](https://github.com/Vertex-Systems-Network/vsn-orbicore)
 **Historical audit baseline:** `fac13611c21cfbeec6148a7cbd93a0799dfc4c45`; **main after CI fixture login/MFA PR #21:** `9ccba361760815934996a5724a0d5e15b9535d5a`
