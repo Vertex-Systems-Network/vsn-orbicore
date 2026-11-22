@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-018 account-bound site UI and browser session reset](2026-11-23-orb-018-account-site-isolation.md): synthetic account-specific 503/retry and same-owner logout/login recovery; no real multi-tenant provider proof.
+
 - [2026-11-23 ORB-010 official CycloneDX 1.5 schema CI gate](2026-11-23-orb-010-official-cyclonedx-schema-ci.md): pinned upstream JSON Schema, 189 npm lockfile components, three invalid fixture denials; not a deployed-system SBOM.
 
 - [2026-11-23 ORB-009/018 reliable workspace state and 320px/browser permissions](2026-11-23-orb-009-018-truthful-ui-states.md): hosted synthetic Chromium and standard CI; full WCAG/real zoom/manual audit not proven.

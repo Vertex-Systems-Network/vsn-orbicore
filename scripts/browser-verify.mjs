@@ -319,6 +319,51 @@ try {
   }
   await page.getByRole("button", { name: "Overview", exact: true }).waitFor();
 
+  // ORB-018: account-bound rows/errors and a clean signed-in session reset.
+  // Add only deterministic synthetic fixture data, not hosting provider access.
+  await page.getByRole("button", { name: "Load extended demo data" }).click();
+  await page.locator(".environment-banner").getByText(/loaded|already loaded/i).waitFor();
+  const accountSnapshot = await page.evaluate(async () => {
+    const response = await fetch("/api/overview");
+    if (!response.ok) throw new Error("Synthetic overview unavailable");
+    return response.json();
+  });
+  assert.ok(accountSnapshot.accounts.length >= 2,
+    "account-scoped browser proof requires at least two synthetic accounts");
+  const firstAccount = accountSnapshot.accounts[0];
+  const secondAccount = accountSnapshot.accounts[1];
+  const firstRow = page.locator(".account-rows .account-row").first();
+  const secondRow = page.locator(".account-rows .account-row").nth(1);
+  await firstRow.click();
+  await page.locator(".site-panel").getByText(firstAccount.label).waitFor();
+
+  // Simulate one account's site endpoint failing while another account's data
+  // had already been displayed. No old rows may appear under the new account.
+  const failingSitePath = "**/api/accounts/" + encodeURIComponent(secondAccount.id) + "/sites";
+  await page.route(failingSitePath, (route) => route.fulfill({
+    status: 503, contentType: "application/json", body: '{"error":"synthetic_unavailable"}',
+  }));
+  await secondRow.click();
+  const sitePanel = page.locator(".site-panel");
+  await sitePanel.getByRole("alert").getByText(/websites could not be loaded/i).waitFor();
+  assert.equal(await sitePanel.locator(".site-row").count(), 0,
+    "an unavailable account cannot inherit previously displayed website rows");
+  assert.equal(await sitePanel.locator(".count-chip").textContent(), "0",
+    "a failed account site request cannot display the prior account's count");
+  await page.unroute(failingSitePath);
+  await sitePanel.getByRole("button", { name: "Retry websites" }).click();
+  await sitePanel.locator(".error-banner").waitFor({ state: "hidden" });
+  await sitePanel.getByText(secondAccount.label).waitFor();
+
+  // The selection is reset when signing out; reauthentication must select the
+  // current tenant's first account, not re-use a stale account from prior UI.
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.locator("form.auth-card input[type='email']").fill("owner@example.test");
+  await page.locator("form.auth-card input[type='password']").fill("owner-browser-passphrase-99");
+  await page.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.locator(".primary-nav").getByRole("button", { name: "Overview", exact: true }).waitFor();
+  await page.locator(".account-row.selected").getByText(firstAccount.label, { exact: true }).waitFor();
+
   const runtime = {
     testIds: ["AUTH-WEBAUTHN-E2E-001", "AUTH-WEBAUTHN-REPLAY-001",
       "ORB-009-KEYBOARD", "ORB-018-RESPONSIVE"],
@@ -331,6 +376,7 @@ try {
     mobileNarrowNavigation: "passed", viewportChecks: [320, 390, 640, 768],
     responsive320pxReflow: "passed", reducedMotionPreference: "passed",
     emptyFilterAndFailedNetworkStates: "passed", readOnlyRoleRefreshControl: "passed",
+    accountSiteFailureAndRetry: "passed", crossSessionSelectionReset: "passed",
     physicalAuthenticator: "not_tested", liveProvider: "not_tested",
     manualScreenReaderAudit: "not_tested", fullWcagContrastAudit: "not_tested",
   };

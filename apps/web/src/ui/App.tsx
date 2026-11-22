@@ -285,9 +285,11 @@ export function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
+  const [siteAccountId, setSiteAccountId] = useState<string | null>(null);
   const [allSites, setAllSites] = useState<Site[]>([]);
   const [siteLoading, setSiteLoading] = useState(false);
   const [siteError, setSiteError] = useState<string | null>(null);
+  const [siteErrorAccountId, setSiteErrorAccountId] = useState<string | null>(null);
   const [siteRequestVersion, setSiteRequestVersion] = useState(0);
   const [query, setQuery] = useState("");
   const [activeNav, setActiveNav] = useState<NavSection>("Overview");
@@ -363,14 +365,26 @@ export function App() {
 
   useEffect(() => {
     setSites([]); // Never show the previous account's rows under a new account.
+    setSiteAccountId(null);
     setSiteError(null);
+    setSiteErrorAccountId(null);
     if (!selectedAccountId) { setSiteLoading(false); return; }
     let cancelled = false;
     setSiteLoading(true);
     fetch(`/api/accounts/${encodeURIComponent(selectedAccountId)}/sites`)
       .then((response) => { if (!response.ok) throw new Error("Could not load this account's websites."); return response.json() as Promise<{ sites: Site[] }>; })
-      .then((data) => { if (!cancelled) setSites(data.sites); })
-      .catch(() => { if (!cancelled) setSiteError("This account's websites could not be loaded. This is not an empty inventory."); })
+      .then((data) => {
+        if (!cancelled) {
+          setSites(data.sites);
+          setSiteAccountId(selectedAccountId);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSiteError("This account's websites could not be loaded. This is not an empty inventory.");
+          setSiteErrorAccountId(selectedAccountId);
+        }
+      })
       .finally(() => { if (!cancelled) setSiteLoading(false); });
     return () => { cancelled = true; };
   }, [selectedAccountId, overview?.counts.sites, siteRequestVersion]);
@@ -443,14 +457,20 @@ export function App() {
     setActiveNav("Overview");
     setQuery("");
     setSites([]);
+    setSiteAccountId(null);
     setAllSites([]);
     setSiteRequestVersion(0);
     setSiteError(null);
+    setSiteErrorAccountId(null);
     setError(null);
     setDemoNotice(null);
   };
 
   const activeAccount = overview?.accounts.find((account) => account.id === selectedAccountId);
+  // The displayed account can change before the fetch effect clears the old
+  // payload. Never render sites or errors tagged to a previous account.
+  const visibleSites = selectedAccountId && siteAccountId === selectedAccountId ? sites : [];
+  const visibleSiteError = siteErrorAccountId === selectedAccountId ? siteError : null;
   const jobs: Job[] = overview?.jobs ?? [];
   const utilization = overview?.storage.quotaBytes ? Math.round((overview.storage.usedBytes / overview.storage.quotaBytes) * 100) : 0;
 
@@ -514,8 +534,8 @@ export function App() {
             <article className="panel activity-panel"><div className="panel-heading"><div><h2>Recent activity</h2><p>Latest operations across your workspace.</p></div><button className="text-button" onClick={() => setActiveNav("Jobs & activity")}>All jobs <Icon name="arrow" /></button></div><div className="activity-content">{jobs.length ? <ul className="job-list">{jobs.slice(0, 4).map((job) => <JobRow key={job.id} job={job} />)}</ul> : <div className="activity-empty"><span className="empty-clock"><Icon name="clock" /></span><strong>No recent activity</strong><span>Refresh inventory to create a local demo job.</span></div>}</div><div className="activity-footer"><span className="activity-status"><i /> Synthetic job history</span><span>Local demo queue</span></div></article>
           </section>
 
-          <section className="panel site-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Websites</h2><span className="count-chip">{activeAccount ? sites.length : 0}</span></div><p>{activeAccount ? `Latest discovered sites from ${activeAccount.label}.` : "Select an account to view discovered sites."}</p></div><button className="text-button" onClick={() => setActiveNav("Websites")}>All websites <Icon name="arrow" /></button></div>
-            {siteError ? <div className="error-banner panel-banner" role="alert">{siteError} <button type="button" onClick={() => setSiteRequestVersion((current) => current + 1)}>Retry websites</button></div> : sites.length ? <div className="site-table"><div className="site-table-head"><span>WEBSITE</span><span>TYPE</span><span>DOCUMENT ROOT</span><span>PHP</span><span>STATUS</span></div>{sites.slice(0, 4).map((site) => <div className="site-row" key={site.id}><span><span className="site-favicon">{site.domain.slice(0, 1).toUpperCase()}</span><strong>{site.domain}</strong></span><span>{site.kind}</span><span className="path-cell">{site.documentRoot}</span><span className="php-tag">{site.phpVersion}</span><span><StatusBadge status={site.status === "active" ? "healthy" : site.status} /></span></div>)}</div> : <div className="empty-inline" role="status">{siteLoading ? "Loading websites..." : "No websites discovered for this account."}</div>}
+          <section className="panel site-panel"><div className="panel-heading"><div><div className="panel-title-row"><h2>Websites</h2><span className="count-chip">{activeAccount ? visibleSites.length : 0}</span></div><p>{activeAccount ? `Latest discovered sites from ${activeAccount.label}.` : "Select an account to view discovered sites."}</p></div><button className="text-button" onClick={() => setActiveNav("Websites")}>All websites <Icon name="arrow" /></button></div>
+            {visibleSiteError ? <div className="error-banner panel-banner" role="alert">{visibleSiteError} <button type="button" onClick={() => setSiteRequestVersion((current) => current + 1)}>Retry websites</button></div> : visibleSites.length ? <div className="site-table"><div className="site-table-head"><span>WEBSITE</span><span>TYPE</span><span>DOCUMENT ROOT</span><span>PHP</span><span>STATUS</span></div>{visibleSites.slice(0, 4).map((site) => <div className="site-row" key={site.id}><span><span className="site-favicon">{site.domain.slice(0, 1).toUpperCase()}</span><strong>{site.domain}</strong></span><span>{site.kind}</span><span className="path-cell">{site.documentRoot}</span><span className="php-tag">{site.phpVersion}</span><span><StatusBadge status={site.status === "active" ? "healthy" : site.status} /></span></div>)}</div> : <div className="empty-inline" role="status">{siteLoading || (selectedAccountId !== null && siteAccountId !== selectedAccountId) ? "Loading websites..." : "No websites discovered for this account."}</div>}
           </section>
         </>}
 
