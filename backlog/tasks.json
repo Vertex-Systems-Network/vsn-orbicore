@@ -304,14 +304,22 @@
         "scripts/verify-postgres-ci-epoch-reconciliation.mjs",
         "tests/postgres-ci-epoch-reconciliation.test.mjs",
         "docs/RESEARCH/2026-11-23-ci-shadow-epoch-reconciliation.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-epoch-reconciliation.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-epoch-reconciliation.md",
+        "apps/api/ci-source-event-attestation.mjs",
+        "apps/api/ci-keyed-auth-failure-audit.mjs",
+        "scripts/verify-postgres-ci-auth-privacy-provenance.mjs",
+        "tests/ci-source-event-attestation.test.mjs",
+        "tests/ci-keyed-auth-failure-audit.test.mjs",
+        "docs/RESEARCH/2026-11-23-keyed-login-failure-audit.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-hmac-auth-provenance.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
         "PR #23 read-only legacy SQLite scrypt format tests passed GitHub CI on functional SHA 1ac44ad8; verifier remains unused by ordinary HTTP. Full migration, nonowner PG shadow store, key custody and production cutover remain unimplemented.",
         "CI-only private PostgreSQL shadow fixture schema/force-RLS/non-owner-denial passed 10-job hosted service integration at f41f78c5; only fake placeholders are accepted. Real verifier custody, credential writer, source reauthentication/epoch fencing, auth audit, full runtime migration and production cutover are unimplemented.",
         "CI-only SQLite source password reauthentication to separately salted PG synthetic verifier passed 11-job hosted PG16/Redis/Compose, PR CI and Chromium at 91d00a8. Shadow never authorizes login. Source epoch is a CI sidecar without real password/disable/MFA mutation hooks; distributed atomicity, revocation propagation, production KDF, authentication audit, MFA/key custody, full SQLite jobs/secrets migration and rollback remain blocked.",
-        "PR #26 synthetic-only source credential-epoch SQLite outbox and PG private revoke-only fences passed full 12-job hosted service integration plus CI/Chromium at 50ab3c6. Tested source+event atomicity, password reset/disable/MFA/role changes, PG fault rollback, source file reopen, pending-event replay, anti-regression and source-tenant mismatch. NOT integrated into normal login/mutation routes or real MFA key custody; no source-event provenance attestation, distributed atomicity, off-host restore or production authority gate."
+        "PR #26 synthetic-only source credential-epoch SQLite outbox and PG private revoke-only fences passed full 12-job hosted service integration plus CI/Chromium at 50ab3c6. Tested source+event atomicity, password reset/disable/MFA/role changes, PG fault rollback, source file reopen, pending-event replay, anti-regression and source-tenant mismatch. NOT integrated into normal login/mutation routes or real MFA key custody; no source-event provenance attestation, distributed atomicity, off-host restore or production authority gate.",
+        "PR #27 CI-only signed SQLite event provenance and HMAC-pseudonymous login-failure records passed 13 hosted PG16/Redis/Compose jobs, standard CI, Chromium on 01955da6. Tampering, wrong signing key, old-key rotation/replay, DB audit failure and unknown/wrong-password response parity tested. NOT runtime HTTP-wired or proof of independent source event completeness/authorization, distributed rate-limit, external key custody or production migration."
       ],
       "started_at": null,
       "completed_at": null,

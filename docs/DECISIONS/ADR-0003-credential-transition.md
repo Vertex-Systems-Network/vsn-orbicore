@@ -50,6 +50,10 @@ Transitions must be durable, monotonic, tenant-scoped and observable. Retain a r
 
 **Slice D — complete runtime authority cutover:** blocked until SQLite v7 jobs, secrets, audit, key provenance/decryptability, MFA/recovery/passkey, notifications, production HTTPS cookies, distributed throttling, full write RLS, off-host backup/restore and explicit rollback drills pass. Do not put `pg_authoritative` into ordinary API routing earlier.
 
+## CI-only source provenance and keyed failure audit (2026-11-23)
+
+[Source event attestor](../../apps/api/ci-source-event-attestation.mjs), [keyed failure-audit helper](../../apps/api/ci-keyed-auth-failure-audit.mjs) and [13-job hosted evidence](../TEST_EVIDENCE/2026-11-23-orb-005-ci-hmac-auth-provenance.md) now test externally injected HMAC-SHA256 with rotating keys, typed/tenant-bound signed source event claims, tamper denial before PG reconciliation, and pseudonymized, tenant-independent generic rejected-login evidence including key-rotation fail-closed behavior. These do **not** prove authorized real actor provenance, source event completeness (deletion protection), actual HTTP response timing parity, distributed throttle, key custody, or a production migration. No PG authentication read routing or real account changes.
+
 ## Acceptance and adversarial evidence gate
 
 - [x] Exact legacy KDF outputs reproduced using synthetic Unicode/ASCII/empty-password fixtures, UTF-8 hex-text versus decoded salt checks, fixed parameters and timing-safe comparison; [CI evidence](../TEST_EVIDENCE/2026-11-22-orb-005-scrypt-compatibility.md).
