@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-22 — ORB-004 real Node PostgreSQL job repository (PR #11)
+
+- Tested feature SHA `57dec33e52c64e9c4bf5ea00a6382eb725512983`; [service integration run 44997469316](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997469316) passed with `pg@8.16.3` installed in CI only. [Standard CI 44997469273](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997469273) passed **47 tests**, all other checks and [browser 44997469354](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997469354) passed.
+- New `apps/api/postgres-jobs.mjs` accepts a parameterized-query client and implements tenant-scoped `inventory_refresh` enqueue, account/payload idempotency, getters, lease claims, fenced completion and retry exhaustion. `tests/postgres-jobs.test.mjs` checks parameter binding and invalid inputs; `scripts/verify-postgres-job-repository.mjs` verifies real Postgres IO and recovery after disposing/recreating the Node connection pool. [Artifact 14743899380](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997469316/artifacts/14743899380). Full [evidence](TEST_EVIDENCE/2026-11-22-orb-004-node-postgres-repository.md).
+- **NOT runtime-wired:** `createApp` still initializes SQLite; the production manifest/lockfile does not include a PostgreSQL driver; no Redis application worker or outbox, process/container crash test or RLS. Keep ORB-004/016 `testing`, not `verified`.
+- PR #10 merged into `main` as `12eb732320b3d6e932a7012c774f1e2df32b6557`. PR #11 documentation commits require final CI and confirmed merge.
+- **Next:** pin PostgreSQL/Redis dependencies, inject actual adapter into a narrow authenticated API job path and durable worker, implement outbox/reconciliation, test real worker restart/tenant fencing and Compose persistence.
+
 ## 2026-11-22 — ORB-004 PostgreSQL lease fencing and Redis Streams contract (PR #10)
 
 - Branch `feat/orb-004-leased-job-contract`, tested commit `33eaebafb6aee7eac133700f75e764a771089c18`; [GitHub service CI 44997036564](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997036564) and [standard CI 44997036640](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997036640) passed. Artifacts: [lease evidence 14744076348](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/44997036564/artifacts/14744076348), service parity 14744276043.
