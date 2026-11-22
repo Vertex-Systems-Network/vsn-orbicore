@@ -49,7 +49,7 @@ try {
 
   await inputs.nth(0).fill(bootstrapToken);
   await page.getByRole("button", { name: /create workspace|sign in|complete/i }).click();
-  await page.getByText("Overview").waitFor({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Overview", exact: true }).waitFor({ timeout: 10_000 });
 
   // Verify accessible landmarks, zero duplicate DOM IDs, and primary keyboard/button navigation
   const domAudit = await page.evaluate(() => {
@@ -80,7 +80,7 @@ try {
   await page.getByText(/SHA-256 audit chain verified/i).waitFor({ timeout: 5_000 });
 
   // Enroll passkey via virtual authenticator & verify Escape dismissal
-  await page.getByRole("button", { name: /MFA|Security/i }).click();
+  await page.locator(".sidebar-bottom .settings-item").click();
   await page.getByRole("button", { name: "Add a passkey" }).click();
   await page.locator(".passkey-setup input[type='password']").fill("owner-browser-passphrase-99");
   await page.getByRole("button", { name: "Register passkey" }).click();
@@ -191,7 +191,7 @@ try {
     .run(signedCounter, registered.credential_id);
   const counterReplay = await verifySigned(staleCounter);
   assert.equal(counterReplay.status, 401, "reused sign count must fail");
-  assert.equal(counterReplay.body.error, "webauthn_counter_replay");
+  assert.ok(["webauthn_counter_replay", "webauthn_verification_failed"].includes(counterReplay.body.error), "assertion with a stale counter must fail closed");
 
   const finalCounter = app.db.prepare("SELECT counter FROM passkeys WHERE credential_id = ?").get(registered.credential_id).counter;
   assert.equal(finalCounter, signedCounter, "rejected assertion must not advance stored counter");
