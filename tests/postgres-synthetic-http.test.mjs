@@ -1,7 +1,26 @@
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
+import { request as httpRequest } from "node:http";
 import { test } from "node:test";
 import { createPostgresSyntheticHttpHarness } from "../apps/api/postgres-synthetic-http-harness.mjs";
+
+async function spoofHostRequest(base,cookie) {
+  const target=new URL(base);
+  return new Promise((resolve,reject)=>{
+    const request=httpRequest({
+      hostname:"127.0.0.1",
+      port:Number(target.port),
+      path:"/__ci/pg/session/csrf",
+      method:"GET",
+      headers:{host:"untrusted.example.invalid",cookie},
+    },response=>{
+      response.resume();
+      response.once("end",()=>resolve(response.statusCode));
+    });
+    request.once("error",reject);
+    request.end();
+  });
+}
 
 function withCi(fn) {
   const originalGithub = process.env.GITHUB_ACTIONS;
@@ -55,9 +74,7 @@ test("ORB-005: loopback HTTP rejects unauthenticated and cross-origin requests b
     try {
       const base=await harness.start(),cookie="orbicore_session="+session;
       assert.equal((await fetch(base+"/__ci/pg/session/csrf")).status,401);
-      assert.equal((await fetch(base+"/__ci/pg/session/csrf",{
-        headers:{cookie,host:"untrusted.invalid"},
-      })).status,403);
+      assert.equal(await spoofHostRequest(base,cookie),403);
       assert.equal((await fetch(base+"/__ci/pg/session/csrf",{
         headers:{cookie,origin:"https://untrusted.invalid"},
       })).status,403);
