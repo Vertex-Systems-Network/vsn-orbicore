@@ -106,6 +106,25 @@ try {
     }
   }
   await setNativeZoom(worker, baseUrl, 4);
+  const sidebarAt400 = await page.locator(".sidebar").evaluate((sidebar) => ({
+    availableHeight: sidebar.clientHeight,
+    contentHeight: sidebar.scrollHeight,
+    overflowY: getComputedStyle(sidebar).overflowY,
+  }));
+  assert.equal(sidebarAt400.overflowY, "auto",
+    "native 400% collapsed navigation must be scrollable, not clipped");
+  assert.ok(sidebarAt400.contentHeight > sidebarAt400.availableHeight,
+    "native 400% fixture must exercise the sidebar vertical overflow path");
+  const lastNav = page.getByRole("button", { name: "Jobs & activity", exact: true });
+  await lastNav.click();
+  const lastNavVisible = await lastNav.evaluate((button) => {
+    const scroller = button.closest(".sidebar");
+    const rect = button.getBoundingClientRect();
+    const parent = scroller?.getBoundingClientRect();
+    return !!parent && rect.top >= parent.top - 1 && rect.bottom <= parent.bottom + 1;
+  });
+  assert.equal(lastNavVisible, true,
+    "sidebar must scroll bottom navigation into the visual viewport at native 400%");
   await page.getByRole("button", { name: "Websites", exact: true }).click();
   mkdirSync(evidenceDir, { recursive: true });
   await page.screenshot({
@@ -122,6 +141,7 @@ try {
     authMeasurements, dashboardMeasurements,
     keyboardAuthPasswordFocus: "passed",
     dashboardNavigationAndPageWideReflow: "passed",
+    sidebarAt400, bottomNavigationReachableAt400: "passed",
     knownLimitations: [
       "Synthetic localhost SQLite; no external hosting credentials or identity provider",
       "Chromium only; other browsers and OS accessibility magnification not tested",
