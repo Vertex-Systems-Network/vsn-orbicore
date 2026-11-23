@@ -5,6 +5,8 @@ on:
     paths:
       - "apps/**"
       - "scripts/browser-verify.mjs"
+      - "scripts/browser-native-zoom.mjs"
+      - "tests/fixtures/native-zoom-extension/**"
       - ".github/workflows/ci-browser.yml"
   workflow_dispatch:
 permissions:
@@ -27,6 +29,10 @@ jobs:
           ORBICORE_BOOTSTRAP_TOKEN: ci-browser-bootstrap-token-32bytes
           ORBICORE_MFA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
         run: node scripts/browser-verify.mjs
+      - name: Verify real Chromium 200% and 400% page zoom
+        env:
+          ORBICORE_BOOTSTRAP_TOKEN: ci-browser-bootstrap-token-32bytes
+        run: node scripts/browser-native-zoom.mjs
       - name: Upload non-sensitive browser evidence
         if: always()
         uses: actions/upload-artifact@v4

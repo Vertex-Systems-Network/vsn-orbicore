@@ -136,3 +136,13 @@ html[data-theme="dark"] .mfa-panel p,
 html[data-theme="dark"] .mfa-panel label,
 html[data-theme="dark"] .mfa-panel .mfa-close{color:#c6d4d8}
 html[data-theme="dark"] .auth-restart{color:#8ef1cb}
+
+/* ORB-009: native 400% desktop zoom gives a short 320x240 CSS viewport.
+   The collapsed fixed navigation must be its own keyboard-scrollable region;
+   otherwise lower links (including Jobs & activity) are off-screen and
+   Playwright/keyboard users cannot activate them. */
+@media (max-width:960px){
+  .sidebar{overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin}
+  .sidebar .primary-nav{flex:0 0 auto}
+  .sidebar .sidebar-bottom{flex-shrink:0}
+}
