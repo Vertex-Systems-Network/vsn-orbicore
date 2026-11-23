@@ -724,7 +724,27 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     return row ?? null;
   }
 
+  // A CI source hold can be established by another connection after startup.
+  // Deny unsafe HTTP mutations at ingress and again after awaited JSON reads.
+  function requireActiveSource() {
+    try {
+      rejectCiSourceRecoveryHold(db);
+    } catch (error) {
+      if (error?.message === CI_SOURCE_RECOVERY_HOLD_ERROR) {
+        Object.assign(error, { status: 503, code: CI_SOURCE_RECOVERY_HOLD_ERROR });
+      }
+      throw error;
+    }
+  }
+
+  async function readJsonWithSourceHold(request) {
+    const body = await readJson(request);
+    requireActiveSource();
+    return body;
+  }
+
   function issueSession(user, response, mfaVerified = false, request = null) {
+    requireActiveSource();
     const token = randomBytes(32).toString("base64url");
     const now = new Date();
     const expires = new Date(now.getTime() + SESSION_TTL_MS).toISOString();
@@ -736,6 +756,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
   function transaction(operation) {
     db.exec("BEGIN IMMEDIATE");
     try {
+      requireActiveSource();
       const result = operation();
       db.exec("COMMIT");
       return result;
@@ -857,6 +878,16 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
 
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
+    if (url.pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      try {
+        requireActiveSource();
+      } catch (error) {
+        if (error?.message === CI_SOURCE_RECOVERY_HOLD_ERROR) {
+          return json(response, 503, { error: CI_SOURCE_RECOVERY_HOLD_ERROR });
+        }
+        throw error;
+      }
+    }
     if (!url.pathname.startsWith("/api/") && (request.method === "GET" || request.method === "HEAD")) {
       const indexFile = resolve(distWebDir, "index.html");
       if (existsSync(indexFile)) {
@@ -886,7 +917,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const saved = db.prepare("SELECT token_hash FROM bootstrap_tokens LIMIT 1").get();
         const tokenMatches = saved && typeof body.token === "string" && safeEqual(saved.token_hash, sha256(body.token));
         if (!tokenMatches) {
@@ -903,6 +934,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const now = new Date().toISOString();
         db.exec("BEGIN IMMEDIATE");
         try {
+          requireActiveSource();
           db.prepare("INSERT INTO users (id, organization_id, email, password_salt, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, 'owner', ?)")
             .run(user.id, user.organizationId, email, salt, passwordHash(password, salt), now);
           db.prepare("DELETE FROM bootstrap_tokens").run();
@@ -931,7 +963,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (authRateLimited(request, response)) return;
       try {
         const credentialId = decodeURIComponent(revokePasskeyMatch[1]);
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const user = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
         const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, user?.password_salt ?? "orbicore-no-user-salt") : "";
         if (!user || !safeEqual(candidate, user.password_hash)) {
@@ -955,7 +987,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const user = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
         const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, user?.password_salt ?? "orbicore-no-user-salt") : "";
         if (!user || !safeEqual(candidate, user.password_hash)) {
@@ -993,7 +1025,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!actor) return json(response, 401, { error: "authentication_required" });
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (typeof body.challengeHandle !== "string" || !body.response || body.challengeHandle.length > 120) return json(response, 400, { error: "invalid_request" });
         const handleHash = sha256(body.challengeHandle);
         const now = new Date(mfaClock()).toISOString();
@@ -1028,7 +1060,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
         const user = email.length <= 254 ? db.prepare("SELECT id FROM users WHERE email = ? AND disabled = 0").get(email) : null;
         const credentials = user ? db.prepare("SELECT credential_id, transports_json FROM passkeys WHERE user_id = ?").all(user.id) : [];
@@ -1057,7 +1089,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (typeof body.challengeHandle !== "string" || !body.response || body.challengeHandle.length > 120) return json(response, 401, { error: "invalid_passkey_challenge" });
         const handleHash = sha256(body.challengeHandle);
         const now = new Date(mfaClock()).toISOString();
@@ -1112,7 +1144,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const mfaKey = getMfaKey();
       if (!mfaKey) return json(response, 503, { error: "mfa_key_unavailable" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const user = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
         const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, user?.password_salt ?? "orbicore-no-user-salt") : "";
         if (!user || !safeEqual(candidate, user.password_hash)) {
@@ -1142,7 +1174,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       if (!mfaKeyring) return json(response, 503, { error: "mfa_key_unavailable" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const pending = db.prepare("SELECT encrypted_secret, pending_expires_at FROM authenticators WHERE user_id = ? AND enabled = 0").get(actor.id);
         if (!pending || !pending.pending_expires_at || pending.pending_expires_at <= new Date().toISOString()) return json(response, 410, { error: "mfa_enrollment_expired" });
         const secret = decryptMfaSecretWithFallback(pending.encrypted_secret, mfaKeyring);
@@ -1172,7 +1204,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (typeof body.challenge !== "string" || typeof body.code !== "string" || body.challenge.length > 120 || body.code.length > 80) {
           registerAuthFailure(request);
           return json(response, 401, { error: "invalid_mfa_challenge" });
@@ -1244,7 +1276,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (authRateLimited(request, response)) return;
       if (!mfaKeyring || !actor.mfaEnabled) return json(response, 409, { error: "mfa_not_enabled_or_key_unavailable" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const userRow = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
         const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, userRow?.password_salt ?? "orbicore-no-user-salt") : "";
         const authenticator = db.prepare("SELECT encrypted_secret, last_totp_step FROM authenticators WHERE user_id = ? AND enabled = 1").get(actor.id);
@@ -1275,7 +1307,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
         const password = typeof body.password === "string" ? body.password : "";
         if (email.length > 254 || password.length > 256) {
@@ -1362,7 +1394,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (typeof body.accountId !== "string" || body.accountId.length > 100) return json(response, 400, { error: "invalid_account_id" });
         const account = db.prepare("SELECT id FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
         if (!account) return json(response, 404, { error: "account_not_found" });
@@ -1451,7 +1483,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       if (!mfaKeyring) return json(response, 503, { error: "mfa_key_unavailable" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
         const kind = ["cpanel_uapi_token", "s3_access_key", "smtp_credential"].includes(body.kind) ? body.kind : "";
         const referenceUri = typeof body.referenceUri === "string" ? body.referenceUri.trim().slice(0, 180) : "";
@@ -1536,7 +1568,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (authRateLimited(request, response)) return;
       if (!mfaKeyring) return json(response, 503, { error: "mfa_key_unavailable" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const userRow = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
         const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, userRow?.password_salt ?? "orbicore-no-user-salt") : "";
         if (!userRow || !safeEqual(candidate, userRow.password_hash)) {
@@ -1577,7 +1609,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (authRateLimited(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const userRow = db.prepare("SELECT password_salt, password_hash FROM users WHERE id = ? AND disabled = 0").get(actor.id);
         const candidate = typeof body.password === "string" && body.password.length <= 256 ? passwordHash(body.password, userRow?.password_salt ?? "orbicore-no-user-salt") : "";
         if (!userRow || !safeEqual(candidate, userRow.password_hash)) {
@@ -1602,7 +1634,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     if (request.method === "POST" && url.pathname === "/api/auth/recovery-contacts/verify") {
       if (!allowSameOrigin(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const result = verifyRecoveryContactToken(db, { userId: actor.id, token: body.token });
         if (!result.verified) return json(response, 400, { error: result.reason });
         appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "auth.recovery_contact.verify", targetId: result.contactId, outcome: "completed", createdAt: result.verifiedAt, details: { channel: result.channel } });
@@ -1615,7 +1647,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
         const username = typeof body.username === "string" ? body.username.trim().slice(0, 40) : "";
         const profileName = typeof body.capabilityProfile === "string" && body.capabilityProfile in CAPABILITY_PROFILES ? body.capabilityProfile : "cpanel_uapi_standard";
@@ -1703,7 +1735,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const site = db.prepare(`SELECT s.*, a.organization_id, a.used_bytes, a.quota_bytes FROM sites s
           JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(body.siteId, actor.organizationId);
         const target = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(body.targetAccountId, actor.organizationId);
@@ -1752,7 +1784,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const migrationId = decodeURIComponent(migrationAdvanceMatch[1]);
         const row = db.prepare("SELECT * FROM migration_plans WHERE id = ? AND organization_id = ?").get(migrationId, actor.organizationId);
         if (!row) return json(response, 404, { error: "migration_not_found" });
@@ -1849,7 +1881,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const account = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
         if (!account) return json(response, 404, { error: "account_not_found" });
         const mode = ["media_offload", "backup_archival", "static_assets"].includes(body.mode) ? body.mode : "backup_archival";
@@ -1885,7 +1917,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
         const password = body.password;
         const role = typeof body.role === "string" ? body.role : "operator";
@@ -1918,7 +1950,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const target = db.prepare("SELECT id, email, role, disabled, mfa_enabled AS mfaEnabled, created_at AS createdAt FROM users WHERE id = ? AND organization_id = ?")
           .get(targetId, actor.organizationId);
         if (!target) return json(response, 404, { error: "member_not_found" });
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const nextRole = typeof body.role === "string" ? body.role : target.role;
         const nextDisabled = typeof body.disabled === "boolean" ? (body.disabled ? 1 : 0) : target.disabled;
         if (!["owner", "admin", "operator", "viewer"].includes(nextRole)) return json(response, 400, { error: "invalid_role" });
@@ -1972,7 +2004,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           FROM sites s JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(siteId, actor.organizationId);
         if (!site) return json(response, 404, { error: "site_not_found" });
         if (!/wordpress|woo/i.test(site.kind)) return json(response, 400, { error: "not_a_wordpress_site" });
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (!["create", "destroy"].includes(body.action)) return json(response, 400, { error: "invalid_staging_action" });
         const now = new Date().toISOString();
         const existing = db.prepare("SELECT * FROM wp_site_state WHERE site_id = ? AND organization_id = ?").get(site.id, actor.organizationId);
@@ -2003,7 +2035,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           FROM sites s JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(siteId, actor.organizationId);
         if (!site) return json(response, 404, { error: "site_not_found" });
         if (!/wordpress|woo/i.test(site.kind)) return json(response, 400, { error: "not_a_wordpress_site" });
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (!["apply_updates", "rollback"].includes(body.action)) return json(response, 400, { error: "invalid_wordpress_action" });
         const now = new Date().toISOString();
         const existing = db.prepare("SELECT * FROM wp_site_state WHERE site_id = ? AND organization_id = ?").get(site.id, actor.organizationId);
@@ -2048,7 +2080,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         if (!site) return json(response, 404, { error: "site_not_found" });
         const account = db.prepare("SELECT id, label, host, source, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?")
           .get(site.accountId, actor.organizationId);
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (!["backup_dry_run", "wp_preflight", "dns_ssl_check"].includes(body.action)) {
           return json(response, 400, { error: "unsupported_site_action" });
         }
@@ -2079,7 +2111,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (actor.role !== "owner") return json(response, 403, { error: "permission_denied" });
       if (dbPath === ":memory:") return json(response, 400, { error: "in_memory_db_unsupported" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (typeof body.fileName !== "string" || !/^[a-zA-Z0-9_.-]+\.sqlite$/.test(body.fileName)) {
           return json(response, 400, { error: "invalid_backup_filename" });
         }
@@ -2103,7 +2135,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     if (request.method === "POST" && url.pathname === "/api/auth/recovery-contacts/outbox/retry") {
       if (!allowSameOrigin(request, response)) return;
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         if (typeof body.outboxId !== "string") return json(response, 400, { error: "invalid_outbox_id" });
         const entry = db.prepare("SELECT id, event, recipient, status FROM notification_outbox WHERE id = ? AND user_id = ?").get(body.outboxId, actor.id);
         if (!entry) return json(response, 404, { error: "outbox_item_not_found" });
@@ -2123,7 +2155,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const policyId = decodeURIComponent(storageDrillMatch[1]);
         const policy = db.prepare("SELECT * FROM storage_policies WHERE id = ? AND organization_id = ?").get(policyId, actor.organizationId);
         if (!policy) return json(response, 404, { error: "storage_policy_not_found" });
@@ -2164,7 +2196,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
         const ruleType = RULE_TYPES.includes(body.ruleType) ? body.ruleType : "";
         const approvalMode = APPROVAL_MODES.includes(body.approvalMode) ? body.approvalMode : "manual_approval";
@@ -2200,7 +2232,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
-        const body = await readJson(request);
+        const body = await readJsonWithSourceHold(request);
         const host = typeof body.host === "string" ? body.host : "";
         const endpoint = validateCpanelApiHost(host);
         if (!host || !endpoint.valid) return json(response, 400, { error: endpoint.reason || "invalid_host" });
