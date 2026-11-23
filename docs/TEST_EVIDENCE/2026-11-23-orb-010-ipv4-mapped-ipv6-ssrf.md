@@ -1,6 +1,6 @@
 # ORB-010/006 — IPv4-mapped IPv6 canonicalization at endpoint validation boundary
 
-**Date:** 2026-11-23 UTC. **State:** GitHub feature implementation; PR-hosted CI pending. No real provider requests in this change.
+**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `d300eed4ac01a9506d74ed8d9bac5a027849ae0a` passed GitHub-hosted standard and browser checks. Documentation-head CI/merge pending. No real provider requests in this change.
 
 ## Finding
 
@@ -12,10 +12,12 @@
 - Decode mapped IPv6's final two 16-bit hex groups into four IPv4 octets and apply existing `isBlockedIPv4` deny ranges, preserving already blocked loopback, link-local, ULA behavior.
 - Add two Node tests covering expanded and hex private/mapped addresses, direct `validateExternalEndpoint` rejection, and representative public IPv6/mapped IPv4 address handling. No DNS/network I/O or provider credentials.
 
-## Required GitHub verification
+## Observed hosted GitHub verification
 
-- `npm ci`, `npm test` (2 added tests), plan/lint, security, lockfile SBOM/offline schema validation, npm audit, build, smoke and doctor.
-- Hosted 28-job PostgreSQL16/Redis7 CI, Chromium/WebAuthn and trusted PR task ledger when triggered; final code/docs SHA checks before merge and postmerge main CI.
+- [Branch CI #45182998550](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45182998550) and [PR CI #45183052897](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45183052897) both **passed** at `d300eed4`: **168/168 Node tests**, zero failures; plan/lint, security, npm audit, official local CycloneDX schemas/SBOM, build, smoke and doctor passed.
+- [Chromium/WebAuthn/a11y #45183052673](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45183052673) and [trusted PR ledger #45183052794](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45183052794) both passed. PostgreSQL16/Redis7 service workflow was **not triggered** by this literal security file/test/docs diff under its scoped paths; no service result is claimed for this PR.
+
+- **Remaining:** final documentation-head GitHub CI, PR merge and postmerge main CI evidence. 
 
 ## Explicit limits
 

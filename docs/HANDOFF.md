@@ -1,9 +1,9 @@
 # Handoff
 
-## 2026-11-23 — ORB-010 canonical mapped IPv6 endpoint block (CI pending)
+## 2026-11-23 — ORB-010 canonical mapped IPv6 endpoint block (functional PR CI passed)
 
 - Canonicalized IPv6 literals so hex and expanded IPv4-mapped forms enter the same private/loopback/metadata IPv4 guard as dotted-quad forms. Added pure Node and `validateExternalEndpoint` tests for hex/expanded mapped-address denial plus public examples.
-- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-010-ipv4-mapped-ipv6-ssrf.md). Pending GitHub CI and review; no live UAPI or DNS connect, external allowlist, key custody, pinning, or production release gate.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-010-ipv4-mapped-ipv6-ssrf.md). Functional PR SHA `d300eed4` passed [168/168 Node CI #45183052897](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45183052897), [Chromium #45183052673](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45183052673) and [task ledger #45183052794](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45183052794). PG16/Redis7 service workflow not triggered for scoped diff; docs-head CI/merge pending. No live UAPI or DNS connect, external allowlist, key custody, pinning, or production release gate.
 
 ## 2026-11-23 — ORB-005 Strict cookies under loopback HTTPS (functional PR CI passed)
 
