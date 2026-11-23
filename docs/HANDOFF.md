@@ -1,9 +1,9 @@
 # Handoff
 
-## 2026-11-23 — ORB-009/018 independent Firefox and WebKit browser CI (verification pending)
+## 2026-11-23 — ORB-009/018 independent Firefox and WebKit browser CI (functional PR CI passed)
 
 - Extended hosted browser workflow to a 2-engine Playwright Firefox/WebKit matrix with OS dependencies; retained the existing Chromium/WebAuthn/400% zoom checks. New local synthetic browser driver tests bootstrap/keyboard, 3 widths × 4 sections and 320px security dialog, recording metadata-only evidence.
-- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md). Must review actual hosted engine results and fix any genuine reflow issues before claiming pass; no native Firefox text-only zoom, manual WCAG or production provider claim.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md). Functional PR SHA `8477ba83` passed [170/170 Node CI #45185137467](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137467), [Firefox 159.0 + WebKit 27.2 + Chromium 3/3 browser jobs #45185137763](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763) (each new engine 16 synthetic states, keyboard/escape passed), and [ledger #45185137468](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137468). Final docs-head CI/merge pending; no native Firefox text-only zoom, manual WCAG or production provider claim.
 
 ## 2026-11-23 — ORB-010 absolute DNS root-dot local host denial (functional PR CI passed)
 
