@@ -51,6 +51,12 @@ jobs:
   firefox-webkit-reflow:
     name: ${{ matrix.engine }} responsive auth/workspace and keyboard check
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    # Official image contains browsers and OS dependencies matching the
+    # pinned Playwright library; avoid apt/CDN installs on every PR rerun.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     strategy:
       fail-fast: false
       matrix:
@@ -63,8 +69,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Install Playwright browser and Ubuntu dependencies
-        run: npm install --no-save playwright && npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Install Playwright client matching official image browsers
+        run: npm install --no-save playwright@1.64.1
       - name: Run isolated Firefox/WebKit responsive and keyboard regressions
         env:
           ORBICORE_BOOTSTRAP_TOKEN: ci-cross-engine-owner-token-32bytes

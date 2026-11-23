@@ -1,6 +1,6 @@
 # ORB-009 / ORB-018 — independent Firefox and WebKit browser regression CI
 
-**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `8477ba8358374b56062a2200cad41a2fe44f6516` passed hosted CI in all three browsers; docs-head CI/merge pending.
+**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `8477ba8358374b56062a2200cad41a2fe44f6516` passed hosted CI in all three browsers. CI job now additionally pins the official Playwright 1.64.1 browser image to bypass host-package install stalls; the new container-head verification is pending.
 
 ## Rationale
 
@@ -18,6 +18,10 @@ The existing mandatory hosted browser workflow exercises Chromium/WebAuthn, Chro
 - [Browser run #45185137763](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763) passed **3/3 jobs**: [Firefox 159.0](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/job/137728659775) and [WebKit 27.2](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/job/137728659809) each reported **16 checked states**, zero page-wide overflow, successful keyboard Tab and dialog Escape; existing Chromium/WebAuthn/zoom suite passed.
 - Non-sensitive [Firefox artifact #14823376757](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/artifacts/14823376757) and [WebKit artifact #14823686209](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/artifacts/14823686209) include metadata only. [Trusted ledger #45185137468](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137468) passed. PG16/Redis7 workflow **not triggered** by this path-scoped diff.
 - **Pending:** final docs-head CI, PR merge, post-merge main CI. These browser checks do **not** establish native Firefox Text Only Zoom, manual WCAG or production/provider signoff.
+
+## Runner reliability follow-up (new CI head pending)
+
+A later documentation-head rerun on Ubuntu reported a long in-progress WebKit OS dependency install while Firefox/Chromium and standard CI had passed. To reduce repeated apt/network setup rather than weaken any assertion, the cross-engine **matrix only** now runs in the official `mcr.microsoft.com/playwright:v1.64.1-noble` container, with its matching pinned `playwright@1.64.1` client and a 12-minute bounded job timeout. Chromium's existing host runner, tests and fixtures remain unchanged. This follow-up requires **both** engine jobs to pass again on the new final head. Containerized CI remains synthetic, not production Safari/Firefox certification.
 
 ## Explicit limitations
 
