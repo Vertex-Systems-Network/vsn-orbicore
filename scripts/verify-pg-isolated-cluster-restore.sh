@@ -83,7 +83,14 @@ if ORBICORE_CI_PG_ARCHIVE_KEY_HEX="$(openssl rand -hex 32)" \
 fi
 [[ ! -e "$ROOT/database.wrong-key.restore" ]]
 cp "$ROOT/database.enc" "$ROOT/database.tampered.enc"
-printf 'X' | dd of="$ROOT/database.tampered.enc" bs=1 seek=39 conv=notrunc status=none
+# A fixed replacement character can equal the original ciphertext byte (~1/256).
+# Guaranteed XOR corruption makes the authenticated-encryption check deterministic.
+node --input-type=module - "$ROOT/database.tampered.enc" <<'JS'
+import { readFileSync, writeFileSync } from "node:fs";
+import { flipCiPgArchiveCiphertextByte } from "./scripts/ci-pg-archive-envelope.mjs";
+const file=process.argv[2];
+writeFileSync(file,flipCiPgArchiveCiphertextByte(readFileSync(file)));
+JS
 if node scripts/ci-pg-archive-envelope.mjs open "$ROOT/database.tampered.enc" \
   "$ROOT/database.tampered.restore" database >/dev/null 2>&1; then
   echo "tampered encrypted archive unexpectedly accepted" >&2;exit 1
