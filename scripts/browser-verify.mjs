@@ -509,6 +509,7 @@ try {
     const mfaSecret = (await mfaPage.locator(".mfa-panel .mfa-secret").textContent())?.trim();
     assert.ok(mfaSecret, "fixture enrollment must display the TOTP seed only to this authorized session");
     const enrollmentCode = totpAt(mfaSecret, Math.floor(mfaTestClockMs / 30_000) * 30);
+    const rejectedCode = String((Number(enrollmentCode) + 1) % 1_000_000).padStart(6, "0");
     await mfaPage.locator(".mfa-panel input[autocomplete='one-time-code']").fill(enrollmentCode);
     await mfaPage.getByRole("button", { name: "Verify and enable" }).click();
     const recoveryItem = mfaPage.locator(".mfa-panel .recovery-codes li").first();
@@ -560,7 +561,7 @@ try {
     await mfaPage.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
     await mfaPage.getByRole("heading", { name: "Verify your sign-in" }).waitFor();
     const freshCode = mfaPage.locator("form.auth-card input[autocomplete='one-time-code']");
-    await freshCode.fill("123456");
+    await freshCode.fill(rejectedCode);
     await mfaPage.getByRole("button", { name: "Verify and sign in" }).click();
     await mfaPage.locator("#auth-error").getByText(/code was not accepted/i).waitFor();
     assert.equal(await freshCode.getAttribute("aria-invalid"), "true",
