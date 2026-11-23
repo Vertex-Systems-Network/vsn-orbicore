@@ -6,6 +6,7 @@ on:
       - "apps/**"
       - "scripts/browser-verify.mjs"
       - "scripts/browser-native-zoom.mjs"
+      - "scripts/browser-text-resize.mjs"
       - "tests/fixtures/native-zoom-extension/**"
       - ".github/workflows/ci-browser.yml"
   workflow_dispatch:
@@ -33,6 +34,10 @@ jobs:
         env:
           ORBICORE_BOOTSTRAP_TOKEN: ci-browser-bootstrap-token-32bytes
         run: node scripts/browser-native-zoom.mjs
+      - name: Verify synthetic 200% text-only resizing and controls
+        env:
+          ORBICORE_BOOTSTRAP_TOKEN: ci-browser-bootstrap-token-32bytes
+        run: node scripts/browser-text-resize.mjs
       - name: Upload non-sensitive browser evidence
         if: always()
         uses: actions/upload-artifact@v4
