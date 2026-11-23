@@ -1,6 +1,6 @@
 # ORB-009 / ORB-018 — independent Firefox and WebKit browser regression CI
 
-**Date:** 2026-11-23 UTC. **State:** New matrix job and browser driver pending hosted GitHub CI verification.
+**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `8477ba8358374b56062a2200cad41a2fe44f6516` passed hosted CI in all three browsers; docs-head CI/merge pending.
 
 ## Rationale
 
@@ -12,9 +12,12 @@ The existing mandatory hosted browser workflow exercises Chromium/WebAuthn, Chro
 - A new `scripts/browser-cross-engine.mjs` fixture driver boots independent synthetic local SQLite/API and browser sessions, checks bootstrap reflow at 1280/390/320 CSS pixels, keyboard Tab sequence to password, completes owner creation, checks Overview/Websites/Hosting accounts/Jobs & activity for document overflow at three widths, opens/closes the Authenticator setup dialog at 320 px with Escape.
 - Persist only a small, **non-sensitive** per-engine JSON record with browser version, test state names, viewport/document width, keyboard results and explicit limitations. Do not export cookies, tokens, UI screenshots, account data or real provider credentials.
 
-## Required verification
+## Measured GitHub CI verification
 
-GitHub Node plan/lint/security/SBOM/build/smoke/doctor plus new hosted Firefox and WebKit jobs, existing Chromium/WebAuthn/Chrome zoom, trusted PR ledger. If a browser check fails, fix the actual code/regression or document why it is blocked rather than disabling the job. Inspect final head SHA and both engine artifacts, update measured evidence and task records, then only merge on green gates. Confirm post-merge main CI. Production/live identity and manual accessibility remain blocked.
+- [PR CI #45185137467](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137467) and [branch CI #45185060085](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185060085) passed **170/170 Node**, zero failures, including plan, security, npm audit, CycloneDX official local schema/SBOM, build/smoke/doctor.
+- [Browser run #45185137763](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763) passed **3/3 jobs**: [Firefox 159.0](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/job/137728659775) and [WebKit 27.2](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/job/137728659809) each reported **16 checked states**, zero page-wide overflow, successful keyboard Tab and dialog Escape; existing Chromium/WebAuthn/zoom suite passed.
+- Non-sensitive [Firefox artifact #14823376757](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/artifacts/14823376757) and [WebKit artifact #14823686209](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/artifacts/14823686209) include metadata only. [Trusted ledger #45185137468](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137468) passed. PG16/Redis7 workflow **not triggered** by this path-scoped diff.
+- **Pending:** final docs-head CI, PR merge, post-merge main CI. These browser checks do **not** establish native Firefox Text Only Zoom, manual WCAG or production/provider signoff.
 
 ## Explicit limitations
 
