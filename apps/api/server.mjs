@@ -172,18 +172,17 @@ function readFixture(fixturePath) {
 function createDatabase(dbPath, fixture) {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
-  // A held source must be rejected before schema DDL, migration metadata,
-  // fixture seeding or any other SQLite write on a restart. The later
-  // BEGIN IMMEDIATE gate still protects automatic running-job requeue.
+  // Journal mode and FK enforcement are connection settings; SQLite forbids
+  // changing journal_mode or foreign_keys inside a transaction. Check an
+  // existing hold before setting them, then take the writer lock and check
+  // again *under* it before any schema/fixture mutation. A competing hold
+  // cannot commit halfway through initialization.
   try {
     rejectCiSourceRecoveryHold(db);
-  } catch (error) {
-    db.close();
-    throw error;
-  }
-  db.exec(`
-    PRAGMA foreign_keys = ON;
-    PRAGMA journal_mode = WAL;
+    db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
+    db.exec("BEGIN IMMEDIATE");
+    rejectCiSourceRecoveryHold(db);
+    db.exec(`
     CREATE TABLE IF NOT EXISTS accounts (
       id TEXT PRIMARY KEY,
       organization_id TEXT NOT NULL DEFAULT 'org-demo' REFERENCES organizations(id),
@@ -480,9 +479,7 @@ function createDatabase(dbPath, fixture) {
     const insertSnapshot = db.prepare(`INSERT INTO capability_snapshots
       (id, account_id, organization_id, profile_name, capabilities_json, source, fetched_at)
       VALUES (?, ?, 'org-demo', ?, ?, 'mock_fixture', ?)`);
-    db.exec("BEGIN IMMEDIATE");
-    try {
-      for (const account of fixture.accounts) {
+    for (const account of fixture.accounts) {
         const profileName = account.health === "attention" ? "cpanel_uapi_restricted" : "cpanel_uapi_standard";
         insertAccount.run(account.id, account.label, account.host, account.username, account.health, account.usedBytes, account.quotaBytes, fixture.metadata.fetchedAt, profileName);
         insertSnapshot.run(randomUUID(), account.id, profileName, JSON.stringify(CAPABILITY_PROFILES[profileName]), fixture.metadata.fetchedAt);
@@ -624,16 +621,17 @@ function createDatabase(dbPath, fixture) {
         JSON.stringify({ dryRun: true, evaluatedAccounts: 3, candidateRefreshIds: ["acct-northstar", "acct-copperline", "acct-fieldwork"] }),
         seededAt,
       );
-      db.exec("COMMIT");
-    } catch (error) {
-      db.exec("ROLLBACK");
-      throw error;
-    }
   }
   // Install once after schema migration/fixture seeding. Any later hold
   // created by a separate connection will deny local direct row writes too.
   installCiSourceHoldWriteGuards(db);
+  db.exec("COMMIT");
   return db;
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* no active transaction on an early failure */ }
+    db.close();
+    throw error;
+  }
 }
 
 function accountFromRow(row) {

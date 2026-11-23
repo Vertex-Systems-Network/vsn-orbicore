@@ -208,7 +208,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-durable-sqlite-source-hold.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-late-runtime-worker-hold.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-http-late-source-hold.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-atomic-sqlite-initialization.md"
       ],
       "blockers": [
         "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification.",
@@ -364,7 +365,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-http-late-source-hold.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-atomic-sqlite-initialization.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",

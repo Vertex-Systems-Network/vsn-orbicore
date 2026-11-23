@@ -1,5 +1,16 @@
 # Handoff
 
+## 2026-11-23 — ORB-004/005 atomic SQLite initializer: functional PR #80 CI passed
+
+- Code head `030f421b` [Node CI #45208581989](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208581989) **194/194 pass**, [PG16/Redis7 #45208581964](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208581964) **28/28 jobs pass**, [Chromium/Firefox/WebKit #45208582220](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208582220) **3/3 jobs pass**, [trusted ledger #45208583344](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208583344) **success**. [Test evidence](TEST_EVIDENCE/2026-11-23-orb-004-atomic-sqlite-initialization.md).
+- Initialization schema, migrations and fixture seed now commit atomically under SQLite writer lock, with recovery hold rechecked under the lock. Three file-backed tests show constraint failure and broken legacy-schema upgrade leave no partial schema, and healthy restart is idempotent. Final evidence-only docs-head CI/merge pending at this note. No task promotion or production/cross-store/offsite claim.
+
+## 2026-11-23 — ORB-004/005 SQLite full initializer atomicity under recovery hold (PR CI pending)
+
+- Local SQLite source initialization now wraps all schema DDL, additive column alterations, migration-manifest writes, fixture accounts/sites/plans and TEMP hold-guard installation in a single `BEGIN IMMEDIATE` writer lock plus guarded `COMMIT`. The recovery marker is checked before connection setup and **again under the writer lock**. Failure rolls back schema/data together and closes the connection, removing the gap between autocommit DDL and old fixture-only seed transaction.
+- Three file-backed Node regressions: invalid second-account fixture leaves no tables and allows a healthy retry; corrupt legacy schema rolls back additive columns and all new tables; clean startup and reopened source preserve exactly seven migration versions and seeded account count. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-atomic-sqlite-initialization.md). Code branch tests and PR/merge pending at note creation.
+- No independent PostgreSQL/Redis writer fencing, source-to-PG atomic migration, off-host recovery, operator-held key management or live cPanel access. ORB-004 stays `testing/integration_tested`, ORB-005 `in_progress/integration_tested`.
+
 ## 2026-11-23 — ORB-005/010 Fetch Metadata cross-site browser write gate CI measured
 
 - PR #79 functional head `6b6a89b5` passed [191/191 Node CI #45204101741](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45204101741), [28/28 PG16/Redis7 services #45204101710](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45204101710), [3/3 Chromium/Firefox/WebKit browser #45204101705](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45204101705) and [task ledger #45204101747](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45204101747). [Evidence](TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md). Final evidence-only head CI/merge pending at note write.
