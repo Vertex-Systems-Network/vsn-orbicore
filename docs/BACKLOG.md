@@ -34,7 +34,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 | ORB-017 | Production install and upgrade | P1 | testing | integration_tested | [Fail-closed deployment-readiness tests](TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md); [isolated PG16 encrypted CI restore](TEST_EVIDENCE/2026-11-23-orb-016-isolated-encrypted-restore.md) now tests role/RLS/grant parity on a separate cluster on SAME runner; independent offsite/upgrade/KMS still blocked |
 | ORB-018 | Browser dashboard accessibility | P1 | testing | browser_tested | [60 sampled Chromium 200% font-only override checks and four real CSS overflow fixes](TEST_EVIDENCE/2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md); native Firefox Text Only Zoom, WebKit, full manual WCAG and production auth/provider checks pending |
 | ORB-019 | Live cPanel sandbox | P1 | blocked | none | Requires owner-scoped disposable provider token |
-| ORB-020 | AI plan and PR task ledger governance | P1 | testing | integration_tested | [Real PR #52 opened/synchronize/edited auto-sync](TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md) passed with 20 rows; merge-base-aware stale PR fix unit-tested; independent open PR main-push fanout still pending |
+| ORB-020 | AI plan and PR task ledger governance | P1 | verified | integration_tested | [PR #52 opened/synchronize/edited and PR #53 open-PR backfill real GitHub evidence](TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md): 20 current task rows, original PR text preserved, stale PR head cannot override latest main; production, branch-protection and external approvals remain separate |
 
 ## Evidence-backed completion
 

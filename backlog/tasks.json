@@ -1052,7 +1052,7 @@
         "ORB-003",
         "ORB-008"
       ],
-      "status": "testing",
+      "status": "verified",
       "owner_agent": "codex",
       "assumptions": [
         "Trusted-base pull_request_target workflow must never execute pull-request code",
@@ -1074,7 +1074,7 @@
         "docs/BACKLOG.md",
         "docs/ROADMAP.md"
       ],
-      "commit_hash": "91dc9e9706ce9a1980a2e7f85f939c47d3f4de49",
+      "commit_hash": "f2c0787e623b16b64246c4e6f4ede8edb1563b0b",
       "evidence_paths": [
         "scripts/pr-task-table.mjs",
         "scripts/sync-pr-task-table.mjs",
@@ -1085,15 +1085,13 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md"
       ],
-      "blockers": [
-        "GitHub PR #52 opened/synchronize/edited task-table updates are live-verified in trusted-base Actions, but push/main backfill of a separate stale open PR has not yet been observed, and concurrent main/PR task merge-base fix needs postmerge functional proof. GitHub branch protection API returned 403; no enforced ruleset claim."
-      ],
-      "blocker_type": "technical",
+      "blockers": [],
+      "blocker_type": null,
       "verification_level": "integration_tested",
       "started_at": "2026-11-23",
-      "completed_at": null,
-      "verified_at": null,
-      "last_updated": "2026-11-23"
+      "completed_at": "2026-11-23T08:26:23Z",
+      "verified_at": "2026-11-23T08:26:23Z",
+      "last_updated": "2026-11-23T08:26:23Z"
     }
   ]
 }

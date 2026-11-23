@@ -1,5 +1,11 @@
 # Handoff
 
+## 2026-11-23 — ORB-020 governance closure by live main-to-old-PR backfill evidence (PR #54)
+
+- [Real independent main fanout #45138595661](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45138595661) refreshed open [PR #53](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/53) to show ORB-020 `integration_tested` from main while keeping its old Git head SHA and all 20 rows. PR #52 on-open/synchronize/edited hooks were already successfully measured; [complete proof](TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md).
+- Mark ORB-020 `verified/integration_tested` with dated record; branch status table, task docs and factual evidence are aligned. This closes only the **in-repository PR-governance task**, not production access or external-provider work. Check final PR docs head CI and postmerge main CI. PR #53 witness can then be closed/merged with its evidence to avoid stale test PRs.
+
+
 ## 2026-11-23 — ORB-020 actual GitHub PR description webhook + stale-head hardening (PR #52)
 
 - PR #52 on-open GitHub [run #45137402693](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137402693) inserted 20 task rows automatically into a previously marker-free PR body; [synchronize #45137555114](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137555114) refreshed snapshot to current head, and [edited #45137811536](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137811536) retained human description text. Independent open PR #53 also received a 20-task ledger [#45137517906](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137517906).
