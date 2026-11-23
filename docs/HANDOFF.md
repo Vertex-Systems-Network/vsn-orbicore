@@ -1,9 +1,9 @@
 # Handoff
 
-## 2026-11-23 — ORB-004 late source hold enforcement for existing mock worker (CI pending)
+## 2026-11-23 — ORB-004 late source hold enforcement for existing mock worker (functional PR CI passed)
 
 - Added a worker claim transaction sharing SQLite write lock with the CI hold marker; second guard before success/error writes and interval shutdown on marker rejection. Two new Node regressions exercise second-connection late hold and existing auto-timer with unchanged queued row/audit.
-- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-late-runtime-worker-hold.md). Await all hosted checks. No live provider/production distributed fencing, replay, release protocol or PostgreSQL auth cutover.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-late-runtime-worker-hold.md). At functional PR SHA `af23563e`, [164/164 Node #45180640568](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45180640568), [28/28 PG16/Redis7 #45180640588](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45180640588), [Chromium #45180640851](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45180640851), and [task ledger #45180640212](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45180640212) passed. Docs-head CI/merge pending. No live provider/production distributed fencing, replay, release protocol or PostgreSQL auth cutover.
 
 ## 2026-11-23 — ORB-005 scheme-bound Origin gate (functional PR CI passed)
 
