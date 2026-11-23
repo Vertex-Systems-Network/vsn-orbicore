@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "ORBICORE CI native browser zoom fixture",
+  "version": "0.0.1",
+  "description": "CI-only browser zoom control, no content injection",
+  "permissions": [
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
