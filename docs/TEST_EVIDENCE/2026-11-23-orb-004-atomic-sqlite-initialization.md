@@ -24,3 +24,14 @@ A pre-existing CI source recovery-hold marker was rejected at database open, but
 `BEGIN IMMEDIATE` serializes **SQLite writer transactions on the same file**, including a competing writer attempting to establish the marker. This does not protect independent foreign databases/PG, Redis, providers or host failures. PRAGMA journal-mode selection precedes the writer lock but is guarded by an initial marker check; a hypothetical concurrent marker in that narrow PRAGMA window is detected at the inside-transaction recheck before schema/DML. No distributed hold lease, DDL authorizer, immutable source record, off-host admin custody, production identity cutover or owner-authorized cPanel proof is added. ORB-004 remains `testing/integration_tested`; ORB-005 remains `in_progress/integration_tested`.
 
 **Hosted evidence:** pending; inspect final PR SHA, standard Node counts, scoped PostgreSQL16/Redis7 jobs, Chromium/Firefox/WebKit, trusted task ledger and post-merge main before claiming success.
+
+## Hosted PR #80 functional-head results
+
+At code+docs PR SHA `030f421b3b4ac5c3314493459bb03d276524e8c6`, GitHub Actions reported:
+
+- [Standard CI #45208581989](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208581989) **success: 194/194 Node tests** (three new atomic-initialization cases), lint/plan/security, SBOM/schema validation, npm audit, build/smoke/doctor.
+- [PostgreSQL16 / Redis7 service integration #45208581964](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208581964) **success: 28/28 disposable jobs**. These are CI service/synthetic parity tests, not production distributed recovery.
+- [Browser E2E/accessibility #45208582220](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208582220) **success: 3/3 Chromium, Firefox, WebKit jobs**.
+- [Trusted task ledger #45208583344](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45208583344) **success**, canonical 20-row status table unchanged.
+
+Documentation-only evidence commit/final-head recheck and merge remain separate pending gates at this entry's creation. This work leaves ORB-004 `testing/integration_tested` and ORB-005 `in_progress/integration_tested`; PostgreSQL identity cutover, off-host key custody and live cPanel remain unsupported.
