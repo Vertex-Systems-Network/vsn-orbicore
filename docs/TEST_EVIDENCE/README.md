@@ -1,6 +1,6 @@
 # Test evidence index
 
-- [2026-11-23 ORB-004/005/016/017 CI-only active-job Ed25519 verification across two runners](2026-11-23-orb-004-cross-runner-quarantine-attestation.md): signed PG16 fixture quarantine metadata with separate SHA/public-key pins, independent fresh-runner negative tamper tests, no re-enqueue; PR workflow CI pending.
+- [2026-11-23 ORB-004/005/016/017 CI-only active-job Ed25519 verification across two runners](2026-11-23-orb-004-cross-runner-quarantine-attestation.md): signed PG16 fixture quarantine metadata with separate SHA/public-key pins, independent fresh-runner negative tamper tests, no re-enqueue; functional head `5693e059` passed 151/151 Node, 26/26 PG16/Redis7, browser/ledger; final documentation-head CI pending.
 
 
 - [2026-11-23 ORB-004/005/016/017 signed active-quarantine source/PG reconciliation](2026-11-23-orb-004-ci-signed-quarantine-reconciliation.md): detached HMAC fixture checkpoint, read-only source-to-PG parity, forged-hash/source-drift denial and zero runtime replay; 148/148 Node and 25/25 PG16/Redis7 plus Chromium/ledger passed at functional SHA f69351fb; final docs-head CI pending.

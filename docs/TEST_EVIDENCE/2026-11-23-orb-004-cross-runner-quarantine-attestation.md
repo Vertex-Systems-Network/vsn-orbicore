@@ -1,6 +1,6 @@
 # ORB-004/005/016/017 — CI-only Ed25519 active-job quarantine evidence across runners
 
-**Date:** 2026-11-23 UTC. **State:** PR and service checks pending; no production verification or worker replay.
+**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `5693e059764867e85e386d35f200e2a225a8bbe4` passed complete hosted CI, PostgreSQL/Redis, browser and ledger; final evidence-head CI/merge pending. No production verification or worker replay.
 
 ## Scope
 
@@ -14,7 +14,7 @@
 - `.github/workflows/ci-services.yml`: existing **runner A** (PG16 quarantine service job) publishes the non-secret artifact with `if-no-files-found: error`; new `ci-active-quarantine-independent-verifier` **runner B** uses `needs` job outputs, `actions/download-artifact@v7`, Node 24 and a separate checkout, with no PostgreSQL/Redis service, secret context or provider credentials. It verifies the entire artifact and expected current workflow `GITHUB_RUN_ID` / `GITHUB_SHA` through separate pin fields, then exports redacted success/failure summary. Runs in the same trusted GitHub Actions workflow but on an isolated host.
 - `scripts/ci-verify-active-quarantine-evidence.mjs`: refuses any noncanonical JSON serialization, changed status, freshly recomputed forged row digest, missing/duplicate row, wrong signer, corrupted signature, unknown fields, changed SHA/run ID/sequence/count and a replaced public key, with zero ability to recreate operational work.
 
-## Expected GitHub evidence
+## GitHub CI acceptance and measured evidence
 
 - Standard Node CI adds three tests for Ed25519 public-key pinned valid fixture, fake-only artifact shape, header/signer/row tamper and wrong consent/noncanonical rows.
 - Hosted PG16/Redis integration workflow adds a **26th** independent verifier job, which must succeed **after** 25th producer job passes its existing serializable rollback, RLS and no-work-replayed checks. The new job's output must prove public-key and artifact checksum verification on a different runner, without any private signing material.
@@ -23,3 +23,10 @@
 ## Deliberate limitations
 
 This is **public-key attestable CI synthetic metadata**, not proof that the quarantined job ever existed on a real hosting system, not a persistent externally anchored signer, not externally controlled release attestations, not operator-approved replay/resume, and **not** cross-store or cross-runner PostgreSQL/SQLite backup recovery. Producer and verifier run within the same GitHub workflow; an adversary able to alter both workflow code and trusted job outputs could substitute both evidence and pins. Private key exists only during the producer CI process, not in KMS/HSM, and the generated public key is pinned only by same-workflow job output. No live cPanel authorization. Canonical lifecycle stays ORB-004/016/017 `testing/integration_tested` and ORB-005 `in_progress/integration_tested`.
+
+## Actual hosted verification at PR functional head `5693e059764867e85e386d35f200e2a225a8bbe4`
+
+- [Standard PR CI #45163404979](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45163404979) succeeded: **151/151 Node tests, zero failures**, including three new Ed25519 sender/receiver tests, checked along with lint, plan, security, lockfile, build and smoke gates. [Branch CI #45163350041](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45163350041) also passed.
+- [All 26 PG16/Redis7 hosted service jobs #45163404851](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45163404851) succeeded. The fixture-only **producer** retained its fail-closed SQLite tenant, no-secrets, queued/running, trigger-rollback, signed HMAC source, read-only source/PG parity and no-runtime-job/outbox checks, then signed its real two PG16 quarantined fixture rows with ephemeral Ed25519 key. [Runner B, job #137654648814](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45163404851/job/137654648814) separately downloaded the restricted metadata artifact and verified public-key fingerprint, envelope SHA, run/head binding and signature. Corrupted, foreign, missing, reordered, rehashed, extra-key and wrong-run fixtures failed closed; the independent runner never connected to PostgreSQL or Redis, never replays work and received no signing private key.
+- [Chromium E2E #45163404843](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45163404843) and [trusted PR task ledger #45163404969](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45163404969) both succeeded at the identical functional head. Canonical lifecycle counts remain **6 verified / 9 testing / 3 in_progress / 2 blocked**.
+- **Interpretation:** Verified only cross-runner authenticity of **mock metadata at a single CI workflow**, not a real-world historical job, remote rollback/backup, externally anchored private key, KMS identity, production PostgreSQL authority, cPanel authorization or zero-data-loss failover. The independent verifier is a different GitHub runner but not a distinct organization or external trust anchor.
