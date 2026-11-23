@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-005/017 loopback development and proxy header guard](2026-11-23-orb-005-017-loopback-proxy-guard.md): default listener hosts and forwarded authority regressions passed 133/133 hosted Node tests, Chromium, PG16/Redis7 and task ledger at functional head eb47845; docs-head CI pending.
+
 - [2026-11-23 ORB-005 HTTP JSON ingress guard](2026-11-23-orb-005-http-json-ingress.md): byte-limit/strict UTF-8/object validation passed 130/130 hosted Node tests and browser/PG/Redis workflows at e1133385; final docs-head merge pending.
 
 - [2026-11-23 ORB-020 real PR #52/#53 auto-sync webhook validation](2026-11-23-orb-020-live-pr-ledger-webhook.md): actual opened/synchronize/edited PR events inserted/refreshed 20-row task table; independent stale-PR main-push fanout verified and ORB-020 closed in PR #54.

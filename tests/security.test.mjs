@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import { isBlockedNetworkAddress, redactSecrets, resolveContainedPath, validateExternalEndpoint } from "../apps/api/security.mjs";
-import { createApp } from "../apps/api/server.mjs";
+import { configuredApiHost, createApp, effectiveOriginHost, isForwardedHttps, isTrustedLocalProxy } from "../apps/api/server.mjs";
+import { loadConfigFromFile } from "vite";
 import { runSupplyChainGate } from "../scripts/security-gate.mjs";
 
 test("SSRF guard rejects loopback, private, metadata, and IPv4-mapped IPv6 addresses", () => {
@@ -222,3 +223,33 @@ test("Encrypted secret references fail closed without MFA key, encrypt at rest w
 });
 
 
+
+test("ORB-005: remote forwarded host and protocol cannot override origin/cookie authority", () => {
+  const untrusted = {
+    socket: { remoteAddress: "198.51.100.77" },
+    headers: { host: "api.example.test:41751", "x-forwarded-host": "attacker.example", "x-forwarded-proto": "https" },
+  };
+  assert.equal(isTrustedLocalProxy(untrusted.socket.remoteAddress), false);
+  assert.equal(effectiveOriginHost(untrusted), "api.example.test:41751");
+  assert.equal(isForwardedHttps(untrusted), false);
+  for (const address of ["127.0.0.1", "::1", "::ffff:127.0.0.1"]) {
+    const trusted = { ...untrusted, socket: { remoteAddress: address } };
+    assert.equal(isTrustedLocalProxy(address), true);
+    assert.equal(effectiveOriginHost(trusted), "attacker.example");
+    assert.equal(isForwardedHttps(trusted), true);
+  }
+});
+
+test("ORB-005/017: API bind defaults to loopback, network binding requires explicit override", () => {
+  assert.equal(configuredApiHost({}), "127.0.0.1");
+  assert.equal(configuredApiHost({ ORBICORE_API_HOST: " " }), "127.0.0.1");
+  assert.equal(configuredApiHost({ ORBICORE_API_HOST: " 0.0.0.0 " }), "0.0.0.0");
+});
+
+test("ORB-005/017: Vite defaults to loopback with built-in allowedHosts validation", async () => {
+  const loaded = await loadConfigFromFile({ command: "serve", mode: "development" }, resolve("apps/web/vite.config.ts"));
+  assert.ok(loaded?.config);
+  assert.equal(loaded.config.server.host, "127.0.0.1");
+  assert.equal(loaded.config.server.port, 41750);
+  assert.notEqual(loaded.config.server.allowedHosts, true, "Vite DNS-rebinding protection must not be disabled");
+});

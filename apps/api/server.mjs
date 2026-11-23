@@ -47,9 +47,29 @@ function cookieValue(header, name) {
   return (header ?? "").split(";").map((part) => part.trim()).find((part) => part.startsWith(prefix))?.slice(prefix.length) ?? null;
 }
 
-function isForwardedHttps(request) {
+const LOOPBACK_PROXY_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+
+// The development Vite proxy uses loopback. Do not accept client-supplied
+// forwarded authority/protocol from arbitrary remote network clients.
+export function isTrustedLocalProxy(remoteAddress) {
+  return LOOPBACK_PROXY_ADDRESSES.has(remoteAddress);
+}
+
+export function isForwardedHttps(request) {
+  if (!isTrustedLocalProxy(request?.socket?.remoteAddress)) return false;
   const proto = request?.headers?.["x-forwarded-proto"];
   return typeof proto === "string" && proto.split(",")[0].trim().toLowerCase() === "https";
+}
+
+export function effectiveOriginHost(request) {
+  const forwardedHost = isTrustedLocalProxy(request?.socket?.remoteAddress)
+    ? request?.headers?.["x-forwarded-host"] : null;
+  return (typeof forwardedHost === "string" ? forwardedHost.split(",")[0].trim() : request?.headers?.host) ?? "";
+}
+
+export function configuredApiHost(env = process.env) {
+  const host = env.ORBICORE_API_HOST;
+  return typeof host === "string" && host.trim() ? host.trim() : "127.0.0.1";
 }
 
 function setSessionCookie(response, token, secure, request = null) {
@@ -64,9 +84,7 @@ function allowSameOrigin(request, response) {
   const origin = request.headers.origin;
   if (!origin) return true;
   try {
-    const forwardedHost = request.headers["x-forwarded-host"];
-    const expectedHost = (typeof forwardedHost === "string" ? forwardedHost.split(",")[0].trim() : request.headers.host) ?? "";
-    if (new URL(origin).host === expectedHost) return true;
+    if (new URL(origin).host === effectiveOriginHost(request)) return true;
   } catch { /* rejected below */ }
   json(response, 403, { error: "origin_denied" });
   return false;
@@ -599,7 +617,7 @@ function jobFromRow(row) {
   };
 }
 
-export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaPreviousKeys = process.env.ORBICORE_MFA_PREVIOUS_KEYS, mfaKeyId = process.env.ORBICORE_MFA_KEY_ID ?? "k1", notificationAdapter = createLocalNotificationAdapter(), mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:3000", jobRepository = null } = {}) {
+export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(here, "../../.data/orbicore.sqlite"), fixturePath = defaultFixturePath, startWorker = true, bootstrapToken: suppliedBootstrapToken, mfaKey: suppliedMfaKey, mfaPreviousKeys = process.env.ORBICORE_MFA_PREVIOUS_KEYS, mfaKeyId = process.env.ORBICORE_MFA_KEY_ID ?? "k1", notificationAdapter = createLocalNotificationAdapter(), mfaClock = () => Date.now(), webauthnRPID = process.env.ORBICORE_WEBAUTHN_RP_ID ?? "localhost", webauthnOrigin = process.env.ORBICORE_WEBAUTHN_ORIGIN ?? "http://localhost:41750", jobRepository = null } = {}) {
   // This is a test-only hybrid adapter: identity/accounts are still held in
   // SQLite and cannot be atomically committed with PostgreSQL job/audit rows.
   // Keep the legacy local worker disabled; this mode does not execute jobs.
@@ -2253,8 +2271,8 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const port = Number(process.env.ORBICORE_API_PORT ?? process.env.PORT ?? 3000);
-  const host = "0.0.0.0";
+  const port = Number(process.env.ORBICORE_API_PORT ?? process.env.PORT ?? 41751);
+  const host = configuredApiHost();
   const app = createApp();
   app.server.listen(port, host, () => {
     console.log(`ORBICORE server listening at http://${host}:${port} (synthetic data; no live connections)`);
