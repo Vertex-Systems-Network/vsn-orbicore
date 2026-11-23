@@ -124,3 +124,15 @@ html[data-theme="dark"] .error-banner{background:#311917;border-color:#5a2b26;co
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+
+/* ORB-009: readable auxiliary auth text in both themes. These selectors are
+   intentionally scoped to the auth/security surfaces, not a global palette
+   replacement; the browser CI verifies the small-text color ratios. */
+.auth-card>p,.auth-card .auth-footnote,.mfa-panel p{color:#58686c}
+html[data-theme="dark"] .auth-card>p,
+html[data-theme="dark"] .auth-card .auth-footnote,
+html[data-theme="dark"] .auth-card label,
+html[data-theme="dark"] .mfa-panel p,
+html[data-theme="dark"] .mfa-panel label,
+html[data-theme="dark"] .mfa-panel .mfa-close{color:#c6d4d8}
+html[data-theme="dark"] .auth-restart{color:#8ef1cb}
