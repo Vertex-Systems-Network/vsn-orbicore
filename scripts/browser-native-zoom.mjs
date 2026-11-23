@@ -53,6 +53,69 @@ async function assessReflow(page, label, zoom) {
   return { zoom, ...outcome };
 }
 
+
+// WCAG 2.2 SC 1.4.12's exact text-spacing override thresholds.
+// This is a temporary synthetic-browser stylesheet, never a production UI
+// toggle, a browser font-size preference, or a claim of complete WCAG coverage.
+const textSpacingOverride = [
+  "body, body * {",
+  "  line-height: 1.5 !important;",
+  "  letter-spacing: 0.12em !important;",
+  "  word-spacing: 0.16em !important;",
+  "}",
+  "body p { margin-bottom: 2em !important; }",
+].join("\n");
+
+async function measureUserTextSpacing(page, label, selectors) {
+  const injectedStyle = await page.addStyleTag({ content: textSpacingOverride });
+  try {
+    const result = await page.evaluate(({ selectors }) => {
+      const samples = selectors.map((selector) => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof HTMLElement)) {
+          throw new Error("Text spacing sample missing: " + selector);
+        }
+        const computed = getComputedStyle(element);
+        if (!element.getClientRects().length || computed.visibility === "hidden") {
+          throw new Error("Text spacing sample not rendered: " + selector);
+        }
+        const fontSize = parseFloat(computed.fontSize);
+        const lineHeight = parseFloat(computed.lineHeight);
+        const letterSpacing = parseFloat(computed.letterSpacing);
+        const wordSpacing = parseFloat(computed.wordSpacing);
+        return {
+          selector, fontSize,
+          lineHeight, letterSpacing, wordSpacing,
+          width: element.clientWidth, contentWidth: element.scrollWidth,
+          height: element.clientHeight, contentHeight: element.scrollHeight,
+          clippedX: element.scrollWidth > element.clientWidth + 2,
+          clippedY: element.scrollHeight > element.clientHeight + 2,
+        };
+      });
+      return {
+        viewportWidth: document.documentElement.clientWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        samples,
+      };
+    }, { selectors });
+    assert.ok(result.documentWidth <= result.viewportWidth + 2,
+      label + ": page-wide horizontal scrolling under WCAG text spacing override: " +
+      JSON.stringify(result));
+    for (const sample of result.samples) {
+      assert.ok(sample.lineHeight + 0.02 >= sample.fontSize * 1.5 &&
+        sample.letterSpacing + 0.02 >= sample.fontSize * 0.12 &&
+        sample.wordSpacing + 0.02 >= sample.fontSize * 0.16,
+      label + ": override thresholds not applied: " + JSON.stringify(sample));
+      assert.equal(sample.clippedX || sample.clippedY, false,
+        label + ": critical text clipped after WCAG text spacing override: " +
+        JSON.stringify(sample));
+    }
+    return result;
+  } finally {
+    await injectedStyle.evaluate((style) => style.remove());
+  }
+}
+
 try {
   context = await chromium.launchPersistentContext(profileDir, {
     channel: "chromium", headless: true,
@@ -85,6 +148,11 @@ try {
       "Keyboard focus must reach password field at zoom " + zoom);
   }
 
+  const authTextSpacingAt400 = await measureUserTextSpacing(page, "bootstrap/400%", [
+    "form.auth-card h1", "form.auth-card > p",
+    "form.auth-card label:first-of-type", "form.auth-card .auth-footnote",
+  ]);
+
   await page.locator("form.auth-card input[autocomplete='off']").fill(bootstrapToken);
   await page.locator("form.auth-card input[autocomplete='username']").fill("zoom-owner@example.test");
   await page.locator("form.auth-card input[autocomplete='new-password']").fill("zoom-browser-unique-passphrase-99");
@@ -106,6 +174,14 @@ try {
     }
   }
   await setNativeZoom(worker, baseUrl, 4);
+  const dashboardTextSpacingAt400 = [];
+  for (const section of ["Overview", "Websites", "Hosting accounts", "Jobs & activity"]) {
+    await page.getByRole("button", { name: section, exact: true }).first().click();
+    const sample = await measureUserTextSpacing(page, "dashboard/" + section + "/400%", [
+      ".page-heading h1", ".page-subtitle",
+    ]);
+    dashboardTextSpacingAt400.push({ section, ...sample });
+  }
   const sidebarAt400 = await page.locator(".sidebar").evaluate((sidebar) => ({
     availableHeight: sidebar.clientHeight,
     contentHeight: sidebar.scrollHeight,
@@ -231,6 +307,10 @@ try {
     ratios: [1, 2, 4],
     authMeasurements, dashboardMeasurements,
     keyboardAuthPasswordFocus: "passed",
+    wcagTextSpacing400Sampled: "passed",
+    wcagTextSpacingThresholds: { lineHeight: 1.5, letterSpacingEm: 0.12,
+      wordSpacingEm: 0.16, paragraphSpacingEm: 2 },
+    authTextSpacingAt400, dashboardTextSpacingAt400,
     dashboardNavigationAndPageWideReflow: "passed",
     sidebarAt400, bottomNavigationReachableAt400: "passed",
     securityDialogKeyboardAndFocusAt400: "passed", securityModalAt400,
@@ -240,6 +320,7 @@ try {
       "Synthetic localhost SQLite; no external hosting credentials or identity provider",
       "Chromium only; other browsers and OS accessibility magnification not tested",
       "Not a full WCAG/manual screen-reader/contrast/touch-target certification",
+      "Text-spacing audit samples four bootstrap/form and eight dashboard heading/subtitle text nodes only; not all content",
       "Table-local two-dimensional scrolling may remain; page-wide overflow denied",
     ],
   };
