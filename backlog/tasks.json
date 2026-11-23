@@ -363,7 +363,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-http-late-source-hold.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
@@ -621,7 +622,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-010-absolute-hostname-ssrf.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-inventory-shape.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-010-strict-cpanel-host-port.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md"
       ],
       "blockers": [
         "PR #44 113 Node tests and 242-file Git-tracked recognized source check passed at 1ebcd978, including fail-closed license UNKNOWN/missing metadata and no/mismatched lockfile. Full historical/binary secrets discovery, deployed-system SBOM, release attestation, legal review, production service/identity, backup and provider gates remain open."
