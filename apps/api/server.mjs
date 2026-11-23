@@ -110,6 +110,15 @@ export function isSameOriginRequest(request) {
   }
 }
 
+// Browsers set Sec-Fetch-Site and do not let page JavaScript choose it.
+// A same-site sibling subdomain is not the same origin and may still receive
+// SameSite cookies; reject it, as well as cross-site/invalid metadata, even
+// when a browser omits Origin. No header is retained for CLI/API clients.
+export function isAllowedFetchSite(request) {
+  const site = request?.headers?.["sec-fetch-site"];
+  return site === undefined || site === "same-origin" || site === "none";
+}
+
 function allowSameOrigin(request, response) {
   // Missing Origin is allowed for non-browser clients, as before. An
   // explicitly supplied invalid/empty Origin fails closed.
@@ -891,6 +900,11 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
     if (url.pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      // Enforce Fetch Metadata on every unsafe API method, including legacy
+      // handlers that do not individually call allowSameOrigin().
+      if (!isAllowedFetchSite(request)) {
+        return json(response, 403, { error: "fetch_metadata_denied" });
+      }
       try {
         requireActiveSource();
       } catch (error) {
