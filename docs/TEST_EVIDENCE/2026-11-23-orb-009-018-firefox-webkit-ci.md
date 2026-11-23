@@ -1,0 +1,28 @@
+# ORB-009 / ORB-018 — independent Firefox and WebKit browser regression CI
+
+**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `8477ba8358374b56062a2200cad41a2fe44f6516` passed hosted CI in all three browsers. A follow-up pins the official Playwright 1.64.1 browser image; the new container functional head `35df0a540a91f2dc812f5367a00de86d7f213183` passed all CI checks. Final docs-head CI/merge pending.
+
+## Rationale
+
+The existing mandatory hosted browser workflow exercises Chromium/WebAuthn, Chrome native page zoom 200%/400%, and a simulated 200% text-only stylesheet. These browser-engine-specific checks do not prove Firefox and WebKit behavior. The Phase 1 dashboard accessibility tasks explicitly list independent engines as an open gate.
+
+## Added coverage
+
+- A new **2-engine matrix** in `.github/workflows/ci-browser.yml`, one isolated Ubuntu runner each for Playwright Firefox and WebKit. Install only the needed browser and its system dependencies via Playwright CLI (per [official Playwright CI guidance](https://playwright.dev/docs/ci)). Preserve existing Chromium job as-is.
+- A new `scripts/browser-cross-engine.mjs` fixture driver boots independent synthetic local SQLite/API and browser sessions, checks bootstrap reflow at 1280/390/320 CSS pixels, keyboard Tab sequence to password, completes owner creation, checks Overview/Websites/Hosting accounts/Jobs & activity for document overflow at three widths, opens/closes the Authenticator setup dialog at 320 px with Escape.
+- Persist only a small, **non-sensitive** per-engine JSON record with browser version, test state names, viewport/document width, keyboard results and explicit limitations. Do not export cookies, tokens, UI screenshots, account data or real provider credentials.
+
+## Measured GitHub CI verification
+
+- [PR CI #45185137467](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137467) and [branch CI #45185060085](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185060085) passed **170/170 Node**, zero failures, including plan, security, npm audit, CycloneDX official local schema/SBOM, build/smoke/doctor.
+- [Browser run #45185137763](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763) passed **3/3 jobs**: [Firefox 159.0](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/job/137728659775) and [WebKit 27.2](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/job/137728659809) each reported **16 checked states**, zero page-wide overflow, successful keyboard Tab and dialog Escape; existing Chromium/WebAuthn/zoom suite passed.
+- Non-sensitive [Firefox artifact #14823376757](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/artifacts/14823376757) and [WebKit artifact #14823686209](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137763/artifacts/14823686209) include metadata only. [Trusted ledger #45185137468](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45185137468) passed. PG16/Redis7 workflow **not triggered** by this path-scoped diff.
+- **Pending:** final docs-head CI, PR merge, post-merge main CI. These browser checks do **not** establish native Firefox Text Only Zoom, manual WCAG or production/provider signoff.
+
+## Runner reliability follow-up (new CI head pending)
+
+A later documentation-head rerun on Ubuntu reported a long in-progress WebKit OS dependency install while Firefox/Chromium and standard CI had passed. To reduce repeated apt/network setup rather than weaken any assertion, the cross-engine **matrix only** now runs in the official `mcr.microsoft.com/playwright:v1.64.1-noble` container, with its matching pinned `playwright@1.64.1` client and a 12-minute bounded job timeout. Chromium's existing host runner, tests and fixtures remain unchanged. The [pinned-container browser run #45187415658](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415658) **passed all 3 jobs** at `35df0a54`: Firefox **157.0** [job #137736526216](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415658/job/137736526216) and WebKit **27.2** [job #137736525574](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415658/job/137736525574) each passed 16 states, reflow, keyboard Tab and dialog Escape; existing Chromium suite passed. [Container Firefox artifact #14824835671](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415658/artifacts/14824835671) and [WebKit #14824132285](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415658/artifacts/14824132285) are metadata-only. [PR CI #45187415518](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415518), [branch CI #45187406063](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187406063) and [trusted ledger #45187411419](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187411419) all passed. This follow-up preserves the former host-based Firefox 159.0 result as historical evidence but the pinned image uses Firefox 157.0. Final docs-head verification/merge pending. Containerized CI remains synthetic, not production Safari/Firefox certification.
+
+## Explicit limitations
+
+This is **not native Firefox Text Only Zoom**, a physical passkey/authenticator, real WebKit/Safari on an iPhone, keyboard screen-reader testing, full WCAG certification, manual contrast audit, touch testing, production PostgreSQL authority or live cPanel. ORB-009 and ORB-018 remain `testing/browser_tested` until independent broader requirements are met.

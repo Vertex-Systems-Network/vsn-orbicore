@@ -70,3 +70,11 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 ## 2026-11-23 — ORB-010 absolute FQDN SSRF alias checkpoint (functional PR CI passed)
 
 - [Root-dot local hostname and dotted IPv4 validation](TEST_EVIDENCE/2026-11-23-orb-010-absolute-hostname-ssrf.md) denies equivalent local domains even when the requested hostname is fully qualified. Two negative/positive Node tests passed at `bbfe770c` alongside 170/170 Node, Chromium and ledger; PG16/Redis7 not triggered and docs-head CI/merge pending. ORB-010 `in_progress/unit`, ORB-006 `blocked/none`; DNS rebinding and live provider sandbox gates still open.
+
+## 2026-11-23 — ORB-009/018 independent Firefox and WebKit browser gate (functional PR CI passed)
+
+- [Two-engine Playwright CI and synthetic UI reflow/keyboard coverage](TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md) adds Firefox/WebKit to existing Chromium job, including 320/390/1280 CSS px and security dialog. Functional SHA `8477ba83` passed 170/170 Node, Firefox 159 + WebKit 27.2 + Chromium jobs, trusted ledger; 16 states per new engine. Docs-head CI/merge pending. No native Firefox text-only zoom, physical device or manual accessibility sign-off. Both tasks remain `testing/browser_tested`.
+
+### ORB-009/018 pinned browser image follow-up (CI passed at functional head)
+
+The official Playwright `v1.64.1-noble` container avoids repeated Ubuntu apt/browser downloads for the Firefox/WebKit matrix. [Host-run evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md) is supplemented by [3/3 pinned-container browser CI #45187415658](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415658) (Firefox 157.0, WebKit 27.2, Chromium) and [PR standard CI #45187415518](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415518), both green at `35df0a54`. Final documentation-head verification/merge pending; ORB-009/018 remain `testing/browser_tested`, no native Firefox Text Only Zoom or full WCAG claim.
