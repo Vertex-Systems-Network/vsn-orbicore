@@ -14,6 +14,8 @@ Canonical machine-readable tasks: [`backlog/tasks.json`](../backlog/tasks.json).
 
 **Additional ORB-004/005 PR #78 startup gate:** existing recovery marker now checked before any SQLite schema/migration/fixture write on startup; two tests verify no new tables and no repaired migration manifest on held-source reopen. This is distinct from connection-local TEMP triggers; still no complete cross-process source or distributed worker fence. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md). No lifecycle promotion.
 
+**Current unverified PR hardening (ORB-005/010):** all unsafe local API methods now deny browser Fetch Metadata `same-site`, `cross-site`, and invalid values, even with no Origin or a spoofed matching Origin. Absent metadata from non-browser clients remains supported; the existing Origin check is preserved. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md). Task lifecycle unchanged; no full production CSRF proof.
+
 ## Status vocabulary
 
 **Automatic PR task table:** All new/reopened/edited/pushed PRs receive the complete canonical task table through a trusted-base GitHub Action. PR head backlog status overrides main baseline; all open PR tables refresh when main backlog changes. Source updates must include honest dates, evidence and blockers; no bot can auto-verify a task. See [PR governance](AUDIT/2026-11-23-ai-plan-pr-governance.md).

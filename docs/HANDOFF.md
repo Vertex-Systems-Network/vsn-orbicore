@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-005/010 unsafe API Fetch Metadata origin defense (PR CI pending)
+
+- Added fail-closed browser `Sec-Fetch-Site` validation to *all* unsafe `/api/` methods, including legacy handlers without a per-route Origin helper: `same-origin` or `none` permitted, cross-site/same-site/invalid denied with 403. Requests with no Fetch Metadata are still accepted for CLI compatibility and remain subject to existing Origin check if supplied.
+- Three Node regressions cover metadata variants, HTTP first-admin bootstrap not mutating DB on hostile metadata (even when Origin omitted/matches), and authenticated synthetic account writes. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md). PR CI/merge pending; no browser-executed manual CSRF proof, production session store/KMS or live provider claims. ORB-005/010 statuses unchanged.
+
 ## 2026-11-23 — ORB-004/005 tested PR #78 SQLite source write + startup hold
 
 - Measured head `2320b2f3`: [standard CI #45202385518](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385518) 188/188 Node passed; [PG16/Redis7 #45202385411](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385411) 28/28 service jobs passed; [Chromium/Firefox/WebKit #45202385459](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385459) 3/3 browser jobs passed; [trusted task ledger #45202513433](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202513433) passed.
