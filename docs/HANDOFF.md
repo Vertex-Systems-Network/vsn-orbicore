@@ -2,7 +2,7 @@
 
 ## 2026-11-23 — ORB-005/017 loopback bind + trusted-proxy narrowing (feature PR)
 
-- Proposed default API and Vite loopback listener bindings with documented intentional override, removal of Vite `allowedHosts: true`, and refusal to honor `X-Forwarded-Host`/`Proto` from non-loopback TCP clients. Three targeted tests cover proxy authority and default API/Vite host config. Hosted CI/evidence is pending; no production TLS, network policy or external deployment sign-off.
+- Default API/Vite loopback binds with explicit override, removal of Vite `allowedHosts: true`, and non-loopback `X-Forwarded-Host`/`Proto` rejection were validated with three focused tests. **133/133 Node tests passed** at functional SHA `eb47845` ([standard CI #45141285477](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45141285477)), plus [Chromium #45141285536](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45141285536), [PG16/Redis7 services #45141285509](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45141285509), and [PR ledger #45141285538](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45141285538). [Evidence](TEST_EVIDENCE/2026-11-23-orb-005-017-loopback-proxy-guard.md). Documentation-only head CI/merge still pending; no production TLS, network policy or external deployment sign-off.
 
 
 ## 2026-11-23 — ORB-005 normal HTTP JSON ingress hardening (feature PR)
