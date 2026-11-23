@@ -1,6 +1,6 @@
 # ORB-004/005/016/017 — durable SQLite source startup hold before automatic requeue
 
-**Date:** 2026-11-23 UTC. **State:** Hosted PR validation pending. This is a **CI-only fixture hold**, not production-grade distributed fencing, external authorization or an executable recovery mechanism.
+**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `eaa296bbdec9b6e69b316e25444e3092c55d7bd5` passed all hosted checks; final docs-head CI/merge pending. This is a **CI-only fixture hold**, not production-grade distributed fencing, external authorization or an executable recovery mechanism.
 
 ## Confirmed prior issue
 
@@ -22,4 +22,10 @@
 
 ## Hosted results
 
-Pending the exact PR head workflow run results. Do not infer production readiness from synthetic green CI.
+**Functional PR head:** `eaa296bbdec9b6e69b316e25444e3092c55d7bd5`.
+
+- [Standard CI #45176299754](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45176299754) succeeded **160/160 Node tests, zero failed**, including two new hold/consent unit tests and normal plan, lint, security, build and smoke checks.
+- [All hosted PG16/Redis7 service jobs #45176299691](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45176299691) succeeded **28/28**. The existing isolated [SQLite-v7/PG16 crash-window job](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45176299691) passed with an extra source hold fixture: an invalid signer was rejected before any hold DDL; the signed marker committed, remained after SQLite close/reopen, and prevented both disabled/enabled worker app startups, preserving `running` source and zero recovery audit, with no runtime PG job/outbox data. The original *unheld* source still auto-requeued on restart and failed stale-witness reconciliation.
+- [Chromium/browser E2E #45176299702](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45176299702) passed, as did [trusted PR ledger #45176299554](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45176299554). Existing canonical status counts remain 6 verified, 9 testing, 3 in progress, 2 blocked.
+- **Red→green note:** An earlier branch [CI #45175884594](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45175884594) failed a unit `deepStrictEqual` comparison against Node SQLite's null-prototype row despite identical field values. The test was corrected to compare exact fields, and `COUNT(*)::int` in a SQLite-only test query was corrected to `COUNT(*)` before hosting the final integration. Later [branch CI #45175994664](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45175994664) and the final functional PR head passed. The earlier failure was an assertion/test syntax issue, not demonstrated data corruption or provider action.
+- **Still unproven:** a marker written by a separate process does not stop an already-running HTTP server/worker, direct SQLite writer, or external PostgreSQL provider. The guard prevents only app startup recovery under its SQLite writer lock, and has no release protocol, external signer, tenant-approved production authority, cross-database atomicity or distributed lease fencing. No production use authorized.

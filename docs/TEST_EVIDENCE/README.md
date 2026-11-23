@@ -1,6 +1,6 @@
 # Test evidence index
 
-- [2026-11-23 ORB-004/005/016/017 durable CI-only SQLite source recovery hold](2026-11-23-orb-004-durable-sqlite-source-hold.md): signed source-fixture marker and transactional startup fail-closed protection, without live provider/worker execution; hosted PR CI pending.
+- [2026-11-23 ORB-004/005/016/017 durable CI-only SQLite source recovery hold](2026-11-23-orb-004-durable-sqlite-source-hold.md): signed source-fixture marker and transactional startup fail-closed protection, without live provider/worker execution; 160/160 Node, 28/28 PG16/Redis7 service jobs, Chromium and task ledger passed at functional SHA eaa296bb; final docs-head CI pending.
 
 
 - [2026-11-23 ORB-004/005/016/017 SQLite-v7/PG16 split-commit SIGKILL crash windows](2026-11-23-orb-004-sqlite-pg-crash-window.md): two file-backed source/restaged PG windows, restart-triggered SQLite running-job requeue, signed mismatch refusal, zero job/outbox replay; 158/158 Node, 28/28 PG16/Redis7 and task ledger passed on functional SHA bc1457a0; final documentation-head CI pending.
