@@ -47,6 +47,13 @@ async function inspectAtDoubleText(page, state, selectors) {
       const documentWidth = document.documentElement.scrollWidth;
       return {
         alteredTextElements: changes.length, viewport, documentWidth,
+        overflowOffenders: Array.from(document.querySelectorAll("body *"))
+          .filter((el) => el instanceof HTMLElement && getComputedStyle(el).display !== "none")
+          .map((el) => ({ el, box: el.getBoundingClientRect() }))
+          .filter(({ box }) => box.width > 0 && (box.right > viewport + 2 || box.left < -2))
+          .slice(0, 12)
+          .map(({ el, box }) => ({ tag: el.tagName, cls: el.className,
+            left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width) })),
         samples: samples.map(({ selector, element, originalFontPx }) => {
           const computed = getComputedStyle(element);
           const fontPx = parseFloat(computed.fontSize);
@@ -91,7 +98,7 @@ async function inspectAtDoubleText(page, state, selectors) {
     state + ": font-only fixture did not affect enough real text elements");
   assert.ok(findings.documentWidth <= findings.viewport + 2,
     state + ": doubled text caused page-wide horizontal scroll: " +
-    findings.documentWidth + " > " + findings.viewport);
+    findings.documentWidth + " > " + findings.viewport + " offenders=" + JSON.stringify(findings.overflowOffenders));
   for (const sample of findings.samples) {
     assert.ok(Math.abs(sample.doubledFontPx / sample.originalFontPx - 2) < 0.02,
       state + ": expected exactly doubled computed font: " + JSON.stringify(sample));
