@@ -12,6 +12,7 @@ import { buildDeploymentReadiness, buildDiagnosticBundle, createDatabaseBackup, 
 import { createMockCpanelAdapter, LiveCpanelAdapterBoundary } from "./cpanel-adapter.mjs";
 import { APPROVAL_MODES, buildAgencyReadinessReport, executePolicyRuleDryRun, generateAdvisoryInsights, RULE_TYPES } from "./automation.mjs";
 import { appendAuditEvent, verifyAuditChain } from "./audit.mjs";
+import { rejectCiSourceRecoveryHold } from "./sqlite-recovery-hold.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultFixturePath = resolve(here, "fixtures/cpanel-uapi-inventory.json");
@@ -630,29 +631,37 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
   }
   const fixture = readFixture(fixturePath);
   const db = createDatabase(dbPath, fixture);
-  const orphanedJobs = db.prepare("SELECT id, organization_id, account_id, requested_by FROM jobs WHERE status = 'running'").all();
-  if (orphanedJobs.length > 0) {
-    const recoveredAt = new Date().toISOString();
-    db.exec("BEGIN IMMEDIATE");
-    try {
+  // Check a durable CI-only hold in the same SQLite write transaction as
+  // normal restart recovery. A held source must never be silently requeued.
+  // Ordinary deployments without a hold keep their original recovery policy.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    rejectCiSourceRecoveryHold(db);
+    const orphanedJobs = db.prepare(
+      "SELECT id, organization_id, account_id, requested_by FROM jobs WHERE status = 'running'",
+    ).all();
+    if(orphanedJobs.length>0){
+      const recoveredAt=new Date().toISOString();
       db.prepare("UPDATE jobs SET status = 'queued', error = 'recovered_after_restart' WHERE status = 'running'").run();
-      for (const orphan of orphanedJobs) {
-        appendAuditEvent(db, {
-          organizationId: orphan.organization_id,
-          actor: orphan.requested_by ?? "system",
-          action: "job.crash_recovery",
-          targetId: orphan.id,
-          outcome: "requeued",
-          createdAt: recoveredAt,
-          details: { accountId: orphan.account_id, previousStatus: "running" },
+      for(const orphan of orphanedJobs){
+        appendAuditEvent(db,{
+          organizationId:orphan.organization_id,
+          actor:orphan.requested_by??"system",
+          action:"job.crash_recovery",
+          targetId:orphan.id,
+          outcome:"requeued",
+          createdAt:recoveredAt,
+          details:{accountId:orphan.account_id,previousStatus:"running"},
         });
       }
-      db.exec("COMMIT");
-    } catch (error) {
-      db.exec("ROLLBACK");
-      throw error;
     }
+    db.exec("COMMIT");
+  }catch(error){
+    try{db.exec("ROLLBACK");}catch{/* preserve original startup failure */}
+    db.close();
+    throw error;
   }
+
   const mockCpanelAdapter = createMockCpanelAdapter(fixture);
   const liveAdapterBoundary = new LiveCpanelAdapterBoundary();
   const packageJson = JSON.parse(readFileSync(resolve(here, "../../package.json"), "utf8"));
