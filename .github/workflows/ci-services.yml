@@ -79,6 +79,8 @@ on:
       - "tests/ci-active-quarantine-reconcile.test.mjs"
       - "tests/ci-active-job-quarantine.test.mjs"
       - "scripts/verify-postgres-ci-active-quarantine.mjs"
+      - "scripts/verify-postgres-ci-cross-store-crash.mjs"
+      - "tests/ci-cross-store-crash.test.mjs"
       - "scripts/verify-postgres-ci-terminal-history.mjs"
       - "tests/postgres-terminal-job-history.test.mjs"
       - "scripts/verify-postgres-feature-state.mjs"
@@ -543,6 +545,60 @@ jobs:
         with:
           name: orb-004-ci-backend-crash-fencing
           path: .data/ci/orb-004-ci-backend-crash-fencing.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  postgres-ci-cross-store-crash:
+    name: Disposable SQLite v7 to PG16 interrupted two-store quarantine, no replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-cross-store-crash-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-cross-store-crash-only-password
+      ORBICORE_CI_ACTIVE_QUARANTINE: "1"
+      ORBICORE_CI_CROSS_STORE_CRASH: "1"
+      ORBICORE_CI_NO_PROVIDER_CALLS: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked fixture dependencies
+        run: npm ci
+      - name: Create disposable PostgreSQL and private quarantine schema
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/ci-fixtures/011_ci_active_job_quarantine.sql
+      - name: Kill child at both PG commit windows, reopen file-backed SQLite and deny replay
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-ci-cross-store-crash.mjs > .data/ci/orb-004-cross-store-crash.json
+      - name: Upload redacted synthetic cross-store crash result
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: orb-004-ci-cross-store-crash
+          path: .data/ci/orb-004-cross-store-crash.json
           if-no-files-found: ignore
           retention-days: 14
 
