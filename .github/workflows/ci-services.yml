@@ -64,6 +64,9 @@ on:
       - "scripts/verify-postgres-synthetic-gateway.mjs"
       - "tests/postgres-synthetic-gateway.test.mjs"
       - "apps/api/postgres-feature-state.mjs"
+      - "apps/api/postgres-terminal-job-history.mjs"
+      - "scripts/verify-postgres-ci-terminal-history.mjs"
+      - "tests/postgres-terminal-job-history.test.mjs"
       - "scripts/verify-postgres-feature-state.mjs"
       - "tests/postgres-feature-state.test.mjs"
       - "scripts/verify-postgres-identity-core.mjs"
@@ -438,6 +441,61 @@ jobs:
         with:
           name: orb-005-postgres-feature-state
           path: .data/ci/orb-005-feature-state.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  postgres-ci-terminal-history:
+    name: Disposable PostgreSQL 16 terminal synthetic job ledger and atomic rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-terminal-history-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-terminal-history-only-password
+      ORBICORE_CI_SYNTHETIC_AUTH_IMPORT: "1"
+      ORBICORE_CI_TERMINAL_JOBS: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Initialize tenant RLS, feature and terminal job tables
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/003_postgres_identity_core_rls.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/004_postgres_auth_state.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/005_postgres_feature_state.sql
+      - name: Verify fail-closed terminal history copy, scoped reads and PG rollback
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-ci-terminal-history.mjs > .data/ci/orb-004-terminal-job-history.json
+      - name: Upload terminal history integration evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: orb-004-ci-terminal-history
+          path: .data/ci/orb-004-terminal-job-history.json
           if-no-files-found: ignore
           retention-days: 14
 

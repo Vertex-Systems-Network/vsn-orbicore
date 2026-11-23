@@ -1,5 +1,6 @@
 import { verifyAuditChain } from "./audit.mjs";
 import { FEATURE_TABLES, insertSyntheticFeatureState } from "./postgres-feature-state.mjs";
+import { insertSyntheticTerminalJobs, validateSyntheticTerminalJobs } from "./postgres-terminal-job-history.mjs";
 
 // Deliberately limited offline copy of a synthetic SQLite identity snapshot.
 // It does not switch HTTP authentication, migrate MFA/passkeys, or write to an
@@ -55,12 +56,13 @@ export function createPostgresIdentityCoreReader(database) {
   });
 }
 
-function verifySyntheticSource(sqlite, includeAuthState = false, includeFeatureState = false) {
+function verifySyntheticSource(sqlite, includeAuthState = false, includeFeatureState = false, includeJobHistory = false) {
   const scoped = {};
   for (const table of [
     ...SQL_TABLES,
     ...(includeAuthState ? AUTH_TABLES : []),
     ...(includeFeatureState ? FEATURE_TABLES : []),
+    ...(includeJobHistory ? ["jobs"] : []),
   ]) {
     scoped[table] = sqlite.prepare("SELECT * FROM " + table).all();
   }
@@ -68,7 +70,7 @@ function verifySyntheticSource(sqlite, includeAuthState = false, includeFeatureS
   if (scoped.users.length === 0) throw new Error("identity_snapshot_requires_bootstrapped_user");
   // Jobs and their execution history are outside this *identity core* copy.
   // Refuse a source with any jobs rather than silently orphan work at cutover.
-  if (sqlite.prepare("SELECT 1 FROM jobs LIMIT 1").get()) {
+  if (!includeJobHistory && sqlite.prepare("SELECT 1 FROM jobs LIMIT 1").get()) {
     throw new Error("source_jobs_not_supported_by_identity_core");
   }
   if (scoped.accounts.some((row) => row.source !== "mock_fixture")) {
@@ -107,6 +109,9 @@ function verifySyntheticSource(sqlite, includeAuthState = false, includeFeatureS
       }
     }
   }
+  if (includeJobHistory) {
+    validateSyntheticTerminalJobs(scoped.jobs, scoped);
+  }
   const normalizedEmails = new Set();
   for (const user of scoped.users) {
     const normalized = String(user.email ?? "").toLowerCase();
@@ -125,12 +130,16 @@ function verifySyntheticSource(sqlite, includeAuthState = false, includeFeatureS
 
 export async function copySyntheticIdentitySnapshot({
   sqlite, postgres, consent = null, includeAuthState = false,
-  includeFeatureState = false,
+  includeFeatureState = false, includeJobHistory = false,
 }) {
+  if (includeJobHistory && (!includeFeatureState || !includeAuthState)) {
+    throw new Error("terminal_history_requires_full_feature_snapshot");
+  }
   if (includeFeatureState && !includeAuthState) {
     throw new Error("feature_snapshot_requires_auth_snapshot");
   }
-  const requiredConsent = includeFeatureState ? "fixture_only_features_offline_copy"
+  const requiredConsent = includeJobHistory ? "fixture_only_terminal_jobs_offline_copy"
+    : includeFeatureState ? "fixture_only_features_offline_copy"
     : includeAuthState ? "fixture_only_auth_offline_copy"
       : "fixture_only_offline_copy";
   if (consent !== requiredConsent) {
@@ -147,7 +156,7 @@ export async function copySyntheticIdentitySnapshot({
   let connection;
   let inTransaction = false;
   try {
-    const source = verifySyntheticSource(sqlite, includeAuthState, includeFeatureState);
+    const source = verifySyntheticSource(sqlite, includeAuthState, includeFeatureState, includeJobHistory);
     connection = await postgres.connect();
     await connection.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
     inTransaction = true;
@@ -156,13 +165,14 @@ export async function copySyntheticIdentitySnapshot({
       ...SQL_TABLES,
       ...(includeAuthState ? AUTH_TABLES : []),
       ...(includeFeatureState ? FEATURE_TABLES : []),
+      ...(includeJobHistory ? ["jobs"] : []),
     ];
     // A synthetic auth snapshot must never land in a partially initialized
     // production-shaped target whose jobs, secrets or WP state it would not
     // migrate. This is stricter than the original core-only proof.
     const guardedTables = includeAuthState
-      ? [...copiedTables, "bootstrap_tokens", "jobs", "job_outbox",
-        "secret_references", ...(includeFeatureState ? [] : ["wp_site_state"])]
+      ? [...new Set([...copiedTables, "bootstrap_tokens", "jobs", "job_outbox",
+        "secret_references", ...(includeFeatureState ? [] : ["wp_site_state"])])]
       : copiedTables;
     const occupied = await connection.query(
       "SELECT " + guardedTables.map((table) =>
@@ -301,6 +311,9 @@ export async function copySyntheticIdentitySnapshot({
     if (includeFeatureState) {
       await insertSyntheticFeatureState({ client: connection, source });
     }
+    if (includeJobHistory) {
+      await insertSyntheticTerminalJobs({ client: connection, source });
+    }
     const result = await connection.query(
       "SELECT " + copiedTables.map((table) =>
         "(SELECT COUNT(*) FROM " + table + ") AS " + table,
@@ -324,8 +337,9 @@ export async function copySyntheticIdentitySnapshot({
     await connection.query("COMMIT");
     inTransaction = false;
     return Object.freeze({
-      scope: includeFeatureState ? "synthetic_feature_state_only"
-        : includeAuthState ? "synthetic_auth_state_only" : "synthetic_core_only",
+      scope: includeJobHistory ? "synthetic_terminal_job_history_only"
+        : includeFeatureState ? "synthetic_feature_state_only"
+          : includeAuthState ? "synthetic_auth_state_only" : "synthetic_core_only",
       counts, target: "postgres",
     });
   } catch (error) {
@@ -353,5 +367,17 @@ export function copySyntheticFullFeatureSnapshot({ sqlite, postgres, consent = n
   return copySyntheticIdentitySnapshot({
     sqlite, postgres, consent,
     includeAuthState: true, includeFeatureState: true,
+  });
+}
+
+/**
+ * CI-only migration checkpoint: copies full synthetic identity/MFA/features
+ * plus TERMINAL fixture job ledger; it never re-enqueues jobs or copies the
+ * Redis/Pg outbox. No production auth switch or provider calls are possible.
+ */
+export function copySyntheticTerminalJobHistorySnapshot({ sqlite, postgres, consent = null }) {
+  return copySyntheticIdentitySnapshot({
+    sqlite, postgres, consent,
+    includeAuthState: true, includeFeatureState: true, includeJobHistory: true,
   });
 }
