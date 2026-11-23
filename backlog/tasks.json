@@ -408,7 +408,8 @@
       ],
       "commit_hash": null,
       "evidence_paths": [
-        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-inventory-shape.md"
       ],
       "blockers": [
         "No sandbox account or scoped token provided"
@@ -416,7 +417,7 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-09T19:00:00Z",
+      "last_updated": "2026-11-23",
       "verification_level": "none",
       "blocker_type": "external"
     },
@@ -611,7 +612,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-010-offline-schema-ci.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-010-ipv4-mapped-ipv6-ssrf.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-010-absolute-hostname-ssrf.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-010-absolute-hostname-ssrf.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-inventory-shape.md"
       ],
       "blockers": [
         "PR #44 113 Node tests and 242-file Git-tracked recognized source check passed at 1ebcd978, including fail-closed license UNKNOWN/missing metadata and no/mismatched lockfile. Full historical/binary secrets discovery, deployed-system SBOM, release attestation, legal review, production service/identity, backup and provider gates remain open."
