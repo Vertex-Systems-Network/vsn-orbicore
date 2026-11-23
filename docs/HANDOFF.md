@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-004 late source hold enforcement for existing mock worker (CI pending)
+
+- Added a worker claim transaction sharing SQLite write lock with the CI hold marker; second guard before success/error writes and interval shutdown on marker rejection. Two new Node regressions exercise second-connection late hold and existing auto-timer with unchanged queued row/audit.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-late-runtime-worker-hold.md). Await all hosted checks. No live provider/production distributed fencing, replay, release protocol or PostgreSQL auth cutover.
+
 ## 2026-11-23 — ORB-005 scheme-bound Origin gate (functional PR CI passed)
 
 - Hardened ordinary local HTTP API `Origin` validation against cross-scheme same-host acceptance, non-serialized paths/credentials and empty values. Preserved trusted loopback forwarder and missing-Origin non-browser behavior. Added pure and real HTTP bootstrap regression asserting cross-scheme denial before any user insertion.

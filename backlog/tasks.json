@@ -205,7 +205,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-backend-crash-fencing.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-sqlite-pg-crash-window.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-durable-sqlite-source-hold.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-durable-sqlite-source-hold.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-late-runtime-worker-hold.md"
       ],
       "blockers": [
         "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification.",
@@ -217,7 +218,7 @@
       "started_at": "2026-11-22T07:10:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-23T00:00:00Z",
+      "last_updated": "2026-11-23",
       "verification_level": "integration_tested",
       "blocker_type": "technical"
     },
