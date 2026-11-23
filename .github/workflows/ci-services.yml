@@ -8,6 +8,7 @@ on:
       - "scripts/verify-service-containers.sh"
       - "scripts/verify-leased-jobs.sh"
       - "scripts/verify-postgres-ci-backend-crash-fencing.mjs"
+      - "tests/ci-backend-crash-fencing.test.mjs"
       - "scripts/verify-postgres-job-repository.mjs"
       - "scripts/verify-pg-synthetic-backup-restore.sh"
       - "scripts/verify-pg-isolated-cluster-restore.sh"
