@@ -34,13 +34,25 @@ function isBlockedIPv4(ip) {
 }
 
 function isBlockedIPv6(ip) {
-  const normalized = ip.toLowerCase();
+  // Canonicalize a *validated* IPv6 literal before any prefix check. In
+  // particular ::ffff:10.0.0.1, ::ffff:a00:1 and the fully expanded form
+  // denote the same address, but only dotted IPv4 was screened previously.
+  let normalized;
+  try {
+    normalized = new URL(`https://[${ip}]/`).hostname.slice(1, -1).toLowerCase();
+  } catch {
+    return true;
+  }
   if (normalized === "::" || normalized === "::1") return true;
   if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
   if (normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb")) return true;
-  if (normalized.startsWith("::ffff:")) {
-    const mapped = normalized.slice("::ffff:".length);
-    if (isIP(mapped) === 4) return isBlockedIPv4(mapped);
+  // WHATWG URL normalizes IPv4-mapped IPv6 into two trailing hexadecimal
+  // groups. Recover all four IPv4 octets before applying the IPv4 deny list.
+  const mapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(normalized);
+  if (mapped) {
+    const hi = Number.parseInt(mapped[1], 16);
+    const lo = Number.parseInt(mapped[2], 16);
+    return isBlockedIPv4([hi >> 8, hi & 255, lo >> 8, lo & 255].join("."));
   }
   return false;
 }

@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-010 canonical mapped IPv6 endpoint block (CI pending)
+
+- Canonicalized IPv6 literals so hex and expanded IPv4-mapped forms enter the same private/loopback/metadata IPv4 guard as dotted-quad forms. Added pure Node and `validateExternalEndpoint` tests for hex/expanded mapped-address denial plus public examples.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-010-ipv4-mapped-ipv6-ssrf.md). Pending GitHub CI and review; no live UAPI or DNS connect, external allowlist, key custody, pinning, or production release gate.
+
 ## 2026-11-23 — ORB-005 Strict cookies under loopback HTTPS (functional PR CI passed)
 
 - Made HTTPS a transport-only signal for cookie `Secure`, not a reason to change `SameSite=Strict` into `None`. Direct TLS sockets also set Secure. Local direct HTTP remains Strict/HttpOnly without false Secure.
