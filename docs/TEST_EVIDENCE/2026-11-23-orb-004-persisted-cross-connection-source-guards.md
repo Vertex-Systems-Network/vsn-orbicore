@@ -27,3 +27,14 @@ GitHub Node CI, browser jobs, path-scoped PG16/Redis7 service jobs, and trusted 
 ## Limits and scope
 
 The triggers modify the **main SQLite schema** and persist in the local mock database; this does not change the SQLite `schema_migrations` version because it is a source recovery guard, not a production data-model migration. A privileged SQLite client with DDL privileges can `DROP TRIGGER` or modify schema/files; new source tables created after the guard install remain unprotected until the next controlled initialization, which is refused if a marker already exists. This is **not** WORM, tamper-proof or adversarial file custody. It also does not fence unrelated PostgreSQL or Redis stores, provider effects, backup/restore, distributed identity, or external key/witness services. ORB-004 stays `testing/integration_tested`, ORB-005 `in_progress/integration_tested`.
+
+## Hosted PR #81 functional-head results
+
+At PR functional code+docs SHA `668bed729deed62f456754d5e4ee5692f2d5ad95`, GitHub Actions reported:
+
+- [Standard CI #45210939579](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939579) **success: 197/197 Node tests**, including persisted cross-connection hold DML, stable trigger naming and malformed-definition refusal; lint, security, SBOM/CycloneDX, dependency audit, build and smoke checks passed.
+- [PostgreSQL 16/Redis 7 integration #45210939667](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939667) **success: 28/28 disposable CI jobs**. This is a scoped synthetic service regression, not a proof of production distributed-source fencing.
+- [Browser E2E/accessibility #45210939929](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939929) **success: 3/3 Chromium, Firefox, WebKit jobs**.
+- [Trusted PR task-ledger #45210939679](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939679) **success** with the canonical 20-row task registry unchanged.
+
+The current feature still lacks DDL/drop-trigger protection, immutable external witness/key custody, cross-store PostgreSQL/Redis guarantees and real provider authorization. Final documentation-head CI and merge are separate gates pending when this evidence was added; ORB-004/005 lifecycle and verification levels are not promoted.

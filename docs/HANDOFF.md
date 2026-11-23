@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-004/005 persisted source DML guards: functional PR #81 CI green
+
+- PR #81 functional SHA `668bed72`: [standard CI #45210939579](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939579) **197/197 Node passed**, [PG16/Redis7 #45210939667](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939667) **28/28 CI jobs passed**, [browser #45210939929](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939929) **3/3 engine jobs passed**, [ledger #45210939679](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45210939679) **success**. [Evidence detail](TEST_EVIDENCE/2026-11-23-orb-004-persisted-cross-connection-source-guards.md).
+- Tests confirmed persistent guards in main SQLite schema stop ordinary DML from independent connections after the app is closed, preserve stable names on next startup when schema changes, and fail closed on a forged same-name guard. Final evidence-doc-head rerun/merge pending. This is not owner-proof source immutability, PG/Redis distributed enforcement, production auth, external/offsite recovery or live provider authorization; task lifecycle unchanged.
+
 ## 2026-11-23 — ORB-004/005 persisted SQLite source guards across connections (PR CI pending)
 
 - Replaced per-connection TEMP DML triggers with SQLite **main-schema persistent** BEFORE INSERT/UPDATE/DELETE hold checks, installed under the existing atomic initializer lock. Independent connections (including after app process closes) now fail ordinary row writes when the synthetic CI source marker exists. Trigger identities use hex UTF-8 table names, not unstable ordinal positions, and reject mismatched pre-existing definitions.
