@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-004/005 post-start source hold denies local HTTP unsafe methods (PR CI pending)
+
+- Added a 503 fail-closed gate on unsafe `/api/` methods when a CI-only SQLite source hold appears after startup, plus post-body rechecks across 30 JSON awaits, locked common transaction checks and bootstrap/session issue checks. Existing local worker marker gates remain unchanged. File-backed tests cover five denied HTTP mutations with unchanged ledgers, pre-owner bootstrap denial and a split-chunk in-flight queued job request.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-http-late-source-hold.md). Functional branch SHA `cbb10f65` passed 181/181 Node tests in [branch CI #45197103449](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45197103449); PR-final CI/merge pending. No universal in-flight async fencing, production PG/Redis, DNS or provider operations, real auth cutover, independent off-host witness or hold-release. ORB-004 stays `testing/integration_tested`, ORB-005 `in_progress/integration_tested`.
+
 ## 2026-11-23 — ORB-006/010 bounded UAPI JSON success bodies (PR CI pending)
 
 - Stopped consuming untrusted credentialed UAPI HTTP-200 bodies with unbounded `res.json()`; enforce 2 MiB declared Content-Length early denial and independent Web Stream decoded byte cap, abort/cancel on overflow. Strict UTF-8 decoding and JSON parsing now fail with redacted `invalid_uapi_response` rather than a generic transport failure. Unchanged manual redirect and 401/403 semantics.
