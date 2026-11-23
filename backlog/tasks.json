@@ -514,7 +514,7 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": "d5103e72561982d272fa36544404fe005f03cf43",
+      "commit_hash": "bcca20958b0612f0f22d9111f8b694ce93090b3e",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
@@ -526,10 +526,12 @@
         "docs/RESEARCH/2026-11-23-native-chromium-zoom-automation.md",
         "scripts/browser-native-zoom.mjs",
         "apps/web/src/ui/styles.css",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-text-spacing-400-browser.md",
+        "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md"
       ],
       "blockers": [
-        "PR #48 real Chromium native 400% security-dialog focus and scrollport evidence passed at d5103e72: six controls visible and focusable, Tab/Shift+Tab trapped, Escape returned to visible sidebar opener. 113 Node tests and prior native zoom/WebAuthn/MFA/tenant checks passed. Remaining: full manual WCAG screen reader/contrast/touch/focus-obscured review, other browsers and 200% text-only resizing, entire UI/error state matrix and production identity/provider/cluster security."
+        "PR #49 native Chromium 400% WCAG 2.2 SC 1.4.12 sampled spacing test passed at bcca2095 for 12 bootstrap/heading/subtitle text nodes and 320px no-global-overflow; computed 22px margin at 11px paragraph font recorded but not separately asserted. Prior Zoom/MFA/WebAuthn/tenant test suite remained green; 113 Node tests at first functional SHA. Remaining: full manual WCAG screen reader/contrast/touch/focus-clipping, entire text-spacing and 200% text-only resizing matrix, Firefox/WebKit, production identity/session/tenancy/provider controls."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
@@ -966,7 +968,7 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "d5103e72561982d272fa36544404fe005f03cf43",
+      "commit_hash": "bcca20958b0612f0f22d9111f8b694ce93090b3e",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
@@ -978,10 +980,12 @@
         "docs/RESEARCH/2026-11-23-native-chromium-zoom-automation.md",
         "scripts/browser-native-zoom.mjs",
         "apps/web/src/ui/styles.css",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-text-spacing-400-browser.md",
+        "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md"
       ],
       "blockers": [
-        "PR #48 real Chromium native 400% security-dialog focus and scrollport evidence passed at d5103e72: six controls visible and focusable, Tab/Shift+Tab trapped, Escape returned to visible sidebar opener. 113 Node tests and prior native zoom/WebAuthn/MFA/tenant checks passed. Remaining: full manual WCAG screen reader/contrast/touch/focus-obscured review, other browsers and 200% text-only resizing, entire UI/error state matrix and production identity/provider/cluster security."
+        "PR #49 native Chromium 400% WCAG 2.2 SC 1.4.12 sampled spacing test passed at bcca2095 for 12 bootstrap/heading/subtitle text nodes and 320px no-global-overflow; computed 22px margin at 11px paragraph font recorded but not separately asserted. Prior Zoom/MFA/WebAuthn/tenant test suite remained green; 113 Node tests at first functional SHA. Remaining: full manual WCAG screen reader/contrast/touch/focus-clipping, entire text-spacing and 200% text-only resizing matrix, Firefox/WebKit, production identity/session/tenancy/provider controls."
       ],
       "blocker_type": null,
       "verification_level": "browser_tested",

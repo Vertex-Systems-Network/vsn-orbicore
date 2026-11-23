@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-009/018 sampled WCAG 1.4.12 text spacing at real 400% zoom (PR #49)
+
+- [PR #49](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/49), functional SHA `bcca20958b0612f0f22d9111f8b694ce93090b3e`: [PR CI #45094046523](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45094046523), [branch CI #45094039359](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45094039359), and [native Chromium E2E #45094046409](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45094046409) all passed. **113 Node tests** on earlier functional SHA, browser/WebAuthn/MFA/tenant regressions green.
+- Native Chrome 400% browser zoom gives 320px CSS layout width; injected CI-only WCAG line/letter/word/paragraph spacing overrides did not clip four bootstrap text nodes or eight heading/subtitle nodes across Overview/Websites/Hosting accounts/Jobs & activity, with no global overflow. A computed 22px paragraph margin for 11px text was recorded but not asserted. No product UI code changed. [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-text-spacing-400-browser.md) and [W3C standards research](RESEARCH/2026-11-23-wcag-1412-automated-sample.md).
+- Full manual WCAG, all text/components, 200% text-only resize, other browsers, production login and provider integration remain open. ORB-009/018 stay `testing/browser_tested`; verify final docs-head and postmerge main CI.
+
+
 ## 2026-11-23 — ORB-009/018 native 400% security-dialog keyboard/focus bounds (PR #48)
 
 - [PR #48](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/48) functional SHA `d5103e72561982d272fa36544404fe005f03cf43` passed [PR CI #45092426138](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45092426138), [branch CI #45092422244](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45092422244), and [Chromium/WebAuthn/native zoom CI #45092426123](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45092426123). **113 Node tests**, full synthetic Chromium suite green.
