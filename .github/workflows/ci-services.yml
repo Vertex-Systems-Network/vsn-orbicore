@@ -80,6 +80,9 @@ on:
       - "tests/ci-active-job-quarantine.test.mjs"
       - "scripts/verify-postgres-ci-active-quarantine.mjs"
       - "scripts/verify-postgres-ci-cross-store-crash.mjs"
+      - "apps/api/sqlite-recovery-hold.mjs"
+      - "apps/api/ci-sqlite-source-recovery-hold.mjs"
+      - "tests/ci-sqlite-source-recovery-hold.test.mjs"
       - "tests/ci-cross-store-crash.test.mjs"
       - "scripts/verify-postgres-ci-terminal-history.mjs"
       - "tests/postgres-terminal-job-history.test.mjs"
@@ -574,6 +577,7 @@ jobs:
       PGPASSWORD: ci-cross-store-crash-only-password
       ORBICORE_CI_ACTIVE_QUARANTINE: "1"
       ORBICORE_CI_CROSS_STORE_CRASH: "1"
+      ORBICORE_CI_SOURCE_RECOVERY_HOLD: "1"
       ORBICORE_CI_NO_PROVIDER_CALLS: "1"
     steps:
       - uses: actions/checkout@v5
