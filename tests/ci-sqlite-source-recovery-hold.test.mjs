@@ -49,7 +49,8 @@ test("ORB-004 SQLite startup refuses any CI recovery hold before automatic reque
       const changed=resumed.db.prepare(
         "SELECT status,error FROM jobs WHERE id='ci-hold-running'",
       ).get();
-      assert.deepEqual(changed,{status:"queued",error:"recovered_after_restart"});
+      assert.equal(changed.status,"queued");
+      assert.equal(changed.error,"recovered_after_restart");
     }finally{resumed.close();}
   }finally{rmSync(folder,{force:true,recursive:true});}
 });

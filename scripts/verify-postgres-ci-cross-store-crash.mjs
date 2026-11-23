@@ -298,7 +298,7 @@ async function parentScenario() {
         sqlite:held,key:randomBytes(32),witness:heldWitness,consent,
       }),/ci_quarantine_witness_mac_mismatch/);
       const unchanged=held.prepare(
-        "SELECT COUNT(*)::int AS n FROM sqlite_master "+
+        "SELECT COUNT(*) AS n FROM sqlite_master "+
         "WHERE name='orbicore_ci_active_recovery_hold'",
       ).get();
       assert.equal(unchanged.n,0);
