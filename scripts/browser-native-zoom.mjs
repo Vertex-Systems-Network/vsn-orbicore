@@ -132,6 +132,78 @@ try {
     fullPage: true,
   });
   // Screenshot is taken after bootstrap on synthetic inventory; no token/MFA UI.
+
+  // ORB-009: native 400% zoom leaves only 320x240 CSS pixels. The security
+  // dialog must remain keyboard operable inside its own scrollport without
+  // allowing fixed sidebar/main content to hide focused modal controls.
+  const opener = page.locator(".sidebar-bottom .settings-item");
+  await opener.click();
+  const dialog = page.getByRole("dialog", { name: "Authenticator setup" });
+  await dialog.waitFor();
+  const closeButton = dialog.getByRole("button", { name: "Close security setup" });
+  assert.equal(await closeButton.evaluate((el) => document.activeElement === el), true,
+    "security dialog must autofocus its close control even at native 400% zoom");
+
+  const checkModalFocusVisible = async (control, label) => {
+    await control.focus();
+    const result = await control.evaluate((node) => {
+      const panel = node.closest(".mfa-panel");
+      const target = node.getBoundingClientRect();
+      const viewport = panel?.getBoundingClientRect();
+      const innerWidth = document.documentElement.clientWidth;
+      const innerHeight = document.documentElement.clientHeight;
+      return {
+        insidePanel: !!viewport && target.top >= viewport.top - 2 &&
+          target.bottom <= viewport.bottom + 2 &&
+          target.left >= viewport.left - 2 && target.right <= viewport.right + 2,
+        insideBrowser: target.top >= -2 && target.bottom <= innerHeight + 2 &&
+          target.left >= -2 && target.right <= innerWidth + 2,
+        active: document.activeElement === node,
+        innerWidth, innerHeight,
+        panelScrollHeight: panel?.scrollHeight ?? 0,
+        panelClientHeight: panel?.clientHeight ?? 0,
+        panelOverflow: panel ? getComputedStyle(panel).overflowY : "missing",
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+    assert.ok(result.active && result.insidePanel && result.insideBrowser,
+      label + ": focused security control must not be clipped or off-screen at native 400%: " +
+      JSON.stringify(result));
+    assert.ok(result.documentWidth <= result.innerWidth + 2,
+      label + ": security modal must not introduce page-wide horizontal overflow");
+    return result;
+  };
+  const securityModalAt400 = {
+    close: await checkModalFocusVisible(closeButton, "Close security setup"),
+    passkeyToggle: await checkModalFocusVisible(
+      dialog.getByRole("button", { name: "Add a passkey" }), "Add a passkey"),
+    enrollPassword: await checkModalFocusVisible(
+      dialog.locator("input[autocomplete='current-password']").first(), "Current password"),
+    enrollAction: await checkModalFocusVisible(
+      dialog.getByRole("button", { name: "Start enrollment" }), "Start enrollment"),
+  };
+  await dialog.getByRole("button", { name: "Add a passkey" }).click();
+  const passkeyField = dialog.locator(".passkey-setup input[autocomplete='current-password']");
+  securityModalAt400.passkeyPassword = await checkModalFocusVisible(
+    passkeyField, "Passkey confirmation input");
+  await passkeyField.fill("zoom-browser-unique-passphrase-99");
+  securityModalAt400.passkeyAction = await checkModalFocusVisible(
+    dialog.getByRole("button", { name: "Register passkey" }), "Register passkey");
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "hidden" });
+  const returnFocusAt400 = await opener.evaluate((node) => {
+    const target = node.getBoundingClientRect();
+    const scroller = node.closest(".sidebar");
+    const scrollport = scroller?.getBoundingClientRect();
+    return {
+      returned: document.activeElement === node,
+      inSidebarView: !!scrollport &&
+        target.top >= scrollport.top - 1 && target.bottom <= scrollport.bottom + 1,
+    };
+  });
+  assert.deepEqual(returnFocusAt400, { returned: true, inSidebarView: true },
+    "Escape must return keyboard focus to a visible sidebar opener at native 400%");
+
   const proof = {
     browserVerifiedNativePageZoom: true,
     method: "chrome.tabs.setZoom and chrome.tabs.getZoom (CI-only MV3 extension)",
@@ -142,6 +214,8 @@ try {
     keyboardAuthPasswordFocus: "passed",
     dashboardNavigationAndPageWideReflow: "passed",
     sidebarAt400, bottomNavigationReachableAt400: "passed",
+    securityDialogKeyboardAndFocusAt400: "passed", securityModalAt400,
+    securityDialogEscapeFocusReturnAt400: returnFocusAt400,
     knownLimitations: [
       "Synthetic localhost SQLite; no external hosting credentials or identity provider",
       "Chromium only; other browsers and OS accessibility magnification not tested",
