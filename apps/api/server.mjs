@@ -82,14 +82,27 @@ function json(response, status, data) {
 }
 
 async function readJson(request, limit = 32768) {
-  let raw = "";
+  // Bound bytes, not UTF-16 code units. Decode only after joining chunks so a
+  // multibyte UTF-8 sequence split across TCP chunks is never corrupted.
+  const chunks = [];
+  let totalBytes = 0;
   for await (const chunk of request) {
-    raw += chunk.toString("utf8");
-    if (raw.length > limit) throw Object.assign(new Error("Request body is too large."), { status: 413 });
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += bytes.byteLength;
+    if (totalBytes > limit) throw Object.assign(new Error("Request body is too large."), { status: 413 });
+    chunks.push(bytes);
   }
-  if (!raw) return {};
-  try { return JSON.parse(raw); }
+  if (totalBytes === 0) return {};
+  let raw;
+  try { raw = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, totalBytes)); }
+  catch { throw Object.assign(new Error("Request body must be valid UTF-8."), { status: 400 }); }
+  let parsed;
+  try { parsed = JSON.parse(raw); }
   catch { throw Object.assign(new Error("Request body must be valid JSON."), { status: 400 }); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw Object.assign(new Error("Request body must be a JSON object."), { status: 400 });
+  }
+  return parsed;
 }
 
 function readFixture(fixturePath) {

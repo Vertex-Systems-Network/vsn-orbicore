@@ -209,3 +209,52 @@ test("repeated invalid logins are rate limited", async () => {
   });
   assert.equal(limited.status, 429);
 });
+
+test("ORB-005: JSON ingress enforces byte-size limits, not UTF-16 string length", async () => {
+  const body = JSON.stringify({ accountId: "acct-northstar", note: "🧩".repeat(8500) });
+  assert.ok(body.length < 32768);
+  assert.ok(Buffer.byteLength(body, "utf8") > 32768);
+  const response = await api("/api/jobs/refresh", {
+    method: "POST", headers: { "content-type": "application/json" }, body,
+  });
+  assert.equal(response.status, 413);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS count FROM jobs").get().count, 0);
+});
+
+test("ORB-005: malformed UTF-8 and non-object JSON fail closed with 400", async () => {
+  const malformed = Buffer.concat([Buffer.from('{"accountId":"acct-'), Buffer.from([0xff]), Buffer.from('northstar"}')]);
+  const invalidUtf8 = await api("/api/jobs/refresh", {
+    method: "POST", headers: { "content-type": "application/json" }, body: malformed,
+  });
+  assert.equal(invalidUtf8.status, 400);
+  for (const body of ["null", "[]", "42", '"hello"', "true"]) {
+    const response = await api("/api/jobs/refresh", {
+      method: "POST", headers: { "content-type": "application/json" }, body,
+    });
+    assert.equal(response.status, 400, `unexpected status for ${body}`);
+  }
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS count FROM jobs").get().count, 0);
+});
+
+test("ORB-005: UTF-8 split across HTTP chunks preserves a password exactly", async () => {
+  const password = "secure-🧩-unicode-password-2026";
+  const body = Buffer.from(JSON.stringify({ email: "utf8@example.test", password, role: "viewer" }));
+  const splitAt = body.indexOf(Buffer.from("🧩")) + 1;
+  assert.ok(splitAt > 0);
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(body.subarray(0, splitAt));
+      controller.enqueue(body.subarray(splitAt));
+      controller.close();
+    },
+  });
+  const created = await api("/api/team/members", {
+    method: "POST", headers: { "content-type": "application/json" }, body: stream, duplex: "half",
+  });
+  assert.equal(created.status, 201);
+  const login = await api("/api/auth/login", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "utf8@example.test", password }),
+  }, null);
+  assert.equal(login.status, 200);
+});
