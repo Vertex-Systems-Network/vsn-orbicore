@@ -7,6 +7,8 @@ on:
       - "db/**"
       - "scripts/verify-service-containers.sh"
       - "scripts/verify-leased-jobs.sh"
+      - "scripts/verify-postgres-ci-backend-crash-fencing.mjs"
+      - "tests/ci-backend-crash-fencing.test.mjs"
       - "scripts/verify-postgres-job-repository.mjs"
       - "scripts/verify-pg-synthetic-backup-restore.sh"
       - "scripts/verify-pg-isolated-cluster-restore.sh"
@@ -491,6 +493,58 @@ jobs:
           path: .data/ci/orb-004-ci-independent-quarantine.json
           if-no-files-found: ignore
           retention-days: 7
+
+  postgres-ci-backend-crash-fencing:
+    name: Disposable PG16 backend SIGTERM rollback and post-commit lease fencing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbicore
+          POSTGRES_USER: orbicore
+          POSTGRES_PASSWORD: ci-backend-crash-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orbicore -d orbicore"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: orbicore
+      PGDATABASE: orbicore
+      PGPASSWORD: ci-backend-crash-only-password
+      ORBICORE_CI_PG_BACKEND_CRASH_FENCE: "1"
+      ORBICORE_CI_NO_PROVIDER_CALLS: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Initialize disposable PostgreSQL job lease and outbox schemas
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/001_postgres_job_leases.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
+      - name: Kill real PostgreSQL backends before and after claim commit, verify fencing
+        run: |
+          mkdir -p .data/ci
+          node scripts/verify-postgres-ci-backend-crash-fencing.mjs > .data/ci/orb-004-ci-backend-crash-fencing.json
+      - name: Upload non-secret CI crash and lease boundary proof
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: orb-004-ci-backend-crash-fencing
+          path: .data/ci/orb-004-ci-backend-crash-fencing.json
+          if-no-files-found: ignore
+          retention-days: 14
 
   postgres-ci-active-job-quarantine:
     name: Disposable PG16 CI-only active job quarantine without replay
