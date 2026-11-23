@@ -85,6 +85,7 @@ try {
   const queued = await created.json();
   assert.equal((await app.processNextJob()).status,"completed");
   const complete = app.db.prepare("SELECT * FROM jobs WHERE id=?").get(queued.jobId);
+  assert.equal(complete.idempotency_key,"org-demo:ci-terminal-completed");
   assert.equal(complete.requested_by,owner);
   assert.equal(complete.status,"completed");
   assert.equal(JSON.parse(complete.result_json).source,"mock_fixture");

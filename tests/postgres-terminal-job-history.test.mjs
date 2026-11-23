@@ -15,6 +15,8 @@ const job = () => ({
 
 test("ORB-004/005 terminal history accepts only closed synthetic tenant-scoped snapshots", () => {
   assert.equal(validateSyntheticTerminalJobs([job()],source).length,1);
+  assert.equal(validateSyntheticTerminalJobs([{...job(),idempotency_key:"org-ci:ci-terminal-sample"}],source).length,1,
+    "SQLite HTTP route uses a tenant-prefixed idempotency key");
   const generated = {...job(),result_json:JSON.stringify({source:"mock_fixture",live:false,accountId:"acct-ci",sites:2,fetchedAt:now})};
   assert.deepEqual(validateSyntheticTerminalJobs([generated],source)[0],JSON.parse(generated.result_json),
     "real mock worker results have no ciFixture key and must remain importable");
@@ -37,6 +39,7 @@ test("ORB-004/005 terminal history fails closed on arbitrary result payloads and
     assert.throws(()=>validateSyntheticTerminalJobs([{...job(),result_json:JSON.stringify(result)}],source),/result_not_fixture_safe/);
   }
   assert.throws(()=>validateSyntheticTerminalJobs([{...job(),idempotency_key:"live-retry-key"}],source),/unsupported_nonterminal/);
+  assert.throws(()=>validateSyntheticTerminalJobs([{...job(),idempotency_key:"other-tenant:ci-terminal-sample"}],source),/unsupported_nonterminal/);
   assert.throws(()=>validateSyntheticTerminalJobs([{...job(),result_json:"{"}],source),/result_not_fixture_safe/);
   assert.throws(()=>validateSyntheticTerminalJobs([{...job(),status:"failed",result_json:null,error:"real provider error"}],source),/failure_is_not_fixture_safe/);
 });

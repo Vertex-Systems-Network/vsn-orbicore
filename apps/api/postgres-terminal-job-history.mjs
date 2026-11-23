@@ -14,11 +14,17 @@ export function validateSyntheticTerminalJobs(jobs, source) {
   const userTenant = new Map(source.users.map((row) => [row.id, row.organization_id]));
   const resultByJob = [];
   for (const row of jobs) {
+    const key = typeof row?.idempotency_key === "string" ? row.idempotency_key : "";
+    // The real SQLite HTTP route prefixes caller idempotency keys with the
+    // authenticated tenant. Accept only this exact tenant + fixture marker,
+    // or the narrower explicitly seeded CI key; never arbitrary user tokens.
+    const marker = key.startsWith(row?.organization_id + ":")
+      ? key.slice((row.organization_id + ":").length) : key;
+    const safeKey = /^ci-terminal-[A-Za-z0-9._:-]{1,100}$/.test(marker) &&
+      (marker === key || key === row.organization_id + ":" + marker);
     if (!row || typeof row !== "object" ||
         !ID.test(row.id) || !ID.test(row.organization_id) || !ID.test(row.account_id) ||
-        row.type !== "inventory_refresh" ||
-        typeof row.idempotency_key !== "string" ||
-        !/^ci-terminal-[A-Za-z0-9._:-]{1,100}$/.test(row.idempotency_key) ||
+        row.type !== "inventory_refresh" || !safeKey ||
         (row.status !== "completed" && row.status !== "failed")) {
       throw new Error("unsupported_nonterminal_or_nonfixture_job");
     }
