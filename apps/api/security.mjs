@@ -86,8 +86,8 @@ export function validateCpanelApiHost(input) {
       input !== input.trim()) {
     return { valid: false, reason: "invalid_cpanel_host" };
   }
-  const bracketedIpv6 = /^\\[[0-9a-f:.]+\\]$/i.test(input);
-  const dnsOrIpv4 = /^[\\p{L}\\p{N}._-]+$/u.test(input);
+  const bracketedIpv6 = /^\[[0-9a-f:.]+\]$/i.test(input);
+  const dnsOrIpv4 = /^[\p{L}\p{N}._-]+$/u.test(input);
   if (!bracketedIpv6 && !dnsOrIpv4) {
     return { valid: false, reason: "invalid_cpanel_host" };
   }
