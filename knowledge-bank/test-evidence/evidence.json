@@ -466,6 +466,17 @@
       "limitations": [
         "SQLite legacy pre-v5 upgrade recovery and corrupt backup fail-closed restore-drill verified locally; production PostgreSQL upgrade path awaits ORB-016"
       ]
+    },
+    {
+      "id": "PLAN-GOV-001",
+      "test": "AI plan/status integrity and trusted-base GitHub pull request task table synchronization",
+      "status": "MOCK-TESTED",
+      "command": "npm test && npm run lint; hosted PR task-ledger GitHub Actions after merge",
+      "evidence_path": "docs/AUDIT/2026-11-23-ai-plan-pr-governance.md",
+      "limitations": [
+        "Unit test does not prove GitHub Actions pull-requests:write permissions; independent open-PR synchronization must be observed postmerge",
+        "No automatic task verification promotion and no production/provider authority implied"
+      ]
     }
   ],
   "status_note": "42 passing automated tests + security:check + smoke + doctor verify local SQLite/API/UI vertical slices across Phases 0–8 (including SHA-256 audit hash chain, interrupted job crash recovery, production deployment readiness wizard, AES-GCM encrypted secret references, and synthetic demo seeding). External live cPanel credentials, external SMTP, Chromium browser E2E (.github/workflows/ci-browser.yml), and Docker PostgreSQL/Redis containers (.github/workflows/ci-services.yml) remain unverified in this environment."
