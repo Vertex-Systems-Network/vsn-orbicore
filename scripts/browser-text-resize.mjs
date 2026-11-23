@@ -29,7 +29,7 @@ async function inspectAtDoubleText(page, state, selectors) {
     const changes = [];
     for (const element of document.querySelectorAll("body *")) {
       if (!(element instanceof HTMLElement)) continue;
-      if (!element.childNodes.some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) &&
+      if (!Array.from(element.childNodes).some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) &&
         !element.matches("input, select, textarea")) continue;
       if (getComputedStyle(element).display === "none") continue;
       const original = getComputedStyle(element).fontSize;
