@@ -155,3 +155,7 @@ html[data-theme="dark"] .auth-restart{color:#8ef1cb}
 .auth-card{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .auth-card label,.auth-card input{min-width:0}
 .auth-card input{width:100%}
+
+/* ORB-009: the first-owner button can legitimately wrap onto two lines
+   after user-requested 200% font enlargement at a 320px text viewport. */
+.auth-submit{height:auto;min-height:40px;padding:10px 12px;line-height:1.4;white-space:normal}
