@@ -34,6 +34,13 @@ async function killBackend(pid) {
   const r=await pool.query("SELECT pg_terminate_backend($1,5000) AS stopped",[pid]);
   assert.equal(r.rows[0]?.stopped,true,"test failed to terminate PG server backend");
 }
+function expectedBackendTermination(error) {
+  // Node-postgres can surface the PG FATAL code and/or a socket disconnect,
+  // depending on whether it was inside a query at the exact signal boundary.
+  return error?.code === "57P01" ||
+    ["Connection terminated unexpectedly", "Connection terminated",
+      "Connection ended unexpectedly"].includes(error?.message);
+}
 async function terminateClient(client) {
   const result=await client.query("SELECT pg_backend_pid() AS pid");
   await killBackend(result.rows[0].pid);
@@ -88,7 +95,7 @@ try {
   } finally {
     preCommit.release(true);
   }
-  assert.ok(preTerminationErrors.every(error => error?.code === "57P01"),
+  assert.ok(preTerminationErrors.every(expectedBackendTermination),
     "unexpected PostgreSQL client failure during injected termination");
   const undone=await getJob(jobA);
   assert.equal(undone.status,"queued");
@@ -116,7 +123,7 @@ try {
   } finally {
     postCommit.release(true);
   }
-  assert.ok(postTerminationErrors.every(error => error?.code === "57P01"),
+  assert.ok(postTerminationErrors.every(expectedBackendTermination),
     "unexpected PostgreSQL client failure after durable claim");
   const durable=await getJob(jobA);
   assert.equal(durable.status,"running");
