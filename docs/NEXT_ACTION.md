@@ -1,6 +1,6 @@
 # Next action
 
-**ORB-005 code checkpoint proposed:** Harden the normal HTTP JSON boundary to reject >32 KiB decoded byte bodies, malformed UTF-8 and non-object JSON, and preserve UTF-8 across stream chunks. GitHub CI is pending on the isolated PR; this is **not** a PostgreSQL authority/production credential migration or a completed ORB-005 sign-off. See [test plan](TEST_EVIDENCE/2026-11-23-orb-005-http-json-ingress.md).
+**ORB-005 hosted HTTP ingress checkpoint:** The normal HTTP JSON boundary now rejects >32 KiB UTF-8 byte bodies, malformed UTF-8 and non-object JSON, and preserves split multibyte text. At functional SHA `e1133385`, 130/130 Node tests, browser, and PostgreSQL/Redis CI passed; final docs-only PR head CI and merge still need review. This is **not** a PostgreSQL authority/production credential migration or completed ORB-005 sign-off. See [test plan](TEST_EVIDENCE/2026-11-23-orb-005-http-json-ingress.md).
 
 **ORB-020 governance gate passed:** [Real PR #52 open/synchronize/edited and independent PR #53 main-push fanout evidence](TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md) demonstrates the complete 20-task PR table and conflict-aware main-vs-stale-PR merge policy. ORB-020 is `verified/integration_tested` (not a production verification claim). Continue the **highest-priority authorized unblocked product task** from #1 below; ORB-006/019 external cPanel sandbox, SMTP provider/KMS, offsite restore, full PostgreSQL cutover, Firefox/WebKit/full WCAG remain separately open. GitHub branch-protection API still 403.
 
