@@ -193,6 +193,21 @@ try {
   await passkeyField.fill("zoom-browser-unique-passphrase-99");
   securityModalAt400.passkeyAction = await checkModalFocusVisible(
     dialog.getByRole("button", { name: "Register passkey" }), "Register passkey");
+
+  // Exercise the actual keyboard traversal at 400%, not only programmatic
+  // focus: reverse Tab from the first modal control must wrap to the last,
+  // and forward Tab must return to the close control without escaping.
+  await closeButton.focus();
+  await page.keyboard.press("Shift+Tab");
+  const reverseTabIsInsideDialog = await dialog.evaluate((node) =>
+    node.contains(document.activeElement) && document.activeElement !== node);
+  assert.equal(reverseTabIsInsideDialog, true,
+    "native 400% Shift+Tab must keep focus within the security dialog");
+  await page.keyboard.press("Tab");
+  const forwardTabWrappedToClose = await closeButton.evaluate((node) =>
+    document.activeElement === node);
+  assert.equal(forwardTabWrappedToClose, true,
+    "native 400% Tab must wrap to dialog close rather than background content");
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "hidden" });
   const returnFocusAt400 = await opener.evaluate((node) => {
@@ -219,6 +234,7 @@ try {
     dashboardNavigationAndPageWideReflow: "passed",
     sidebarAt400, bottomNavigationReachableAt400: "passed",
     securityDialogKeyboardAndFocusAt400: "passed", securityModalAt400,
+    securityDialogReverseAndForwardTabTrapAt400: "passed",
     securityDialogEscapeFocusReturnAt400: returnFocusAt400,
     knownLimitations: [
       "Synthetic localhost SQLite; no external hosting credentials or identity provider",
