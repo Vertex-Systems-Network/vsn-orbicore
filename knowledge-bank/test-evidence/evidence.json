@@ -471,11 +471,11 @@
       "id": "PLAN-GOV-001",
       "test": "AI plan/status integrity and trusted-base GitHub pull request task table synchronization",
       "status": "MOCK-TESTED",
-      "command": "npm test && npm run lint; hosted PR task-ledger GitHub Actions after merge",
-      "evidence_path": "docs/AUDIT/2026-11-23-ai-plan-pr-governance.md",
+      "command": "npm test && npm run lint; GitHub CI #45136560073 / Chromium #45136560103 / services #45136560088",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md",
       "limitations": [
-        "Unit test does not prove GitHub Actions pull-requests:write permissions; independent open-PR synchronization must be observed postmerge",
-        "No automatic task verification promotion and no production/provider authority implied"
+        "122 automated Node tests and hosted CI work; PR webhook effective write permission and trigger still need postmerge live PR proof",
+        "No automatic verification promotion; production and provider integrations remain outside scope"
       ]
     }
   ],

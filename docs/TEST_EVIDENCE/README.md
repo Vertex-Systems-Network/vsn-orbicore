@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-020 AI plan status governance, PR task ledger, npm install and GitHub action warning cleanup](2026-11-23-orb-020-plan-governance-ci.md): 122 Node tests, all 23 service CI jobs and browser CI green; live PR webhook write permission pending.
+
 - [2026-11-23 ORB-009/018 200% text-only simulation and four browser-proven CSS fixes](2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md): 60 sampled text/control checks, 3 widths, four red-to-green auth/security overflow regressions; not native Firefox text-only zoom or full WCAG.
 
 - [2026-11-23 ORB-009/018 WCAG 1.4.12 text spacing at native Chromium 400% zoom](2026-11-23-orb-009-018-text-spacing-400-browser.md): 12 sampled auth/dashboard text nodes and 320px page width passed injected line/letter/word-spacing clipping checks; sampled only, not full WCAG.

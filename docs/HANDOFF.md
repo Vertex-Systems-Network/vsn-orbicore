@@ -1,5 +1,7 @@
 # Handoff
 
+**Functional evidence:** [ORB-020 CI detail](TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md) records PR/branch CI #45136560073/#45136554911, browser #45136560103 and 23/23 service jobs #45136560088 all passed on `c4fbc372`. The deprecated Node20 action warning and esbuild install warning are absent; Node24 punycode/url.parse/experimental WebCrypto warnings remain and are not silenced. New PR sync needs real postmerge proof.
+
 ## 2026-11-23 — ORB-020 master plan audit, PR task table and supply-chain install approval
 
 - [Plan audit](AUDIT/2026-11-23-ai-plan-pr-governance.md) found contradictory verification/timestamps, outdated browser/PG/SBOM notes, stale 44-test roadmap and nested JSON array items silently not schema-validated. Updated canonical 20-task backlog, epic mapping, AI agent rules/PR template and CI plan check.

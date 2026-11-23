@@ -1074,17 +1074,18 @@
         "docs/BACKLOG.md",
         "docs/ROADMAP.md"
       ],
-      "commit_hash": null,
+      "commit_hash": "c4fbc3728bfe353b5a0fb51d635cb3ff5c28ae3e",
       "evidence_paths": [
         "scripts/pr-task-table.mjs",
         "scripts/sync-pr-task-table.mjs",
         "scripts/audit-plan.mjs",
         "tests/plan-governance.test.mjs",
         ".github/workflows/ci-pr-task-ledger.yml",
-        "docs/AUDIT/2026-11-23-ai-plan-pr-governance.md"
+        "docs/AUDIT/2026-11-23-ai-plan-pr-governance.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md"
       ],
       "blockers": [
-        "Until the new trusted-base workflow is merged to default branch and successfully exercises real open PR creation and updates, automatic PR body write permissions and idempotent delivery are not yet externally verified."
+        "Functional CI passed at c4fbc372 (122 tests, 23 service jobs, Chromium E2E). Automatic GitHub PR-body sync still requires an actual default-branch postmerge opened/synchronize/edited live PR proof and write-token permission verification; branch protection API returns 403. Do not treat unit-tested formatter as GitHub webhook verification."
       ],
       "blocker_type": "technical",
       "verification_level": "unit",
