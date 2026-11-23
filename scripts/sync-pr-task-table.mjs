@@ -1,7 +1,7 @@
 // Trusted-base GitHub Action only. NEVER checkout or execute PR head code.
 // Read the PR head's backlog JSON as untrusted data and update PR body only.
 import { readFileSync } from "node:fs";
-import { renderTaskLedger, upsertTaskLedger } from "./pr-task-table.mjs";
+import { renderTaskLedger, upsertTaskLedger, mergeTaskSnapshots } from "./pr-task-table.mjs";
 
 const token = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
@@ -64,8 +64,19 @@ for (const number of numbers) {
   let effective = baseline;
   let source = "main baseline";
   if (pull.head.repo?.full_name && pull.head.sha) {
-    effective = await loadTasks(pull.head.repo.full_name, pull.head.sha);
-    source = "PR head backlog";
+    // Compare actual immutable SHAs, not branch labels, so newer main edits
+    // appear in all open PRs without resetting PR-specific task changes.
+    const comparison = await api("/repos/" + repository + "/compare/" +
+      encodeURIComponent(pull.base.sha) + "..." +
+      encodeURIComponent(pull.head.sha));
+    const mergeBase = comparison.merge_base_commit?.sha;
+    if (!/^[a-f0-9]{40}$/.test(mergeBase ?? "")) {
+      throw new Error("Missing merge-base SHA for PR #" + number);
+    }
+    const ancestor = await loadTasks(repository, mergeBase);
+    const headTasks = await loadTasks(pull.head.repo.full_name, pull.head.sha);
+    effective = mergeTaskSnapshots(baseline, ancestor, headTasks);
+    source = "latest main + PR-specific task changes";
   }
   const table = renderTaskLedger({
     prNumber: number, title: pull.title, body: pull.body,

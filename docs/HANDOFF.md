@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-020 actual GitHub PR description webhook + stale-head hardening (PR #52)
+
+- PR #52 on-open GitHub [run #45137402693](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137402693) inserted 20 task rows automatically into a previously marker-free PR body; [synchronize #45137555114](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137555114) refreshed snapshot to current head, and [edited #45137811536](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137811536) retained human description text. Independent open PR #53 also received a 20-task ledger [#45137517906](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45137517906).
+- Identified critical stale-head bug: old open PR head JSON could mask newer main statuses. Added true Git-merge-base per-field overlay with fail-closed concurrent conflict checks (five new Node regression tests) at SHA `91dc9e97`, standard hosted CI #45138137701 green. New PR #52 docs/head CI and merged main fanout to still-open PR #53 must be verified next.
+- ORB-020 moves from `unit` to `testing/integration_tested` with measured webhook evidence, **not** to verified until main push fanout proves. [Live evidence](TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md).
+
+
 **Functional evidence:** [ORB-020 CI detail](TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md) records PR/branch CI #45136560073/#45136554911, browser #45136560103 and 23/23 service jobs #45136560088 all passed on `c4fbc372`. The deprecated Node20 action warning and esbuild install warning are absent; Node24 punycode/url.parse/experimental WebCrypto warnings remain and are not silenced. New PR sync needs real postmerge proof.
 
 ## 2026-11-23 — ORB-020 master plan audit, PR task table and supply-chain install approval

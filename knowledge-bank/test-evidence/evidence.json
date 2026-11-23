@@ -470,12 +470,12 @@
     {
       "id": "PLAN-GOV-001",
       "test": "AI plan/status integrity and trusted-base GitHub pull request task table synchronization",
-      "status": "MOCK-TESTED",
-      "command": "npm test && npm run lint; GitHub CI #45136560073 / Chromium #45136560103 / services #45136560088",
-      "evidence_path": "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md",
+      "status": "INTEGRATION-TESTED",
+      "command": "npm test; PR task ledger Actions #45137402693 #45137555114 #45137811536",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md",
       "limitations": [
-        "122 automated Node tests and hosted CI work; PR webhook effective write permission and trigger still need postmerge live PR proof",
-        "No automatic verification promotion; production and provider integrations remain outside scope"
+        "Real on-open/synchronize/edited hooks pass; main backlog fanout to another stale PR remains pending",
+        "Only owner-authorized GitHub PR metadata, no production/provider/secret access"
       ]
     }
   ],

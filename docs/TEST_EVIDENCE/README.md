@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-020 real PR #52/#53 auto-sync webhook validation](2026-11-23-orb-020-live-pr-ledger-webhook.md): actual opened/synchronize/edited PR events inserted/refreshed 20-row task table; main-push fanout pending separate proof.
+
 - [2026-11-23 ORB-020 AI plan status governance, PR task ledger, npm install and GitHub action warning cleanup](2026-11-23-orb-020-plan-governance-ci.md): 122 Node tests, all 23 service CI jobs and browser CI green; live PR webhook write permission pending.
 
 - [2026-11-23 ORB-009/018 200% text-only simulation and four browser-proven CSS fixes](2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md): 60 sampled text/control checks, 3 widths, four red-to-green auth/security overflow regressions; not native Firefox text-only zoom or full WCAG.
