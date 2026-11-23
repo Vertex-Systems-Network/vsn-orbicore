@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-006/010 fixed-port public cPanel host boundary (PR CI pending)
+
+- Added strict bare cPanel host validation before any credentialed UAPI call, preventing a `host/path` or `host?query` string from converting the intended `:2083` suffix into URL path/query and silently downgrading request authority to HTTPS port 443. Denies URL components/embedded ports/credentials and private/local aliases; canonical public host remains on HTTPS :2083 with redirect manual. Applied to mock sandbox-account creation and network-disabled boundary probe.
+- Three new Node regression cases: syntax/SSRF matrix, eight malformed hosts with zero injected transport calls + fixed-port valid request, and local authenticated HTTP rejection/acceptance. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-006-010-strict-cpanel-host-port.md). Hosted CI/PR/merge not yet verified at document-write time; no live cPanel, DNS resolution/peer pinning or owner credentials. ORB-006 remains `blocked/none`, ORB-010 `in_progress/unit`.
+
 ## 2026-11-23 — ORB-006/010 synthetic UAPI domain inventory shape safety (functional PR CI passed)
 
 - Changed only fake-injectable cPanel UAPI inventory parsing: reject 200/status:1 payloads with missing/invalid main domain, invalid optional domain lists or missing per-row domain; never return invented domain/document root/PHP values. Add `metadataComplete` to mark missing document root/PHP as unknown.
