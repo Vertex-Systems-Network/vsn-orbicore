@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Validate an npm-lockfile SBOM against authentic, byte-pinned CycloneDX 1.5 schemas.
+"""Validate an npm-lockfile SBOM against locally vendored CycloneDX 1.5 schemas.
 
-CI-only tool: no live provider, secret, or deployed runtime discovery.
-The upstream schema files are downloaded from an immutable upstream commit.
-Each payload must also match its expected Git blob SHA-1 before parsing.
+CI-only: no live provider, secret, deployed runtime or upstream schema request.
+Each immutable official schema still must match its pinned Git blob SHA-1.
 """
 from __future__ import annotations
 
@@ -12,14 +11,13 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 from jsonschema import Draft7Validator, FormatChecker
 from referencing import Registry, Resource
 
 SPEC_COMMIT = "5fee6af48d43c751dc6a5b31138f06af2b10bac5"
-SPEC_REPO = "https://raw.githubusercontent.com/CycloneDX/specification"
+SPEC_REPO = "https://github.com/CycloneDX/specification"
+PINNED_SCHEMA_DIR = Path(__file__).resolve().parent.parent / "vendor" / "cyclonedx" / "1.5"
 SCHEMA_SHA = {
     "bom-1.5.schema.json": "d9c4d08031d45ecf0c4b2f6fcac8eeb8c9e78a65",
     "spdx.schema.json": "566c4a32518c60778e55a56ccf71bf781320b279",
@@ -29,13 +27,12 @@ SCHEMA_ROOT = "http://cyclonedx.org/schema/"
 MAX_SCHEMA_BYTES = 512 * 1024
 
 
-def fetch_schema(name: str, expected_sha: str) -> dict:
-    url = f"{SPEC_REPO}/{SPEC_COMMIT}/schema/{name}"
-    request = Request(url, headers={"User-Agent": "vsn-orbicore-ci-cyclonedx-validator"})
-    with urlopen(request, timeout=25) as response:
-        data = response.read(MAX_SCHEMA_BYTES + 1)
+def load_pinned_schema(name: str, expected_sha: str) -> dict:
+    if name not in SCHEMA_SHA:
+        raise ValueError("Unrecognized CycloneDX schema reference")
+    data = (PINNED_SCHEMA_DIR / name).read_bytes()
     if len(data) > MAX_SCHEMA_BYTES:
-        raise ValueError(f"Upstream {name} schema exceeds the pinned size limit")
+        raise ValueError(f"Vendored {name} schema exceeds the pinned size limit")
     blob = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     actual_sha = hashlib.sha1(blob).hexdigest()  # Git's immutable blob object ID
     if actual_sha != expected_sha:
@@ -49,7 +46,7 @@ def fetch_schema(name: str, expected_sha: str) -> dict:
 
 
 def load_validator() -> Draft7Validator:
-    schemas = {name: fetch_schema(name, sha) for name, sha in SCHEMA_SHA.items()}
+    schemas = {name: load_pinned_schema(name, sha) for name, sha in SCHEMA_SHA.items()}
     registry = Registry()
     for schema in schemas.values():
         registry = registry.with_resource(schema["$id"], Resource.from_contents(schema))
@@ -125,6 +122,7 @@ def main() -> int:
         "schemaVersion": "1.5",
         "officialSchemaCommit": SPEC_COMMIT,
         "lockedSchemaFiles": len(SCHEMA_SHA),
+        "schemaSource": "vendored_verified_git_blobs_no_network",
         "componentCount": len(bom["components"]),
         "negativeFixturesRejected": 3,
         "deploymentScope": "npm-lockfile-only",
@@ -135,6 +133,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (ValueError, AssertionError, HTTPError, URLError, OSError, KeyError, TypeError) as error:
+    except (ValueError, AssertionError, OSError, KeyError, TypeError) as error:
         print(f"CycloneDX schema validation failed: {error}", file=sys.stderr)
         sys.exit(1)

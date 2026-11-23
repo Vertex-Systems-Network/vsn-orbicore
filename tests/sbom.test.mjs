@@ -60,3 +60,15 @@ test("ORB-010: CI runs an official-schema validation gate before distributing th
   assert.match(workflow, /jsonschema==4\.25\.1/, "validator version must be pinned");
   assert.match(workflow.slice(publish, publish + 90), /if: success\(\)/, "invalid BOM must not be published");
 });
+ 
+test("ORB-010: schema validation is checked-in and does not need upstream downloads", () => {
+  const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+  const validator = readFileSync("scripts/verify-cyclonedx-schema.py", "utf8");
+  const offline = workflow.indexOf("python -m unittest discover -s tests -p 'test_cyclonedx_schema_local.py'");
+  const official = workflow.indexOf("python scripts/verify-cyclonedx-schema.py");
+  const artifact = workflow.indexOf("name: Upload SBOM artifact");
+  assert.ok(offline >= 0 && official > offline && artifact > official);
+  assert.match(validator, /PINNED_SCHEMA_DIR/);
+  assert.doesNotMatch(validator, /urlopen|raw\\.githubusercontent\\.com/);
+  assert.match(validator, /vendored_verified_git_blobs_no_network/);
+});
