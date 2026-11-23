@@ -201,7 +201,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-005-terminal-job-history-ci.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-active-job-quarantine.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-signed-quarantine-reconciliation.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md"
       ],
       "blockers": [
         "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification.",
@@ -349,7 +350,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-005-017-sqlite-source-manifest.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-active-job-quarantine.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-signed-quarantine-reconciliation.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
@@ -899,7 +901,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-005-terminal-job-history-ci.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-active-job-quarantine.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-signed-quarantine-reconciliation.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md"
       ],
       "blockers": [
         "Disposable Compose named-volume/AOF recovery passed; read-only PostgreSQL core identity migration/RLS passes in separate hosted CI. Production write-role isolation, all SQLite v7 schema parity, full runtime identity cutover, off-host backup/restore and production HA remain unverified.",
@@ -954,7 +957,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-005-017-sqlite-source-manifest.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-active-job-quarantine.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-ci-signed-quarantine-reconciliation.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md"
       ],
       "blockers": [
         "PG login remains SQLite-authoritative; real production installer/upgrade, transactional backfill, external immutable audit, full encrypted off-host restore and human-approved cutover still required. Configuration-only readiness is now correctly blocked.",
