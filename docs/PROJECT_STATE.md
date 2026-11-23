@@ -1,5 +1,8 @@
 # Project state
 
+**New ORB-004/005/016/017 recovery-policy dry-run (PR CI pending):** CI-only policy consumes independently pinned signed synthetic quarantine metadata, marking queued work `manual_review_only` and running work `isolate_and_investigate` with no actions. All seven production gates remain unresolved, even for signed metadata or caller-supplied approval flags. Standard + hosted PR verification pending; no production replay. [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md).
+
+
 **Next ORB-004/016 synthetic independent attestation (functional PR CI passed):** New CI-only Ed25519 source/PG quarantine evidence from actual PG16 fixture workflow will be downloaded by a different runner and validated with a separately transported public-key SHA fingerprint, envelope checksum and run/commit pin. No production key custody, live job recovery, Redis event replay, cross-store atomicity or real-provider authorization. Functional PR head `5693e059` passed 151 Node tests, all 26 hosted PG16/Redis7 jobs including independent runner, Chromium and trusted ledger; final docs-head CI/merge pending. [Measured test results](TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md).
 
 

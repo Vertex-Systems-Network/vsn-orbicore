@@ -1,5 +1,8 @@
 # Test evidence index
 
+- [2026-11-23 ORB-004/005/016/017 signed quarantine non-executable recovery-policy dry-run](2026-11-23-orb-004-replay-policy-dry-run.md): manual review for queued, investigation for running, seven unfulfilled production gates, no Redis/public outbox/provider effects; hosted PR CI pending.
+
+
 - [2026-11-23 ORB-004/005/016/017 CI-only active-job Ed25519 verification across two runners](2026-11-23-orb-004-cross-runner-quarantine-attestation.md): signed PG16 fixture quarantine metadata with separate SHA/public-key pins, independent fresh-runner negative tamper tests, no re-enqueue; functional head `5693e059` passed 151/151 Node, 26/26 PG16/Redis7, browser/ledger; final documentation-head CI pending.
 
 
