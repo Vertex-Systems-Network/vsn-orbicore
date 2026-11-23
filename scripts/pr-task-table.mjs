@@ -30,6 +30,61 @@ export function extractLinkedTaskIds(source) {
   return [...new Set((String(source ?? "").match(/\bORB-\d{3}\b/g) || []))].sort();
 }
 
+
+// A stale, still-open PR must never erase newer main task statuses. Resolve the
+// PR's explicit JSON changes against its Git merge base, then apply only those
+// changes over the most recent canonical main. Concurrent edits to the same
+// field fail closed instead of inventing a status or hiding a verification.
+export function mergeTaskSnapshots(mainTasks, ancestorTasks, headTasks) {
+  const indexed = (tasks, label) => {
+    if (!Array.isArray(tasks)) throw new Error(label + ": task list missing");
+    const map = new Map();
+    for (const task of tasks) {
+      if (!task || !/^ORB-\d{3}$/.test(task.id) || map.has(task.id)) {
+        throw new Error(label + ": invalid or duplicate task ID");
+      }
+      map.set(task.id, task);
+    }
+    return map;
+  };
+  const main = indexed(mainTasks, "main");
+  const ancestor = indexed(ancestorTasks, "merge-base");
+  const head = indexed(headTasks, "PR head");
+  const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const result = new Map(main);
+  for (const [id, old] of ancestor) {
+    if (!head.has(id)) throw new Error(id + ": PR removed a canonical task");
+    if (!main.has(id)) throw new Error(id + ": current main removed an ancestor task");
+  }
+  for (const [id, task] of head) {
+    const before = ancestor.get(id);
+    const current = result.get(id);
+    if (!before) {
+      if (current && !equal(current, task)) {
+        throw new Error(id + ": conflicting newly added task in main and PR");
+      }
+      result.set(id, task);
+      continue;
+    }
+    const fields = new Set([...Object.keys(before), ...Object.keys(task)]);
+    const merged = { ...current };
+    for (const key of fields) {
+      if (equal(before[key], task[key])) continue;
+      if (key === "id") throw new Error("PR may not rewrite task ID");
+      if (!equal(before[key], current[key]) && !equal(task[key], current[key])) {
+        throw new Error(id + ": conflicting concurrent update to " + key);
+      }
+      if (key in task) merged[key] = task[key];
+      else delete merged[key];
+    }
+    result.set(id, merged);
+  }
+  if (result.size > 300 || result.size === 0) {
+    throw new Error("Merged task list missing or exceeds safe limit");
+  }
+  return [...result.values()];
+}
+
 export function renderTaskLedger({ prNumber, title, body, headSha, source, tasks, baseTasks = [] }) {
   if (!Array.isArray(tasks) || tasks.length === 0) throw new Error("Empty PR task ledger: fail closed");
   const ids = new Set();
