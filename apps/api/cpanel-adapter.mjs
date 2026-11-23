@@ -3,6 +3,10 @@ import { CAPABILITY_PROFILES, validateCpanelApiHost, validateExternalEndpoint } 
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
+// A provider-controlled success body must never be read without a byte cap.
+// This limit applies to decoded stream bytes, not only Content-Length.
+export const MAX_UAPI_RESPONSE_BYTES = 2 * 1024 * 1024;
+
 export class LiveCpanelAdapterBoundary {
   constructor({ fetchImpl = fetch, timeoutMs = 5000 } = {}) {
     this.mode = "disabled_local_prototype";
@@ -48,7 +52,43 @@ export class LiveCpanelAdapterBoundary {
       if (!res.ok) {
         return { ok: false, live: true, error: "uapi_http_error", status: res.status };
       }
-      const payload = await res.json();
+      const declaredLength = res.headers?.get("content-length");
+      if (declaredLength !== null && declaredLength !== undefined &&
+          Number(declaredLength) > MAX_UAPI_RESPONSE_BYTES) {
+        controller.abort();
+        return { ok: false, live: true, error: "uapi_response_too_large" };
+      }
+      const reader = res.body?.getReader?.();
+      if (!reader) return { ok: false, live: true, error: "invalid_uapi_response" };
+      const chunks = [];
+      let totalBytes = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!(value instanceof Uint8Array)) {
+            controller.abort();
+            return { ok: false, live: true, error: "invalid_uapi_response" };
+          }
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_UAPI_RESPONSE_BYTES) {
+            controller.abort();
+            // A malicious stream may keep sending data. Cancellation is
+            // best-effort and must not stall the error response.
+            void reader.cancel().catch(() => {});
+            return { ok: false, live: true, error: "uapi_response_too_large" };
+          }
+          chunks.push(Buffer.from(value));
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      let payload;
+      try {
+        payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, totalBytes)));
+      } catch {
+        return { ok: false, live: true, error: "invalid_uapi_response" };
+      }
       // cPanel direct /execute responses contain status/data at the top level;
       // some documented UAPI transports use a result envelope. Never accept
       // an HTTP 200 with missing/malformed UAPI success metadata as success.
