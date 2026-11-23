@@ -514,17 +514,21 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": "8b1c1ae396adaf1802cf75cb32722775005c82ec",
+      "commit_hash": "ce945a86c5739902051b3abb844b22af7543b21b",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-auth-form-accessible-errors.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-mfa-browser-error-matrix.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-auth-theme-contrast-browser.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-auth-theme-contrast-browser.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-chromium-zoom.md",
+        "docs/RESEARCH/2026-11-23-native-chromium-zoom-automation.md",
+        "scripts/browser-native-zoom.mjs",
+        "apps/web/src/ui/styles.css"
       ],
       "blockers": [
-        "PR #46 Chromium at 8b1c1ae3 passed four sampled auth helper/label/footnote/password text contrast ratios >=4.5:1 in both themes, plus existing MFA recovery, WebAuthn, tenant/permission and responsive checks; 113 Node tests also green. Remaining: actual native 200%/400% page zoom, full manual WCAG contrast/screen-reader/touch assessment, complete device/form error/state matrix and deployed provider/auth security."
+        "PR #47 hosted Chromium at ce945a86 verified native Chrome tab zoom 100/200/400% with actual 1280/640/320 CSS widths, a real 400% collapsed-sidebar offscreen navigation defect fixed, and no global horizontal overflow on auth/four dashboard sections. Standard CI 113 Node tests passed. Remaining: full manual WCAG screen-reader/contrast/touch/focus-occlusion and 200% text resize audits, all screens and browsers/device matrix, production tenant/identity/session and external provider verification."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
@@ -961,17 +965,21 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "573dda09e716ef6d5ab290df262bf7bb24879d64",
+      "commit_hash": "ce945a86c5739902051b3abb844b22af7543b21b",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
         "apps/web/src/ui/App.tsx",
         "scripts/browser-verify.mjs",
         "docs/TEST_EVIDENCE/2026-11-23-orb-018-account-site-isolation.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-018-cross-tenant-snapshot-races.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-018-cross-tenant-snapshot-races.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-chromium-zoom.md",
+        "docs/RESEARCH/2026-11-23-native-chromium-zoom-automation.md",
+        "scripts/browser-native-zoom.mjs",
+        "apps/web/src/ui/styles.css"
       ],
       "blockers": [
-        "PR #41 109 Node tests + hosted Chromium prove second independently logged-in synthetic tenant, 404 prior-tenant account-site and refresh requests, late old-session overview ignored and account removal simulated by API snapshot at 573dda09. Remaining: actual 200%/400% browser zoom, manual WCAG screen-reader/contrast/touch targets, production multi-node security/session tests, real provider approvals."
+        "PR #47 hosted Chromium at ce945a86 verified native Chrome tab zoom 100/200/400% with actual 1280/640/320 CSS widths, a real 400% collapsed-sidebar offscreen navigation defect fixed, and no global horizontal overflow on auth/four dashboard sections. Standard CI 113 Node tests passed. Remaining: full manual WCAG screen-reader/contrast/touch/focus-occlusion and 200% text resize audits, all screens and browsers/device matrix, production tenant/identity/session and external provider verification."
       ],
       "blocker_type": null,
       "verification_level": "browser_tested",

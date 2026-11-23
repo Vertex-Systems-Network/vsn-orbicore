@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-009/018 native browser 200%/400% zoom and reachable navigation (PR #47)
+
+- [PR #47](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/47) functional SHA `ce945a86c5739902051b3abb844b22af7543b21b` passed [PR CI #45090538238](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45090538238), [branch CI #45090534355](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45090534355), and [native Chromium + prior WebAuthn browser #45090538186](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45090538186). **113 Node tests**; all reflow and native 100/200/400% zoom states succeeded; original browser/MFA/tenant checks still green.
+- Real `chrome.tabs.setZoom/getZoom` (not viewport proxy) measured 1280/640/320 CSS px at 100/200/400% respectively; no document-wide horizontal overflow for auth and four dashboard sections. Initial [browser failure #45090329040](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45090329040) found the bottom fixed-sidebar link unreachable at 400%; CSS scrolling fix now proves the bottom nav link visible and clickable in a sidebar with 240px available height and 651px content height. [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-native-chromium-zoom.md) and [official-source research](RESEARCH/2026-11-23-native-chromium-zoom-automation.md).
+- ORB-009 and ORB-018 remain `testing/browser_tested`: other browsers, full manual WCAG, provider auth/backup and production multi-node tenancy are not proven. Verify final docs-head and postmerge `main` CI.
+
+
 ## 2026-11-23 — ORB-009 sampled light/dark authentication contrast CI (PR #46)
 
 - [PR #46](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/46) functional SHA `8b1c1ae396adaf1802cf75cb32722775005c82ec` passed [PR CI #45089326030](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45089326030), [branch CI #45089320285](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45089320285) and [Chromium #45089326005](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45089326005). 113 Node tests; all four sampled normal-text auth roles exceeded 4.5:1 in both themes, actual ratios in [evidence](TEST_EVIDENCE/2026-11-23-orb-009-auth-theme-contrast-browser.md).

@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-009/018 native Chromium 200%/400% zoom and scrollable collapsed sidebar](2026-11-23-orb-009-018-native-chromium-zoom.md): real tab zoom, measured 1280/640/320 px, 400% offscreen Jobs link fixed, no page-wide overflow for sampled dashboard screens; not full WCAG.
+
 - [2026-11-23 ORB-009 light/dark sign-in computed-color contrast](2026-11-23-orb-009-auth-theme-contrast-browser.md): four normal-text roles checked per theme at 4.5:1; does not certify full WCAG.
 
 - [2026-11-23 ORB-009 browser MFA real wrong code, simulated 429/503/expired challenge and one-time recovery](2026-11-23-orb-009-mfa-browser-error-matrix.md): two synthetic Chromium sessions, TOTP enroll UI, code attribution and replay rejection; no real provider or manual WCAG claim.
