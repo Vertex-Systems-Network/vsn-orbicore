@@ -90,6 +90,7 @@ async function measureUserTextSpacing(page, label, selectors) {
           height: element.clientHeight, contentHeight: element.scrollHeight,
           clippedX: element.scrollWidth > element.clientWidth + 2,
           clippedY: element.scrollHeight > element.clientHeight + 2,
+          paragraphBottomSpacing: element.tagName === "P" ? parseFloat(computed.marginBottom) : null,
         };
       });
       return {
