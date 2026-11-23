@@ -1,5 +1,8 @@
 # Test evidence index
 
+- [2026-11-23 ORB-004/016/017 disposable PostgreSQL16 backend termination and lease fencing](2026-11-23-orb-004-backend-crash-fencing.md): true PG backend kill before/after commit, atomic rollback, lease recovery and stale-token denial, no provider effects; PR CI pending.
+
+
 - [2026-11-23 ORB-004/005/016/017 signed quarantine non-executable recovery-policy dry-run](2026-11-23-orb-004-replay-policy-dry-run.md): manual review for queued, investigation for running, seven unfulfilled production gates, no Redis/public outbox/provider effects; 154/154 Node and all 26 PG16/Redis7 service jobs, Chromium and ledger passed on functional head 0c47b0ec; final docs-head CI pending.
 
 

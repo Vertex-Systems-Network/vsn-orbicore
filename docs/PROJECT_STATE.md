@@ -1,5 +1,8 @@
 # Project state
 
+**New ORB-004/016/017 real PostgreSQL backend termination CI checkpoint (PR verification pending):** Dedicated disposable PG16 job tests killed transaction before COMMIT (atomic rollback), killed backend after COMMIT (durable lease), lease expiry + fresh token fencing, cross-tenant denial, single terminal completion and exhausted attempts without Redis/provider calls. Two Node tests guard GitHub Actions-only opt-ins. Not a source SQLite cross-store crash recovery or real worker cutover. [Test plan](TEST_EVIDENCE/2026-11-23-orb-004-backend-crash-fencing.md).
+
+
 **New ORB-004/005/016/017 recovery-policy dry-run (functional PR CI passed):** CI-only policy consumes independently pinned signed synthetic quarantine metadata, marking queued work `manual_review_only` and running work `isolate_and_investigate` with no actions. All seven production gates remain unresolved, even for signed metadata or caller-supplied approval flags. At functional SHA `0c47b0ec`, 154 Node tests, all 26 PG16/Redis7 jobs, Chromium and ledger passed; final docs-head CI/merge pending; no production replay. [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md).
 
 
