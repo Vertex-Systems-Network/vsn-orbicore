@@ -5,10 +5,9 @@ export default defineConfig({
   root: new URL(".", import.meta.url).pathname,
   plugins: [react()],
   server: {
-    host: "0.0.0.0",
-    port: Number(process.env.ORBICORE_WEB_PORT ?? 3000),
+    host: process.env.ORBICORE_WEB_HOST?.trim() || "127.0.0.1",
+    port: Number(process.env.ORBICORE_WEB_PORT ?? 41750),
     strictPort: true,
-    allowedHosts: true,
     proxy: {
       "/api": {
         target: `http://127.0.0.1:${process.env.ORBICORE_API_PORT ?? 41751}`,

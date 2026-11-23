@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-005/017 loopback bind + trusted-proxy narrowing (feature PR)
+
+- Proposed default API and Vite loopback listener bindings with documented intentional override, removal of Vite `allowedHosts: true`, and refusal to honor `X-Forwarded-Host`/`Proto` from non-loopback TCP clients. Three targeted tests cover proxy authority and default API/Vite host config. Hosted CI/evidence is pending; no production TLS, network policy or external deployment sign-off.
+
+
 ## 2026-11-23 — ORB-005 normal HTTP JSON ingress hardening (feature PR)
 
 - Code and three regression tests for byte-counted request limits, strict UTF-8, JSON-object-only API bodies and split-multibyte Unicode password preservation passed **130/130** hosted Node tests at `e1133385` ([CI #45140543854](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140543854)); [Chromium #45140543837](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140543837), [23-job PostgreSQL/Redis #45140543889](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140543889) and [PR task ledger #45140544078](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140544078) also completed success. [Full bounded evidence](TEST_EVIDENCE/2026-11-23-orb-005-http-json-ingress.md). Final docs-head check and merge remain. No provider/account access, credential migration, production secrets or task lifecycle promotion is claimed.
