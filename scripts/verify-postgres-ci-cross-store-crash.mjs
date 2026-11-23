@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { Pool } from "pg";
 import { createApp } from "../apps/api/server.mjs";
+import { establishCiSyntheticSourceRecoveryHold } from "../apps/api/ci-sqlite-source-recovery-hold.mjs";
 import { stageSyntheticActiveJobQuarantine } from "../apps/api/ci-active-job-quarantine.mjs";
 import {
   createSyntheticActiveQuarantineWitness,
@@ -281,6 +282,59 @@ async function parentScenario() {
     }finally{
       sqlite=null;restarted.close();
     }
+
+    // An explicit CI fixture recovery hold is committed in source SQLite
+    // before any later app startup. Unlike the unfenced source above, this
+    // protects the original running row against createApp's auto-requeue.
+    const heldPath=join(scratch,"held-source-v7.sqlite");
+    const heldOriginal=createFixture(heldPath);
+    const held=openSqlite(heldPath);
+    const heldKey=randomBytes(32);
+    try {
+      const heldWitness=createSyntheticActiveQuarantineWitness({
+        sqlite:held,key:heldKey,consent,
+      });
+      assert.throws(()=>establishCiSyntheticSourceRecoveryHold({
+        sqlite:held,key:randomBytes(32),witness:heldWitness,consent,
+      }),/ci_quarantine_witness_mac_mismatch/);
+      const unchanged=held.prepare(
+        "SELECT COUNT(*) AS n FROM sqlite_master "+
+        "WHERE name='orbicore_ci_active_recovery_hold'",
+      ).get();
+      assert.equal(unchanged.n,0);
+      const established=establishCiSyntheticSourceRecoveryHold({
+        sqlite:held,witness:heldWitness,key:heldKey,consent,
+      });
+      assert.equal(established.protectedRows,2);
+      assert.equal(established.executable,false);
+      assert.equal(established.releaseSupported,false);
+      assert.equal(established.replayAuthorized,false);
+      assert.deepEqual(originalJobRows(held),heldOriginal);
+      assert.throws(()=>establishCiSyntheticSourceRecoveryHold({
+        sqlite:held,witness:heldWitness,key:heldKey,consent,
+      }),/ci_sqlite_source_recovery_hold_manual_review_required/);
+    }finally{held.close();}
+    for(const startWorker of [false,true]){
+      assert.throws(()=>createApp({
+        dbPath:heldPath,startWorker,bootstrapToken:"ci-not-a-production-token",
+      }),/ci_sqlite_source_recovery_hold_manual_review_required/,
+      "durable marker must reject app startup with or without worker enabled");
+    }
+    const reopened=openSqlite(heldPath);
+    try {
+      assert.deepEqual(originalJobRows(reopened),heldOriginal,
+        "hold prevents automatic running-to-queued transition after restart");
+      const marker=reopened.prepare(
+        "SELECT scope,row_count FROM orbicore_ci_active_recovery_hold WHERE slot=1",
+      ).get();
+      assert.equal(marker.row_count,2);
+      assert.equal(marker.scope,consent);
+      assert.equal(reopened.prepare(
+        "SELECT COUNT(*) AS n FROM audit_events WHERE action='job.crash_recovery'",
+      ).get().n,0);
+    }finally{reopened.close();}
+    assert.equal(await quarantineCount(pg),2);
+    await assertNoRuntimeJobWrites(pg);
     console.log(JSON.stringify({
       tasks:["ORB-004","ORB-005","ORB-016","ORB-017"],
       scope:"ci_only_sqlite_v7_pg16_cross_store_crash_windows",
@@ -292,6 +346,10 @@ async function parentScenario() {
       persistentSourceDriftDeniedBeforePg:true,
       sqliteStartupRunningJobRequeued:true,
       recoveredJobRequarantineDenied:true,
+      durableCiSqliteHoldCommitted:true,staleSignerRejectedBeforeMarker:true,
+      appStartupWithOrWithoutWorkerDenied:true,
+      originalRunningSourceRowPreservedUnderHold:true,
+      noAutomaticHoldRelease:true,
       publicJobs:0,publicOutbox:0,providerCalls:0,redisSignals:0,
       runtimeReplayAuthorized:false,crossStoreAtomicCommitProven:false,
       productionUpgradeReady:false,
