@@ -146,3 +146,26 @@ html[data-theme="dark"] .auth-restart{color:#8ef1cb}
   .sidebar .primary-nav{flex:0 0 auto}
   .sidebar .sidebar-bottom{flex-shrink:0}
 }
+
+/* ORB-009 / WCAG 1.4.4: when readers increase text independently of
+   browser page zoom, the grid's implicit min-content column must not enlarge
+   the entire auth screen. Keep form/labels/inputs within the viewport while
+   allowing explanatory text and long field labels to wrap. */
+.auth-screen{grid-template-columns:minmax(0,1fr)}
+.auth-card{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.auth-card label,.auth-card input{min-width:0}
+.auth-card input{width:100%}
+
+/* ORB-009: the first-owner button can legitimately wrap onto two lines
+   after user-requested 200% font enlargement at a 320px text viewport. */
+.auth-submit{height:auto;min-height:40px;padding:10px 12px;line-height:1.4;white-space:normal}
+
+/* At narrow widths a doubled 22px security heading becomes 44px; permit
+   long nonbreaking words to wrap instead of overflowing the dialog. */
+.mfa-panel{min-width:0;overflow-wrap:anywhere}
+
+/* A text-only 200% font override increases the intrinsic min-content size
+   of password inputs; keep the security dialog's grid column and its field
+   below the available 222px content width rather than forcing horizontal scroll. */
+.mfa-panel label{min-width:0;grid-template-columns:minmax(0,1fr)}
+.mfa-panel input{min-width:0;width:100%}

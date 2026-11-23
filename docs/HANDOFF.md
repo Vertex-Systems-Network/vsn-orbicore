@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-009/018 simulated font-only 200% resize and browser-proven fixes (PR #50)
+
+- [PR #50](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/50) at functional SHA `969fc6312d4f75b1bf1d4aa0c99114956a72b699`: [branch CI #45099384272](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45099384272), [PR CI #45099390177](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45099390177) and [Chromium + existing WebAuthn/native zoom #45099390144](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45099390144) **passed**, including **113 Node tests**.
+- A synchronous user-style simulation doubles real computed text font sizes without changing browser page zoom. 60 samples across 3 bootstrap/12 dashboard/2 modal states, width 1280/390/320px. Red browser CI exposed four **actual CSS failures** (390px auth width445; 320px 38px button vs 53px text; 302px heading in 222px modal; 526px password input in 222px panel), all fixed and green in latest CI. The first failed script run was a NodeList test-code mistake, not product behavior.
+- [Evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md) and [W3C/MDN methodology](RESEARCH/2026-11-23-wcag-144-font-only-resize-method.md). **Remaining:** genuine Firefox text-only zoom, WebKit, full manual WCAG/assistive tech, all dynamic screens and production provider/identity controls. Keep ORB-009 and ORB-018 `testing/browser_tested`; verify final docs-head and postmerge main CI.
+
+
 ## 2026-11-23 — ORB-009/018 sampled WCAG 1.4.12 text spacing at real 400% zoom (PR #49)
 
 - [PR #49](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/49), functional SHA `bcca20958b0612f0f22d9111f8b694ce93090b3e`: [PR CI #45094046523](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45094046523), [branch CI #45094039359](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45094039359), and [native Chromium E2E #45094046409](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45094046409) all passed. **113 Node tests** on earlier functional SHA, browser/WebAuthn/MFA/tenant regressions green.

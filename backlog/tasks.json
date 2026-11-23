@@ -514,7 +514,7 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": "bcca20958b0612f0f22d9111f8b694ce93090b3e",
+      "commit_hash": "969fc6312d4f75b1bf1d4aa0c99114956a72b699",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
@@ -528,10 +528,13 @@
         "apps/web/src/ui/styles.css",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-text-spacing-400-browser.md",
-        "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md"
+        "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md",
+        "docs/RESEARCH/2026-11-23-wcag-144-font-only-resize-method.md",
+        "scripts/browser-text-resize.mjs"
       ],
       "blockers": [
-        "PR #49 native Chromium 400% WCAG 2.2 SC 1.4.12 sampled spacing test passed at bcca2095 for 12 bootstrap/heading/subtitle text nodes and 320px no-global-overflow; computed 22px margin at 11px paragraph font recorded but not separately asserted. Prior Zoom/MFA/WebAuthn/tenant test suite remained green; 113 Node tests at first functional SHA. Remaining: full manual WCAG screen reader/contrast/touch/focus-clipping, entire text-spacing and 200% text-only resizing matrix, Firefox/WebKit, production identity/session/tenancy/provider controls."
+        "PR #50 Chromium text-only 200% simulated user stylesheet passed 60 samples over 17 UI states and 320/390/1280px at 969fc631; CI reproduced and fixed 4 actual auth/security layout and control clipping faults. Existing native zoom/WebAuthn/MFA/tenant/browser suite and 113 Node tests remain green. NOT native Firefox text-only zoom. Remaining Firefox/WebKit browser controls, manual screen-reader/full WCAG contrast/touch/focus, full error/table state matrix and production provider/identity/tenant security."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
@@ -968,7 +971,7 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "bcca20958b0612f0f22d9111f8b694ce93090b3e",
+      "commit_hash": "969fc6312d4f75b1bf1d4aa0c99114956a72b699",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
@@ -982,10 +985,13 @@
         "apps/web/src/ui/styles.css",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-text-spacing-400-browser.md",
-        "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md"
+        "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md",
+        "docs/RESEARCH/2026-11-23-wcag-144-font-only-resize-method.md",
+        "scripts/browser-text-resize.mjs"
       ],
       "blockers": [
-        "PR #49 native Chromium 400% WCAG 2.2 SC 1.4.12 sampled spacing test passed at bcca2095 for 12 bootstrap/heading/subtitle text nodes and 320px no-global-overflow; computed 22px margin at 11px paragraph font recorded but not separately asserted. Prior Zoom/MFA/WebAuthn/tenant test suite remained green; 113 Node tests at first functional SHA. Remaining: full manual WCAG screen reader/contrast/touch/focus-clipping, entire text-spacing and 200% text-only resizing matrix, Firefox/WebKit, production identity/session/tenancy/provider controls."
+        "PR #50 Chromium text-only 200% simulated user stylesheet passed 60 samples over 17 UI states and 320/390/1280px at 969fc631; CI reproduced and fixed 4 actual auth/security layout and control clipping faults. Existing native zoom/WebAuthn/MFA/tenant/browser suite and 113 Node tests remain green. NOT native Firefox text-only zoom. Remaining Firefox/WebKit browser controls, manual screen-reader/full WCAG contrast/touch/focus, full error/table state matrix and production provider/identity/tenant security."
       ],
       "blocker_type": null,
       "verification_level": "browser_tested",

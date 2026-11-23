@@ -1,0 +1,9 @@
+# Research — 200% font-only resize test, distinct from browser page zoom
+
+**Date:** 2026-11-23. **Tasks:** ORB-009, ORB-018.
+
+The W3C [WCAG 2.2 Understanding SC 1.4.4 Resize Text](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html) discusses resizing visually rendered text up to **200% without loss of content or function**. W3C failure techniques [F69](https://www.w3.org/WAI/WCAG22/Techniques/failures/F69.html) and [F80](https://www.w3.org/WAI/WCAG22/Techniques/failures/F80.html) describe clipped/obscured content and failing to resize text-based controls.
+
+Mozilla's [browserSettings.zoomFullPage](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/browserSettings/zoomFullPage) confirms Firefox can configure whole-page vs **text-only** native zoom. Chrome's `tabs.setZoom` in previous evidence is native **whole-page** zoom, not text-only. The project cannot equate shrinking the viewport or resizing a text element in CSS with a completed Firefox native text-only zoom test.
+
+Selected hosted method: render in real headless Chromium, apply a **temporary** 200% increase to each text-bearing element's computed font size via DOM style within a synchronous evaluation, measure baseline versus overridden font-size and geometry, then restore all style properties before leaving the evaluation. This keeps the viewport physical geometry constant and exercises text-based control sizing. The test covers 60 selected text nodes across 17 UI states (3 bootstrap, 12 dashboard, 2 security) and 1280/390/320 CSS px widths; it does not prove complete WCAG conformance, Firefox browser text-only zoom support, every text node, pseudo-elements, screen reader or manually reviewed overlaps. [Hosted functional CI evidence](../TEST_EVIDENCE/2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md).
