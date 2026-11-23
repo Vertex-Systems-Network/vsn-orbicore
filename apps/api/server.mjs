@@ -89,7 +89,7 @@ export function isSameOriginRequest(request) {
   const authority = effectiveOriginHost(request);
   if (typeof origin !== "string" || !origin ||
       typeof authority !== "string" || !authority ||
-      /[\\s\\/?#@\\\\]/u.test(authority)) return false;
+      /[\s\/?#@\\]/u.test(authority)) return false;
   const scheme = request?.socket?.encrypted === true || isForwardedHttps(request)
     ? "https:" : "http:";
   try {
