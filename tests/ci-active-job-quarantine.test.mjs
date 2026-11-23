@@ -41,7 +41,7 @@ test("ORB-004 quarantine refuses malicious/live/broken source and cannot stage q
     [x=>{x.jobs[0].completed_at=t1;},/unsafe_active_job_shape/],
     [x=>{x.jobs[0].created_at="bad";},/unsafe_active_job_shape/],
     [x=>{x.jobs[0].status="running";},/unsafe_active_job_shape/],
-    [x=>{x.jobs[0].organization_id="wrong";},/active_job_tenant_or_actor/],
+    [x=>{x.jobs[0].organization_id="wrong";x.jobs[0].idempotency_key="wrong:ci-queue-one";},/active_job_tenant_or_actor/],
   ];
   for (const [change,matcher] of cases){const x=snapshot();change(x);
     assert.throws(()=>validateSyntheticActiveJobQuarantine(x),matcher);
