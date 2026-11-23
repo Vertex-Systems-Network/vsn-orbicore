@@ -338,7 +338,8 @@
         "scripts/ci-restore-witness-evidence.mjs",
         "tests/ci-cross-runner-evidence.test.mjs",
         "docs/RESEARCH/2026-11-23-cross-runner-audit-evidence.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-cross-runner-evidence.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-ci-cross-runner-evidence.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-http-json-ingress.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",

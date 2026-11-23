@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-005 normal HTTP JSON ingress hardening (feature PR)
+
+- Code and three regression tests for byte-counted request limits, strict UTF-8, JSON-object-only API bodies and split-multibyte Unicode password preservation passed **130/130** hosted Node tests at `e1133385` ([CI #45140543854](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140543854)); [Chromium #45140543837](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140543837), [23-job PostgreSQL/Redis #45140543889](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140543889) and [PR task ledger #45140544078](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45140544078) also completed success. [Full bounded evidence](TEST_EVIDENCE/2026-11-23-orb-005-http-json-ingress.md). Final docs-head check and merge remain. No provider/account access, credential migration, production secrets or task lifecycle promotion is claimed.
+
+
 ## 2026-11-23 — ORB-020 governance closure by live main-to-old-PR backfill evidence (PR #54)
 
 - [Real independent main fanout #45138595661](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45138595661) refreshed open [PR #53](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/53) to show ORB-020 `integration_tested` from main while keeping its old Git head SHA and all 20 rows. PR #52 on-open/synchronize/edited hooks were already successfully measured; [complete proof](TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md).
