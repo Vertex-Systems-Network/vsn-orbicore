@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
+import { createHash, randomBytes } from "node:crypto";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Pool } from "pg";
 import { createApp } from "../apps/api/server.mjs";
 import { stageSyntheticActiveJobQuarantine } from "../apps/api/ci-active-job-quarantine.mjs";
+import {
+  createSyntheticActiveQuarantineWitness, reconcileSyntheticActiveQuarantine,
+} from "../apps/api/ci-active-quarantine-reconcile.mjs";
 
 if (process.env.GITHUB_ACTIONS !== "true" ||
     process.env.ORBICORE_CI_ACTIVE_QUARANTINE !== "1") {
@@ -92,6 +99,26 @@ try {
   await pool.query("DROP TRIGGER ci_fail_second ON orbicore_ci_quarantine.active_jobs");
   await pool.query("DROP FUNCTION orbicore_ci_quarantine.deny_running()");
 
+  // Sign a detached witness before the PG import, with a fresh process-local
+  // key that never appears in source, PostgreSQL or the uploaded artifact.
+  const witnessKey=randomBytes(32);
+  const detachedDir=mkdtempSync(join(tmpdir(),"orb-ci-active-witness-"));
+  let detachedWitness;
+  try {
+    const originalWitness=createSyntheticActiveQuarantineWitness({
+      sqlite:sql,consent,key:witnessKey,
+    });
+    const detachedPath=join(detachedDir,"signed-checkpoint.json");
+    writeFileSync(detachedPath,JSON.stringify(originalWitness),{mode:0o600});
+    detachedWitness=JSON.parse(readFileSync(detachedPath,"utf8"));
+  } finally {
+    rmSync(detachedDir,{force:true,recursive:true});
+  }
+  const reconcile=(witness=detachedWitness,key=witnessKey,pg=pool)=>
+    reconcileSyntheticActiveQuarantine({
+      sqlite:sql,postgres:pg,witness,key,consent,
+    });
+
   const result=await copy();
   assert.equal(result.scope,"ci_only_active_job_quarantine_metadata");
   assert.equal(result.count,2);
@@ -108,6 +135,70 @@ try {
   assert.ok(staged.every(x=>/^[0-9a-f]{64}$/.test(x.metadata_sha256)));
   assert.deepEqual(sql.prepare("SELECT * FROM jobs ORDER BY id").all(),original,
     "SQLite source must remain bitwise unchanged at job row level");
+
+  const certified=await reconcile();
+  assert.equal(certified.matched,2);
+  assert.equal(certified.sourceDigest,detachedWitness.digest);
+  assert.equal(certified.postgresWrites,0);
+  assert.equal(certified.replayed,false);
+
+  // Independent checkpoint integrity is checked before either SQLite or PG IO.
+  const pgMustNeverConnect={connect(){throw Error("pg touched before MAC verification");}};
+  await assert.rejects(reconcile({...detachedWitness,count:1},witnessKey,pgMustNeverConnect),
+    /ci_quarantine_witness_mac_mismatch/);
+  await assert.rejects(reconcile(detachedWitness,randomBytes(32),pgMustNeverConnect),
+    /ci_quarantine_witness_mac_mismatch/);
+
+  // The signed expected source is independent of PG staging; any later SQLite
+  // source job metadata change must fail closed before PostgreSQL connection.
+  sql.prepare("UPDATE jobs SET idempotency_key=? WHERE id=?")
+    .run("org-demo:ci-queue-renamed",queued.id);
+  await assert.rejects(reconcile(detachedWitness,witnessKey,pgMustNeverConnect),
+    /ci_quarantine_source_checkpoint_mismatch/);
+  sql.prepare("UPDATE jobs SET idempotency_key=? WHERE id=?")
+    .run(queued.idempotency_key,queued.id);
+
+  // A privileged PG edit cannot become trusted by recomputing its row digest.
+  const before=(await pool.query(
+    "SELECT metadata_sha256 FROM orbicore_ci_quarantine.active_jobs WHERE source_job_id=$1",
+    [queued.id],
+  )).rows[0].metadata_sha256;
+  const alteredAccount="ci-attacker-account";
+  const forgedDigest=createHash("sha256").update(JSON.stringify({
+    id:queued.id,organizationId:queued.organization_id,accountId:alteredAccount,
+    requestedBy:queued.requested_by,status:queued.status,
+    idempotencyKey:queued.idempotency_key,createdAt:queued.created_at,startedAt:null,
+  })).digest("hex");
+  await pool.query(
+    "UPDATE orbicore_ci_quarantine.active_jobs " +
+    "SET account_id=$1, metadata_sha256=$2 WHERE source_job_id=$3",
+    [alteredAccount,forgedDigest,queued.id],
+  );
+  await assert.rejects(reconcile(),/ci_quarantine_postgres_parity_mismatch/);
+  await pool.query(
+    "UPDATE orbicore_ci_quarantine.active_jobs " +
+    "SET account_id=$1, metadata_sha256=$2 WHERE source_job_id=$3",
+    [queued.account_id,before,queued.id],
+  );
+
+  // Added/removed quarantine rows and public runtime mutation are separately
+  // detected; no automatic reconcile/heal/replay is ever attempted.
+  await pool.query(
+    "INSERT INTO orbicore_ci_quarantine.active_jobs " +
+    "(source_job_id,organization_id,account_id,requested_by,source_status," +
+    "idempotency_key,created_at,started_at,metadata_sha256) " +
+    "SELECT 'ci-ghost-job',organization_id,account_id,requested_by,source_status," +
+    "'ci-queue-ghost',created_at,started_at,metadata_sha256 " +
+    "FROM orbicore_ci_quarantine.active_jobs WHERE source_job_id=$1",
+    [queued.id],
+  );
+  await assert.rejects(reconcile(),/ci_quarantine_postgres_parity_mismatch/);
+  await pool.query("DELETE FROM orbicore_ci_quarantine.active_jobs WHERE source_job_id='ci-ghost-job'");
+
+  await pool.query("INSERT INTO public.organizations(id,name) VALUES ('ci-contaminant','CI only')");
+  await assert.rejects(reconcile(),/ci_quarantine_public_tables_not_empty/);
+  await pool.query("DELETE FROM public.organizations WHERE id='ci-contaminant'");
+  assert.equal((await reconcile()).matched,2);
 
   const restricted=await pool.connect();
   try {
@@ -131,6 +222,10 @@ try {
     invalidTenantDenied:true,unsafePayloadDenied:true,
     dirtyTargetDenied:true,forcedLatePgRollbackVerified:true,
     restrictedTenantRoleReadDenied:true,sourceJobsUnchanged:true,
+    detachedSignedWitnessVerified:true,wrongKeyDeniedBeforePgIo:true,
+    sourceDriftDeniedBeforePgIo:true,forgedPostgresDigestDenied:true,
+    extraQuarantineRowDenied:true,dirtyRuntimeStateDenied:true,
+    readOnlyReconciliation:true,witnessKeyPersisted:false,
     productionJobs:0,productionOutbox:0,
     executionEnabled:false,workReplayed:false,productionMigration:false,
   }));
