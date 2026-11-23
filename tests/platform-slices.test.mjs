@@ -750,5 +750,66 @@ test("ORB-017: GET /api/system/deployment-readiness truthfully distinguishes loc
   assert.ok(report.gates.some((g) => g.id === "queue.redis" && g.status === "missing"));
 });
 
+test("ORB-006: live UAPI boundary accepts documented nested result and direct success without revealing credentials", async () => {
+  const token = "synthetic-credential-not-for-network-2026";
+  let responseData = { result: { status: 1, data: { valid: true }, errors: null } };
+  let requestCount = 0;
+  const adapter = new LiveCpanelAdapterBoundary({
+    fetchImpl: async (url, init) => {
+      requestCount += 1;
+      assert.equal(init.method, "GET");
+      assert.equal(init.redirect, "manual");
+      assert.equal(url, "https://cp.example.org:2083/execute/Quota/get_quota_info");
+      assert.equal(init.headers.Authorization, `cpanel user:${token}`);
+      return new Response(JSON.stringify(responseData), { status: 200 });
+    },
+  });
+  const ref = { host: "cp.example.org", username: "user", apiToken: token, authorized: true };
+  const nested = await adapter._callUapi(ref, "Quota", "get_quota_info");
+  assert.deepEqual(nested, { ok: true, live: true, data: { valid: true } });
+  responseData = { status: 1, data: { direct: true }, errors: null };
+  const direct = await adapter._callUapi(ref, "Quota", "get_quota_info");
+  assert.deepEqual(direct, { ok: true, live: true, data: { direct: true } });
+  assert.equal(requestCount, 2);
+  assert.equal(JSON.stringify({ nested, direct }).includes(token), false);
+});
 
+test("ORB-006: failed or malformed UAPI success metadata fails closed rather than reporting inventory available", async () => {
+  const ref = { host: "cp.example.org", username: "user", apiToken: "synthetic-uapi-test-secret", authorized: true };
+  const outcomes = [
+    [{ result: { status: 0, errors: ["not authorized"], data: { domains: ["fake"] } } }, "uapi_call_failed"],
+    [{ result: { status: 1, errors: ["permission issue"], data: {} } }, "uapi_call_failed"],
+    [{ status: 1, data: {} , result: { data: {} } }, "invalid_uapi_response"],
+    [{ status: 2, data: {} }, "invalid_uapi_response"],
+    [{ data: { fake: true } }, "invalid_uapi_response"],
+    [{ result: null }, "invalid_uapi_response"],
+    [[], "invalid_uapi_response"],
+  ];
+  for (const [fixture, expected] of outcomes) {
+    const adapter = new LiveCpanelAdapterBoundary({
+      fetchImpl: async () => new Response(JSON.stringify(fixture), { status: 200 }),
+    });
+    const result = await adapter._callUapi(ref, "DomainInfo", "domains_data");
+    assert.equal(result.ok, false);
+    assert.equal(result.error, expected);
+    assert.equal(JSON.stringify(result).includes(ref.apiToken), false);
+  }
+});
 
+test("ORB-006: HTTPS UAPI redirects are never auto-followed across the outbound authorization boundary", async () => {
+  const token = "synthetic-no-network-secret";
+  let fetchCalls = 0;
+  const boundary = new LiveCpanelAdapterBoundary({
+    fetchImpl: async (url, init) => {
+      fetchCalls += 1;
+      assert.equal(url, "https://cp.example.org:2083/execute/Quota/get_quota_info");
+      assert.equal(init.redirect, "manual", "must forbid default automatic fetch redirect following");
+      return new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data/" } });
+    },
+  });
+  const denied = await boundary._callUapi({ host: "cp.example.org", username: "user", apiToken: token, authorized: true }, "Quota", "get_quota_info");
+  assert.equal(denied.ok, false);
+  assert.equal(denied.error, "uapi_redirect_denied");
+  assert.equal(fetchCalls, 1);
+  assert.equal(JSON.stringify(denied).includes(token), false);
+});
