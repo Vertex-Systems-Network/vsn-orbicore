@@ -12,7 +12,7 @@ import {
 
 const MARKER = "CREATE TABLE orbicore_ci_active_recovery_hold (marker TEXT)";
 
-test("ORB-004 local app SQLite connection guards every source table from late direct INSERT after a hold", () => {
+test("ORB-004 persistent SQLite guards every source table from late direct INSERT after a hold", () => {
   const folder = mkdtempSync(join(tmpdir(), "orb-ci-hold-triggers-"));
   let app, external;
   try {
@@ -23,7 +23,7 @@ test("ORB-004 local app SQLite connection guards every source table from late di
     ).all().map((entry) => entry.name);
     assert.ok(tables.length >= 20, "protect the complete SQLite v7 source table surface");
     const triggers = app.db.prepare(
-      "SELECT name, tbl_name AS tableName FROM sqlite_temp_master WHERE type='trigger' AND name LIKE 'orbicore_ci_hold_%'",
+      "SELECT name, tbl_name AS tableName FROM main.sqlite_master WHERE type='trigger' AND name LIKE 'orbicore_ci_hold_%'",
     ).all();
     assert.equal(triggers.length, tables.length * 3);
     for (const table of tables) {
@@ -80,10 +80,15 @@ test("ORB-004 marker blocks UPDATE/DELETE on populated source tables even when b
     assert.equal(app.db.prepare("SELECT name FROM schema_migrations WHERE version=7").get().name,
       "secret_references_and_deployment_readiness");
     assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM accounts").get().n, 3);
-    // TEMP guards do not protect unrelated SQLite connections. Such external
-    // forensic writes remain separately audited; this is not WORM storage.
-    external.prepare("UPDATE accounts SET health='offline' WHERE id='acct-northstar'").run();
-    assert.equal(app.db.prepare("SELECT health FROM accounts WHERE id='acct-northstar'").get().health, "offline");
+    // Main-schema triggers must also stop this independent SQLite connection.
+    assert.throws(
+      () => external.prepare("UPDATE accounts SET health='offline' WHERE id='acct-northstar'").run(),
+      (error) => error.message.includes(CI_SOURCE_RECOVERY_HOLD_ERROR),
+      "a second connection must not bypass a durable source hold",
+    );
+    assert.equal(app.db.prepare("SELECT health FROM accounts WHERE id='acct-northstar'").get().health,
+      before.health);
+
   } finally {
     external?.close();
     app?.close();
@@ -94,4 +99,75 @@ test("ORB-004 marker blocks UPDATE/DELETE on populated source tables even when b
 test("ORB-004 connection guard installer rejects missing SQLite source before executing DDL", () => {
   assert.throws(() => installCiSourceHoldWriteGuards(null), /sqlite_source_required/);
   assert.throws(() => installCiSourceHoldWriteGuards({ prepare() {} }), /sqlite_source_required/);
+});
+
+test("ORB-004 persistent hold triggers survive app restart and reject separate connections without app runtime", () => {
+  const folder = mkdtempSync(join(tmpdir(), "orb-ci-cross-connection-"));
+  const dbPath = join(folder, "source.sqlite");
+  let app, source, separate;
+  try {
+    app = createApp({ dbPath, startWorker: false, bootstrapToken: "ci-durable-hold-test" });
+    const expectedTriggers = app.db.prepare(
+      "SELECT COUNT(*) AS n FROM main.sqlite_master WHERE type='trigger' AND name LIKE 'orbicore_ci_hold_%'",
+    ).get().n;
+    assert.ok(expectedTriggers >= 60);
+    app.close(); app = null;
+
+    source = new DatabaseSync(dbPath);
+    assert.equal(source.prepare(
+      "SELECT COUNT(*) AS n FROM main.sqlite_master WHERE type='trigger' AND name LIKE 'orbicore_ci_hold_%'",
+    ).get().n, expectedTriggers);
+    source.exec(MARKER);
+    separate = new DatabaseSync(dbPath);
+    const attemptedDml = [
+      "INSERT INTO organizations (id, name, created_at) VALUES ('ci-new', 'bad', '2026-11-23')",
+      "UPDATE accounts SET health='offline' WHERE id='acct-northstar'",
+      "DELETE FROM schema_migrations WHERE version=7",
+    ];
+    for (const sql of attemptedDml) {
+      assert.throws(
+        () => separate.exec(sql),
+        (err) => err.message.includes(CI_SOURCE_RECOVERY_HOLD_ERROR),
+        sql,
+      );
+    }
+    assert.equal(separate.prepare("SELECT COUNT(*) AS n FROM accounts").get().n, 3);
+    assert.equal(separate.prepare("SELECT COUNT(*) AS n FROM organizations").get().n, 1);
+    assert.equal(separate.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n, 7);
+    assert.throws(
+      () => createApp({ dbPath, startWorker: false, bootstrapToken: "ci-reopen" }),
+      /ci_sqlite_source_recovery_hold_manual_review_required/,
+    );
+  } finally {
+    separate?.close(); source?.close(); app?.close();
+    rmSync(folder, { recursive: true, force: true });
+  }
+});
+
+test("ORB-004 stable persistent trigger names and counts survive idempotent restart", () => {
+  const folder = mkdtempSync(join(tmpdir(), "orb-ci-stable-trigger-names-"));
+  const dbPath = join(folder, "source.sqlite");
+  let app, other;
+  try {
+    app = createApp({ dbPath, startWorker: false, bootstrapToken: "ci-guard-names" });
+    const list = () => app.db.prepare(
+      "SELECT name, tbl_name AS tableName FROM main.sqlite_master WHERE type='trigger' AND name LIKE 'orbicore_ci_hold_%' ORDER BY name",
+    ).all();
+    const first = list();
+    assert.equal(first.length, new Set(first.map(x => x.tableName)).size * 3);
+    app.close(); app = null;
+    // A new table alphabetically ahead of all existing tables should not
+    // change the old tables' trigger names or accidentally skip a guard.
+    other = new DatabaseSync(dbPath);
+    other.exec("CREATE TABLE aa_new_source_table(id TEXT)");
+    other.close(); other = null;
+    app = createApp({ dbPath, startWorker: false, bootstrapToken: "ci-guard-names" });
+    const second = list();
+    for (const old of first) assert.ok(second.some(x => x.name === old.name && x.tableName === old.tableName));
+    assert.equal(second.length, first.length + 3);
+    assert.equal(second.filter(x => x.tableName === "aa_new_source_table").length, 3);
+  } finally {
+    other?.close(); app?.close();
+    rmSync(folder, { recursive: true, force: true });
+  }
 });
