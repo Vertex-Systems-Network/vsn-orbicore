@@ -74,11 +74,12 @@ export function configuredApiHost(env = process.env) {
 }
 
 function setSessionCookie(response, token, secure, request = null) {
-  const crossSiteHttps = isForwardedHttps(request);
-  const useSecure = secure || crossSiteHttps;
-  const sameSite = crossSiteHttps ? "None" : "Strict";
-  const flags = `Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${useSecure ? "; Secure" : ""}`;
-  response.setHeader("set-cookie", token ? `orbicore_session=${token}; ${flags}` : `orbicore_session=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0${useSecure ? "; Secure" : ""}`);
+  // HTTPS is a transport signal, not consent to send session cookies in
+  // cross-site requests. Keep Strict for both local and HTTPS proxy sessions.
+  const transportHttps = request?.socket?.encrypted === true || isForwardedHttps(request);
+  const useSecure = secure || transportHttps;
+  const flags = `Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${useSecure ? "; Secure" : ""}`;
+  response.setHeader("set-cookie", token ? `orbicore_session=${token}; ${flags}` : `orbicore_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${useSecure ? "; Secure" : ""}`);
 }
 
 // Origin is a scheme + authority tuple, not just a Host match. A browser
