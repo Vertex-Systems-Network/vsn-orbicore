@@ -2,7 +2,7 @@
 
 ## 2026-11-23 — ORB-006/010 provider adapter response and redirect boundary (feature PR)
 
-- Proposed no-live-credential mock fixes: `/execute` transport explicitly refuses redirects, handles direct/nested UAPI status metadata, and fails closed on status 0/malformed/absent metadata or nonempty error lists. Three Node tests simulate authorized interactions with fake `fetchImpl`; no real provider requests. Hosted CI pending. ORB-006/019 remain external blocked and ORB-010 in progress.
+- Implemented no-live-credential mock fixes: `/execute` transport explicitly refuses redirects, handles direct/nested UAPI status metadata, and fails closed on status 0/malformed/absent metadata or nonempty error lists. Three fake-`fetchImpl` Node tests passed **136/136** total at SHA `dfa3eda` ([CI #45142304785](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142304785), [Chromium #45142304894](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142304894), [PR ledger #45142305018](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142305018)); no real provider requests. Final docs-head CI pending. ORB-006/019 remain external blocked and ORB-010 in progress.
 
 
 ## 2026-11-23 — ORB-005/017 loopback bind + trusted-proxy narrowing (feature PR)

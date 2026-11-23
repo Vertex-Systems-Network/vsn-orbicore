@@ -1,6 +1,6 @@
 # ORB-006 / ORB-010 — UAPI response metadata and outbound redirect safety
 
-**Status:** GitHub-hosted test verification pending for the proposed mock-only adapter changes.
+**Status:** Functional SHA `dfa3eda1c402bb9f65c5bda65f35c9ac3893fb26` passed GitHub-hosted mock verification on 2026-11-23 UTC; documentation-only head still requires CI before merge.
 
 ## Finding and scope
 
@@ -21,3 +21,12 @@ The bounded change sets `redirect: "manual"`, returns redacted `uapi_redirect_de
 - Official API tokens authorize `cpanel username:APITOKEN` header and HTTPS port 2083: [cPanel token guide](https://api.docs.cpanel.net/cpanel/tokens).
 
 **Important:** This is only mock/fake-fetch verification, not live provider acceptance. DNS resolution/rebinding defenses, full redirect/DNS peer pinning, TLS identity, cPanel capability scopes/version variations, provider-specific quotas and ownership approval remain externally unverified. ORB-006 and ORB-019 must stay `blocked/none` until independently authorized disposable credentials and real provider response checks are supplied. ORB-010 remains `in_progress`. No provider tokens are committed or surfaced.
+
+## Observed GitHub Actions results
+
+- [PR standard CI #45142304785](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142304785) and [branch CI #45142265198](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142265198) both completed **success** for functional head `dfa3eda1c402bb9f65c5bda65f35c9ac3893fb26`; **136/136 Node tests** (0 failures), including all three new ORB-006 fake HTTP tests. Standard lint/security gate, CycloneDX schema validation, build, smoke, doctor and dependency audit completed successfully.
+- [Chromium/WebAuthn #45142304894](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142304894) completed success.
+- [Trusted-base PR task ledger #45142305018](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142305018) completed success.
+- The PostgreSQL/Redis service workflow did **not** run on this change because its path filters do not include this isolated cPanel adapter or its platform-slice tests. Do not misrepresent older service-workflow success as verification of this commit. No PostgreSQL service logic was changed.
+
+**Unchanged gates:** ORB-006/019 remain blocked/none and ORB-010 remains in_progress/unit. No cPanel sandbox credentials/production network access, DNS peer validation, live provider compatibility, offsite backup, production identity or privilege promotion has been tested.

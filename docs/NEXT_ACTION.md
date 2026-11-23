@@ -1,6 +1,6 @@
 # Next action
 
-**ORB-006/010 pending adapter safety checkpoint:** Fake-fetch-only UAPI response parser now rejects missing/failure status and unexpected response shape; 3xx redirects are denied without a follow-on request. Hosted CI pending; this does **not** unblock live ORB-006/019 without owner-authorized disposable cPanel credentials. [Mock evidence](TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md).
+**ORB-006/010 hosted adapter checkpoint:** Fake-fetch-only UAPI response parser rejects missing/failure status and unexpected response shapes; 3xx redirects are denied without a follow-on request. At SHA `dfa3eda`, 136/136 Node tests, browser and trusted PR task ledger passed; docs-only head CI/merge pending; this does **not** unblock live ORB-006/019 without owner-authorized disposable cPanel credentials. [Mock evidence](TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md).
 
 **ORB-005/017 hosted security checkpoint:** Default API and Vite bindings are restricted to loopback, Vite host allow-all is removed, and untrusted remote `X-Forwarded-*` authority is ignored. At functional SHA `eb47845`, **133/133 Node tests, browser, hosted PG16/Redis7 and task-ledger workflows passed**; documentation-only PR head CI and merge still require verification; this does not authorize production deployment or resolve PostgreSQL identity, KMS, offsite restore, live provider or full browser/WCAG gates. [Proposed scope/evidence](TEST_EVIDENCE/2026-11-23-orb-005-017-loopback-proxy-guard.md).
 
