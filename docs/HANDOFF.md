@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-009 sampled light/dark authentication contrast CI (PR #46)
+
+- [PR #46](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/46) functional SHA `8b1c1ae396adaf1802cf75cb32722775005c82ec` passed [PR CI #45089326030](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45089326030), [branch CI #45089320285](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45089320285) and [Chromium #45089326005](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45089326005). 113 Node tests; all four sampled normal-text auth roles exceeded 4.5:1 in both themes, actual ratios in [evidence](TEST_EVIDENCE/2026-11-23-orb-009-auth-theme-contrast-browser.md).
+- Initial selector failure at `f42b2f0d` matched bootstrap token and password; corrected at `8b1c1ae3`, with fresh CI/browser green. No contrast failure proven. ORB-009 remains `testing/browser_tested`: no full manual WCAG, 200/400% native page zoom, physical device or production identity/provider verification.
+- Inspect final documentation-head and postmerge main CI before closing this checkpoint.
+
+
 ## 2026-11-23 — ORB-009 MFA error discrimination and recovery browser proof (PR #45)
 
 - [PR #45](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/45) functional SHA `75337b13b7723e1f809ed1f092e1310823b458bd` passed [PR CI #45088700533](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45088700533), [branch CI #45088674901](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45088674901), and [Chromium browser #45088700892](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45088700892). 113 Node tests and isolated browser MFA enrollment/challenge UI, 429/503/stale challenge distinctions, real rejected code attribution, used recovery denial; no fixture secrets in evidence. [Full evidence](TEST_EVIDENCE/2026-11-23-orb-009-mfa-browser-error-matrix.md).
