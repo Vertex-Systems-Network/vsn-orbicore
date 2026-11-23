@@ -4,6 +4,8 @@ Canonical machine-readable tasks: [`backlog/tasks.json`](../backlog/tasks.json).
 
 **Current unverified PR hardening (ORB-006/010):** strict bare-host and fixed HTTPS :2083 cPanel UAPI authority; regression matrix covers host URL-component injection, injected no-network transport and synthetic HTTP probe/account APIs. This is a security unit boundary, not live UAPI, DNS pinning or credentialed production verification. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-006-010-strict-cpanel-host-port.md). Task lifecycle and verification levels intentionally unchanged.
 
+**Current unverified PR hardening (ORB-006/010):** 2 MiB maximum streamed UAPI JSON response size, with declared-length early denial and independent decoded byte cap before parsing; fake-response tests cover lied-about length and invalid JSON/UTF-8, without real provider credentials. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md). Existing live sandbox blocker and broader verification levels unchanged.
+
 ## Status vocabulary
 
 **Automatic PR task table:** All new/reopened/edited/pushed PRs receive the complete canonical task table through a trusted-base GitHub Action. PR head backlog status overrides main baseline; all open PR tables refresh when main backlog changes. Source updates must include honest dates, evidence and blockers; no bot can auto-verify a task. See [PR governance](AUDIT/2026-11-23-ai-plan-pr-governance.md).
