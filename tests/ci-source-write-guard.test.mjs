@@ -171,3 +171,32 @@ test("ORB-004 stable persistent trigger names and counts survive idempotent rest
     rmSync(folder, { recursive: true, force: true });
   }
 });
+
+test("ORB-004 malformed persisted guard is not silently accepted during clean restart", () => {
+  const folder = mkdtempSync(join(tmpdir(), "orb-ci-mismatched-guard-"));
+  const dbPath = join(folder, "source.sqlite");
+  let app, external;
+  try {
+    app = createApp({ dbPath, startWorker: false, bootstrapToken: "ci-guard-integrity" });
+    const accountTrigger = app.db.prepare(
+      "SELECT name FROM main.sqlite_master WHERE type='trigger' AND tbl_name='accounts' AND name LIKE 'orbicore_ci_hold_%_insert'",
+    ).get();
+    assert.ok(accountTrigger?.name);
+    app.close(); app = null;
+    external = new DatabaseSync(dbPath);
+    const triggerName = '"' + accountTrigger.name.replaceAll('"', '""') + '"';
+    external.exec(`DROP TRIGGER ${triggerName}`);
+    external.exec(`CREATE TRIGGER ${triggerName} BEFORE INSERT ON accounts BEGIN SELECT 1; END`);
+    external.close(); external = null;
+    assert.throws(
+      () => createApp({ dbPath, startWorker: false, bootstrapToken: "ci-guard-integrity" }),
+      /ci_sqlite_source_guard_conflict/,
+    );
+    external = new DatabaseSync(dbPath);
+    assert.equal(external.prepare("SELECT COUNT(*) AS n FROM accounts").get().n, 3);
+    assert.equal(external.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n, 7);
+  } finally {
+    external?.close(); app?.close();
+    rmSync(folder, { recursive: true, force: true });
+  }
+});
