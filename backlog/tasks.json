@@ -514,16 +514,17 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": "75337b13b7723e1f809ed1f092e1310823b458bd",
+      "commit_hash": "8b1c1ae396adaf1802cf75cb32722775005c82ec",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-auth-form-accessible-errors.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-009-mfa-browser-error-matrix.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-mfa-browser-error-matrix.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-auth-theme-contrast-browser.md"
       ],
       "blockers": [
-        "PR #45 hosted Chromium at 75337b13 passed separate-tenant MFA UI enrollment, generic credential no-field invalidity, mocked 429/503/expired challenge no wrong-code invalidity, real incorrect MFA association and one-use recovery denial. Remaining: actual 200%/400% browser zoom, manual WCAG screen-reader/contrast/touch audit, wider bootstrap-policy and field/error/device matrix, production MFA/KMS/service/session verification."
+        "PR #46 Chromium at 8b1c1ae3 passed four sampled auth helper/label/footnote/password text contrast ratios >=4.5:1 in both themes, plus existing MFA recovery, WebAuthn, tenant/permission and responsive checks; 113 Node tests also green. Remaining: actual native 200%/400% page zoom, full manual WCAG contrast/screen-reader/touch assessment, complete device/form error/state matrix and deployed provider/auth security."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
