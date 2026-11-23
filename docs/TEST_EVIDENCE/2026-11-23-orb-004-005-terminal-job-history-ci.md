@@ -1,6 +1,6 @@
 # ORB-004 / ORB-005 / ORB-016 / ORB-017 — terminal synthetic job ledger import
 
-**Status:** PR GitHub-hosted service verification pending. **Date:** 2026-11-23.
+**Status:** GitHub-hosted functional PR head `a6a0f57763341113d480dab2e00cddab9f00cb55` verified in CI. **Date:** 2026-11-23 (UTC). Documentation-head rerun and merge pending.
 
 ## Scope
 The existing CI-only SQLite→PostgreSQL source importer had explicit refusal of any existing SQLite `jobs` rows. This checkpoint introduces a separate, stricter consent path, `fixture_only_terminal_jobs_offline_copy`, which copies core identity, authentication fixture state, seven operational feature tables, **and solely completed/failed synthetic inventory-refresh job history** in one PostgreSQL serializable transaction. The standard core/auth/feature import paths retain their refusal of nonempty `jobs`.
@@ -12,3 +12,13 @@ New `tests/postgres-terminal-job-history.test.mjs` asserts status, account/user 
 
 ## Acceptance / limitations
 Only after workflow completion may counts and a run URL be reported as verified. The job history transfer is **not a resumable active job queue migration**; source SQLite is still authoritative for the default HTTP app, and PostgreSQL does not become production authentication or worker authority. No off-host encrypted backup, production secrets/MFA material, real KMS, SSO, host failure, live cPanel, Redis replay, independent key custody, or actual production cutover is demonstrated. ORB-004/016/017 remain `testing/integration_tested`, ORB-005 stays `in_progress/integration_tested`, and ORB-006/019 remain externally blocked.
+
+## Measured GitHub-hosted result
+
+- [PR CI #45153391691](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45153391691) passed on functional head `a6a0f57763341113d480dab2e00cddab9f00cb55`: **140 Node tests passed / 0 failed** (including three new terminal-history unit tests), npm lint/plan, source security gate, pinned CycloneDX schema verification, npm audit, build, smoke and doctor.
+- [Branch CI #45153343433](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45153343433) passed on same functional head.
+- [Full PostgreSQL/Redis services #45153391660](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45153391660) completed **success for all 24 jobs**, including new **Disposable PostgreSQL 16 terminal synthetic job ledger and atomic rollback** integration. New job steps for schema 001–005, tenant/rollback/integrity assertions and artifact upload each completed successfully. Its proof script asserted 2 terminal jobs, zero job-outbox rows, RLS tenant separation and missing-tenant denial, source unmodified, fail-closed attempted queued job/malicious result/cross-tenant requester, PG injected trigger rollback with zero partially copied rows, re-import denial and preserved terminal timestamps.
+- [Chromium/WebAuthn/accessibility #45153391854](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45153391854) completed success. [Trusted PR task-ledger #45153392538](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45153392538) completed success.
+- Required final documentation-head CI and postmerge main SHA check remain to be observed; do not overstate as already merged here.
+
+**Boundaries remain unchanged:** The new PostgreSQL rows represent fixture history, not live queue state, operational recovery, production credential authority, data-deletion approval, full SQLite migration, real MFA/secret custody, HA, or external/off-host restores. The default HTTP application still authenticates from SQLite, and ORB task statuses do not change.
