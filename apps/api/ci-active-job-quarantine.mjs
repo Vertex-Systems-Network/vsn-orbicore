@@ -65,6 +65,24 @@ export function validateSyntheticActiveJobQuarantine(source) {
   });
 }
 
+
+// Call only while the caller owns a SQLite source snapshot transaction.
+// This is an exact read of active jobs, not a transition to execution.
+export function readValidatedSyntheticActiveQuarantineSnapshot(sqlite) {
+  assertSupportedSqliteV7Manifest(sqlite);
+  const source = {
+    accounts:sqlite.prepare("SELECT id, organization_id, source FROM accounts").all(),
+    users:sqlite.prepare("SELECT id, organization_id, email, role, disabled FROM users").all(),
+    jobs:sqlite.prepare(
+      "SELECT id, organization_id, account_id, requested_by, type, status, " +
+      "idempotency_key, created_at, started_at, completed_at, result_json, error " +
+      "FROM jobs WHERE status IN ('queued','running') ORDER BY id",
+    ).all(),
+    secretReferences:sqlite.prepare("SELECT id FROM secret_references LIMIT 1").all(),
+  };
+  return validateSyntheticActiveJobQuarantine(source);
+}
+
 export async function stageSyntheticActiveJobQuarantine({
   sqlite, postgres, consent = null,
 }) {
@@ -81,18 +99,7 @@ export async function stageSyntheticActiveJobQuarantine({
   sqlite.exec("BEGIN IMMEDIATE");
   let client, open = false;
   try {
-    assertSupportedSqliteV7Manifest(sqlite);
-    const source = {
-      accounts:sqlite.prepare("SELECT id, organization_id, source FROM accounts").all(),
-      users:sqlite.prepare("SELECT id, organization_id, email, role, disabled FROM users").all(),
-      jobs:sqlite.prepare(
-        "SELECT id, organization_id, account_id, requested_by, type, status, " +
-        "idempotency_key, created_at, started_at, completed_at, result_json, error " +
-        "FROM jobs WHERE status IN ('queued','running') ORDER BY id",
-      ).all(),
-      secretReferences:sqlite.prepare("SELECT id FROM secret_references LIMIT 1").all(),
-    };
-    const rows = validateSyntheticActiveJobQuarantine(source);
+    const rows = readValidatedSyntheticActiveQuarantineSnapshot(sqlite);
     client = await postgres.connect();
     await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
     open = true;
