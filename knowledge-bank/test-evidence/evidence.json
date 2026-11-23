@@ -466,6 +466,17 @@
       "limitations": [
         "SQLite legacy pre-v5 upgrade recovery and corrupt backup fail-closed restore-drill verified locally; production PostgreSQL upgrade path awaits ORB-016"
       ]
+    },
+    {
+      "id": "PLAN-GOV-001",
+      "test": "AI plan/status integrity and trusted-base GitHub pull request task table synchronization",
+      "status": "MOCK-TESTED",
+      "command": "npm test && npm run lint; GitHub CI #45136560073 / Chromium #45136560103 / services #45136560088",
+      "evidence_path": "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md",
+      "limitations": [
+        "122 automated Node tests and hosted CI work; PR webhook effective write permission and trigger still need postmerge live PR proof",
+        "No automatic verification promotion; production and provider integrations remain outside scope"
+      ]
     }
   ],
   "status_note": "42 passing automated tests + security:check + smoke + doctor verify local SQLite/API/UI vertical slices across Phases 0–8 (including SHA-256 audit hash chain, interrupted job crash recovery, production deployment readiness wizard, AES-GCM encrypted secret references, and synthetic demo seeding). External live cPanel credentials, external SMTP, Chromium browser E2E (.github/workflows/ci-browser.yml), and Docker PostgreSQL/Redis containers (.github/workflows/ci-services.yml) remain unverified in this environment."

@@ -6,7 +6,7 @@ VSN ORBICORE is a self-hostable web-first control plane for owners, WordPress op
 
 ## MVP boundary
 
-The first technical proof is read-only inventory of mock cPanel accounts and sites through a provider adapter. It demonstrates a real local API, persisted records, a job lifecycle and an interactive dashboard. It does not manage live hosting, migrate a website, manage secrets, implement authentication or establish production suitability.
+The first technical proof is read-only inventory of mock cPanel accounts and sites through a provider adapter. It demonstrates a real local API, persisted records, a job lifecycle and an interactive dashboard. This describes the **original Phase 0 PoC boundary**, not the latest code. Subsequently local SQLite authentication/MFA/passkeys and other *synthetic-only* operations were implemented and browser/CI tested; this is not live hosting management, production PostgreSQL identity, a real secret vault, a verified migration or production suitability.
 
 ## User jobs and initial flows
 

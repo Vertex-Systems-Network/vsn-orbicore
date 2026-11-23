@@ -111,7 +111,7 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Redis CLI for hosted service checks
         run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-tools
       - name: Verify hosted service schema, constraints and Redis I/O
@@ -140,7 +140,7 @@ jobs:
         run: |
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
           psql -X -v ON_ERROR_STOP=1 -f db/migrations/002_postgres_job_outbox.sql
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -157,7 +157,7 @@ jobs:
         run: node scripts/verify-runtime-clients.mjs > .data/ci/orb-004-runtime-clients.json
       - name: Upload pinned runtime client proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-runtime-clients
           path: .data/ci/orb-004-runtime-clients.json
@@ -190,7 +190,7 @@ jobs:
         run: node scripts/verify-pg-redis-outbox.mjs > .data/ci/orb-004-outbox-worker.json
       - name: Upload outbox worker and SIGKILL recovery evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-outbox-worker-recovery
           path: .data/ci/orb-004-outbox-worker.json
@@ -198,7 +198,7 @@ jobs:
           retention-days: 14
       - name: Upload HTTP PostgreSQL job integration evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-postgres-http-evidence
           path: .data/ci/orb-004-postgres-http.json
@@ -206,7 +206,7 @@ jobs:
           retention-days: 14
       - name: Upload Node repository integration evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-postgres-job-repository
           path: .data/ci/orb-004-postgres-repository.json
@@ -214,7 +214,7 @@ jobs:
           retention-days: 14
       - name: Upload job-lease recovery evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-leased-job-evidence
           path: .data/ci/orb-004-lease-evidence.json
@@ -222,7 +222,7 @@ jobs:
           retention-days: 14
       - name: Upload scoped service-parity evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-016-hosted-service-parity
           path: .data/ci/orb-016-service-parity.json
@@ -234,8 +234,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -245,7 +245,7 @@ jobs:
         run: bash scripts/verify-compose-restart.sh
       - name: Upload Compose persistence, AOF and natural lease recovery evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-016-compose-recovery
           path: |
@@ -280,8 +280,8 @@ jobs:
       PGDATABASE: orbicore
       PGPASSWORD: ci-identity-only-password
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -300,7 +300,7 @@ jobs:
           node scripts/verify-postgres-identity-core.mjs > .data/ci/orb-005-identity-core.json
       - name: Upload read-scoped PostgreSQL identity migration evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-identity-core
           path: .data/ci/orb-005-identity-core.json
@@ -333,8 +333,8 @@ jobs:
       PGPASSWORD: ci-auth-state-only-password
       ORBICORE_CI_SYNTHETIC_AUTH_IMPORT: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -354,7 +354,7 @@ jobs:
           node scripts/verify-postgres-auth-state.mjs > .data/ci/orb-005-auth-state.json
       - name: Upload auth-state schema and PostgreSQL tenant security evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-auth-state
           path: .data/ci/orb-005-auth-state.json
@@ -387,8 +387,8 @@ jobs:
       PGPASSWORD: ci-feature-state-only-password
       ORBICORE_CI_SYNTHETIC_AUTH_IMPORT: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -434,7 +434,7 @@ jobs:
           node scripts/verify-postgres-feature-state.mjs > .data/ci/orb-005-feature-state.json
       - name: Upload PostgreSQL operational feature migration evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-feature-state
           path: .data/ci/orb-005-feature-state.json
@@ -467,8 +467,8 @@ jobs:
       PGPASSWORD: ci-synthetic-writer-only-password
       ORBICORE_CI_SYNTHETIC_PG_WRITE: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -490,7 +490,7 @@ jobs:
           node scripts/verify-postgres-synthetic-gateway.mjs > .data/ci/orb-005-synthetic-pg-writer.json
       - name: Upload synthetic PostgreSQL authenticated writer proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-authenticated-writer
           path: .data/ci/orb-005-synthetic-pg-writer.json
@@ -523,8 +523,8 @@ jobs:
       PGPASSWORD: ci-pg-http-fixture-password
       ORBICORE_CI_SYNTHETIC_PG_HTTP: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -547,7 +547,7 @@ jobs:
           node scripts/verify-postgres-synthetic-http.mjs > .data/ci/orb-005-postgres-http.json
       - name: Upload PostgreSQL HTTP auth/CSRF synthetic evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-synthetic-http
           path: .data/ci/orb-005-postgres-http.json
@@ -581,8 +581,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_PG_HTTP: "1"
       ORBICORE_CI_SYNTHETIC_PG_LOGIN: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -606,7 +606,7 @@ jobs:
           node scripts/verify-postgres-ci-login.mjs > .data/ci/orb-005-ci-pg-login.json
       - name: Upload bounded PostgreSQL login/MFA/cookie evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-ci-login-lifecycle
           path: .data/ci/orb-005-ci-pg-login.json
@@ -641,8 +641,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_PG_LOGIN: "1"
       ORBICORE_CI_SYNTHETIC_PG_AUTH_AUDIT: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -667,7 +667,7 @@ jobs:
           node scripts/verify-postgres-ci-auth-audit.mjs > .data/ci/orb-005-ci-pg-auth-audit.json
       - name: Upload atomic PostgreSQL CI auth audit evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-ci-auth-audit
           path: .data/ci/orb-005-ci-pg-auth-audit.json
@@ -701,8 +701,8 @@ jobs:
       PGOPTIONS: "-c orbicore.ci_shadow_fixture=enabled"
       ORBICORE_CI_SYNTHETIC_SHADOW_SCHEMA: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -725,7 +725,7 @@ jobs:
           node scripts/verify-postgres-ci-shadow-schema.mjs > .data/ci/orb-005-ci-shadow-schema.json
       - name: Upload synthetic shadow credential denial evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-postgres-ci-shadow-schema
           path: .data/ci/orb-005-ci-shadow-schema.json
@@ -760,8 +760,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_SHADOW_SCHEMA: "1"
       ORBICORE_CI_SYNTHETIC_REAUTH: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -785,7 +785,7 @@ jobs:
           node scripts/verify-postgres-ci-credential-shadow.mjs > .data/ci/orb-005-ci-reauth-shadow.json
       - name: Upload non-secret synthetic reauthentication evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-ci-reauth-shadow
           path: .data/ci/orb-005-ci-reauth-shadow.json
@@ -821,8 +821,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_REAUTH: "1"
       ORBICORE_CI_SYNTHETIC_RECONCILE: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -847,7 +847,7 @@ jobs:
           node scripts/verify-postgres-ci-epoch-reconciliation.mjs > .data/ci/orb-005-ci-epoch-reconciliation.json
       - name: Upload synthetic epoch reconciliation proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-ci-epoch-reconciliation
           path: .data/ci/orb-005-ci-epoch-reconciliation.json
@@ -884,8 +884,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_EVENT_ATTESTATION: "1"
       ORBICORE_CI_SYNTHETIC_FAILURE_AUDIT: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -909,7 +909,7 @@ jobs:
           node scripts/verify-postgres-ci-auth-privacy-provenance.mjs > .data/ci/orb-005-ci-mac-privacy.json
       - name: Upload non-secret HMAC audit / provenance proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-ci-hmac-privacy-provenance
           path: .data/ci/orb-005-ci-mac-privacy.json
@@ -947,8 +947,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_ACTOR_AUTH: "1"
       ORBICORE_CI_SYNTHETIC_WITNESS: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -974,7 +974,7 @@ jobs:
           node scripts/verify-postgres-ci-actor-witness.mjs > .data/ci/orb-005-ci-actor-witness.json
       - name: Upload non-secret actor and witness evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-ci-actor-witness
           path: .data/ci/orb-005-ci-actor-witness.json
@@ -1013,8 +1013,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_WITNESS: "1"
       ORBICORE_CI_SYNTHETIC_DETACHED_CHECKPOINT: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -1039,7 +1039,7 @@ jobs:
           node scripts/verify-postgres-ci-detached-readiness.mjs > .data/ci/orb-005-ci-detached-readiness.json
       - name: Upload non-secret detached-checkpoint test summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-ci-detached-readiness
           path: .data/ci/orb-005-ci-detached-readiness.json
@@ -1058,15 +1058,15 @@ jobs:
     env:
       ORBICORE_CI_SYNTHETIC_CROSS_RUNNER: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - name: Sign and serialize synthetic witness-only metadata
         id: signed
         run: node scripts/ci-export-witness-evidence.mjs
       - name: Upload non-secret signed metadata (no private key)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-ci-cross-runner-metadata
           path: .data/ci/cross-runner/evidence.json
@@ -1085,12 +1085,12 @@ jobs:
       EXPECTED_ENVELOPE_SHA256: ${{ needs.ci-cross-runner-evidence-export.outputs.envelope_sha256 }}
       EXPECTED_SEQUENCE: ${{ needs.ci-cross-runner-evidence-export.outputs.sequence }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - name: Fetch signed metadata from producer job artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: orb-005-ci-cross-runner-metadata
           path: .data/ci/cross-runner
@@ -1100,7 +1100,7 @@ jobs:
           node scripts/ci-restore-witness-evidence.mjs > .data/ci/orb-005-ci-cross-runner-restore.json
       - name: Upload non-secret fresh-runner restore proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-005-ci-cross-runner-restore-proof
           path: .data/ci/orb-005-ci-cross-runner-restore.json
@@ -1132,7 +1132,7 @@ jobs:
       PGPASSWORD: ci-pg-restore-only
       ORBICORE_CI_SYNTHETIC_PG_RESTORE: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Apply disposable identity, job, outbox, and MFA schema
         run: |
           psql -X -v ON_ERROR_STOP=1 -f db/postgres-schema.sql
@@ -1144,7 +1144,7 @@ jobs:
         run: bash scripts/verify-pg-synthetic-backup-restore.sh
       - name: Upload redacted restore summary (NOT the database archive)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-016-017-pg16-restore-summary
           path: .data/ci/pg-restore-drill/evidence.json
@@ -1178,8 +1178,8 @@ jobs:
       PGPASSWORD: ci-isolated-source-only
       ORBICORE_CI_PG_ISOLATED_RESTORE: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - name: Apply synthetic schema and tenant identity roles
@@ -1193,7 +1193,7 @@ jobs:
         run: bash scripts/verify-pg-isolated-cluster-restore.sh
       - name: Upload redacted CI proof only, never the DB/globals/key
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-016-isolated-pg16-restore-summary
           path: .data/ci/pg-isolated-recovery/evidence.json
@@ -1237,8 +1237,8 @@ jobs:
       ORBICORE_CI_REDIS_URL: redis://127.0.0.1:6379
       ORBICORE_CI_SYNTHETIC_SIGNAL_REJECTIONS: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -1257,7 +1257,7 @@ jobs:
           node scripts/verify-postgres-ci-signal-quarantine.mjs > .data/ci/orb-004-poison-signal-proof.json
       - name: Upload nonsecret metadata-only fault proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-poison-signal-quarantine-proof
           path: .data/ci/orb-004-poison-signal-proof.json
@@ -1301,8 +1301,8 @@ jobs:
       ORBICORE_CI_REDIS_URL: redis://127.0.0.1:6379
       ORBICORE_CI_SYNTHETIC_SIGNAL_SCOPE: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -1321,7 +1321,7 @@ jobs:
           node scripts/verify-postgres-ci-scoped-signal-writer.mjs > .data/ci/orb-004-ci-scoped-signal-proof.json
       - name: Upload nonsecret scoped role/fault proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-ci-scoped-signal-writer-proof
           path: .data/ci/orb-004-ci-scoped-signal-proof.json
@@ -1366,8 +1366,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_SIGNAL_SCOPE: "1"
       ORBICORE_CI_SYNTHETIC_FULL_WORKER: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -1387,7 +1387,7 @@ jobs:
           node scripts/verify-postgres-ci-full-worker.mjs > .data/ci/orb-004-ci-full-worker-proof.json
       - name: Upload redacted nonowner full worker proof only
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-ci-full-worker-proof
           path: .data/ci/orb-004-ci-full-worker-proof.json
@@ -1433,8 +1433,8 @@ jobs:
       ORBICORE_CI_SYNTHETIC_FULL_WORKER: "1"
       ORBICORE_CI_SYNTHETIC_SIGNED_WAKEUP: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -1455,7 +1455,7 @@ jobs:
           node scripts/verify-postgres-ci-signed-wakeup.mjs > .data/ci/orb-004-ci-signed-wakeup-proof.json
       - name: Upload redacted nonsecret signature proof
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-004-ci-signed-wakeup-proof
           path: .data/ci/orb-004-ci-signed-wakeup-proof.json

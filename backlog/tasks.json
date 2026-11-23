@@ -84,14 +84,14 @@
         "tests/inventory-api.test.mjs"
       ],
       "blockers": [
-        "Browser-level visual/accessibility and live provider behavior remain unverified"
+        "The mock cPanel inventory vertical slice has local fixture proof; authorized live provider capability and inventory fidelity are still untested. Owner-approved disposable scoped cPanel sandbox access required for ORB-006/019; do not confuse ORB-009 browser-only E2E with live UAPI evidence."
       ],
       "started_at": "2026-11-09T00:00:00Z",
       "completed_at": null,
-      "verified_at": "2026-11-09T19:00:00Z",
-      "last_updated": "2026-11-09T19:00:00Z",
+      "verified_at": null,
+      "last_updated": "2026-11-23",
       "verification_level": "mock_tested",
-      "blocker_type": "environment"
+      "blocker_type": "external"
     },
     {
       "id": "ORB-003",
@@ -541,7 +541,7 @@
       "verified_at": null,
       "last_updated": "2026-11-23",
       "verification_level": "browser_tested",
-      "blocker_type": null
+      "blocker_type": "technical"
     },
     {
       "id": "ORB-010",
@@ -593,7 +593,7 @@
       "verified_at": null,
       "last_updated": "2026-11-23",
       "verification_level": "unit",
-      "blocker_type": null
+      "blocker_type": "technical"
     },
     {
       "id": "ORB-011",
@@ -935,7 +935,7 @@
         "The hosted PostgreSQL 16 custom archive successfully restored to a fresh database in the SAME disposable PG service, but this does not prove off-host backup, independent cluster roles and ACL, full SQLite v7 migration, key custody/MFA/secrets/jobs restoration, WAL/PITR or production rollback.",
         "PR #33 verified CI-only AES-256-GCM fixture backup plus password-free role globals restored into a distinct PostgreSQL 16 Docker cluster, with role/RLS grants, data parity and tamper rejection (19 service jobs at b1eb26eb). Both clusters still share CI host/admin, no independent offsite immutable storage or recoverable KMS, and no full SQLite-v7/jobs/Redis/MFA/secret restore or auth cutover."
       ],
-      "blocker_type": null,
+      "blocker_type": "technical",
       "verification_level": "integration_tested",
       "started_at": null,
       "completed_at": null,
@@ -993,7 +993,7 @@
       "blockers": [
         "PR #50 Chromium text-only 200% simulated user stylesheet passed 60 samples over 17 UI states and 320/390/1280px at 969fc631; CI reproduced and fixed 4 actual auth/security layout and control clipping faults. Existing native zoom/WebAuthn/MFA/tenant/browser suite and 113 Node tests remain green. NOT native Firefox text-only zoom. Remaining Firefox/WebKit browser controls, manual screen-reader/full WCAG contrast/touch/focus, full error/table state matrix and production provider/identity/tenant security."
       ],
-      "blocker_type": null,
+      "blocker_type": "technical",
       "verification_level": "browser_tested",
       "started_at": null,
       "completed_at": null,
@@ -1039,6 +1039,60 @@
       "completed_at": null,
       "verified_at": null,
       "last_updated": "2026-11-10"
+    },
+    {
+      "id": "ORB-020",
+      "epic": "Phase 1: Platform foundation",
+      "title": "AI plan integrity and automatic PR task-ledger governance",
+      "description": "Reconcile canonical AI plan, task status timestamps, documentation and CI warnings; ensure each PR description contains a full up-to-date task table sourced from its head backlog and safely refreshed on PR lifecycle updates.",
+      "priority": "P1",
+      "risk": "medium",
+      "phase": 1,
+      "dependencies": [
+        "ORB-003",
+        "ORB-008"
+      ],
+      "status": "testing",
+      "owner_agent": "codex",
+      "assumptions": [
+        "Trusted-base pull_request_target workflow must never execute pull-request code",
+        "GitHub Actions token requires pull-requests:write for PR body patches; organization policy may prevent this"
+      ],
+      "acceptance_criteria": [
+        "Each newly opened/reopened/updated PR has an idempotent canonical status/evidence table in its description, including all open PRs on a main backlog change",
+        "CI rejects verified_at on nonverified tasks, task dependency cycles, incomplete blocker metadata, and backlog/summary drift",
+        "Human-authored PR body text remains intact; untrusted PR code is never executed in write-enabled workflow",
+        "Browser and service/product tasks retain honest verification level; external-provider blockers are never silently closed",
+        "Auto-update is proven against an actual open PR and exact runner output is recorded before marking verified"
+      ],
+      "test_ids": [
+        "PLAN-GOV-001"
+      ],
+      "source_references": [
+        "AGENTS.md",
+        "AI_Native_Multi_Hosting_Master_Prompt.md",
+        "docs/BACKLOG.md",
+        "docs/ROADMAP.md"
+      ],
+      "commit_hash": "c4fbc3728bfe353b5a0fb51d635cb3ff5c28ae3e",
+      "evidence_paths": [
+        "scripts/pr-task-table.mjs",
+        "scripts/sync-pr-task-table.mjs",
+        "scripts/audit-plan.mjs",
+        "tests/plan-governance.test.mjs",
+        ".github/workflows/ci-pr-task-ledger.yml",
+        "docs/AUDIT/2026-11-23-ai-plan-pr-governance.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md"
+      ],
+      "blockers": [
+        "Functional CI passed at c4fbc372 (122 tests, 23 service jobs, Chromium E2E). Automatic GitHub PR-body sync still requires an actual default-branch postmerge opened/synchronize/edited live PR proof and write-token permission verification; branch protection API returns 403. Do not treat unit-tested formatter as GitHub webhook verification."
+      ],
+      "blocker_type": "technical",
+      "verification_level": "unit",
+      "started_at": "2026-11-23",
+      "completed_at": null,
+      "verified_at": null,
+      "last_updated": "2026-11-23"
     }
   ]
 }

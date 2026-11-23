@@ -28,6 +28,14 @@ This file is canonical. The product charter is `AI_Native_Multi_Hosting_Master_P
 - Restrictive shared cPanel hosting is not an assumed deployment target for the central application.
 - Avoid empty scaffolds and premature desktop/mobile packages; build web/API/install foundations first.
 
+## Mandatory PR task table and status updates
+
+- Every new PR description **must** contain the full current machine-readable backlog task table, including task ID, priority, lifecycle status, independent verification level, related/changed indication and blocker state. Never substitute a vague completion percentage.
+- At each meaningful PR code, test or documentation update, reconcile the affected records in `backlog/tasks.json`, `docs/BACKLOG.md`, relevant evidence and handoff **on the PR branch**; record honest statuses/dates without auto-promoting a task to `verified`. Table status is read from the PR head and refreshed on PR opened/reopened/synchronize/edited as well as changes to main backlog.
+- The trusted-base GitHub Action `.github/workflows/ci-pr-task-ledger.yml` updates an idempotent marked section of the PR body; preserve human-authored text outside its markers. A failed token/permissions/invalid JSON update must be reported, not silently claimed successful.
+- `npm run plan:check` is a CI gate for lifecycle timestamps, epic/dependency consistency and the canonical-vs-human backlog table. PR bot cannot modify task JSON, approve access, change production config or grant external credentials. Review actual Actions results before merging.
+- Even for docs-only changes, identify affected ORB IDs in the PR summary. If no task status changes, state that explicitly; still show all current task statuses in the PR description.
+
 ## GitHub workflow and verification
 
 - Never write directly to `main`; use a purpose-specific feature branch and PR in this repository.

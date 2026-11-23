@@ -6,7 +6,7 @@ The [master development directive](AI_Native_Multi_Hosting_Master_Prompt.md) gov
 
 ## Current status
 
-Phase 0 exit criteria are met. Phase 1 is underway. Local bootstrap/login, tenant scoping, audit, a TOTP compatibility fallback, and one-time recovery codes are mock-tested. Passkey enrollment/login server routes and UI are merged and CI-verified; browser authenticator verification, verified notification delivery, production key management, PostgreSQL/Redis, and the installation wizard remain unverified. The service uses synthetic data only and does not connect to real hosting accounts or perform production operations.
+Phase 0 exit criteria are met; Phase 1 is not finished. The default HTTP app uses local SQLite-backed bootstrap/authentication/tenants with WebAuthn virtual-authenticator Chromium E2E, MFA/recovery and sampled 200% font-only accessibility regressions; **these are synthetic/browser checks, not production identity or full WCAG compliance**. Separate GitHub-hosted PostgreSQL 16/Redis 7 schema, authorization, synthetic worker and encrypted fixture-restore integration tests pass, but PostgreSQL is **not** authoritative for default HTTP identity and no full offsite restore/cutover is verified. Live cPanel and mail-provider checks remain owner-authorization blocked. Task statuses/evidence are in [the canonical backlog](backlog/tasks.json); every PR description auto-includes a current task table when GitHub PR write permissions permit it.
 
 ## Local development
 
@@ -16,4 +16,4 @@ Requires Node.js 24+ and npm. Run `npm ci`, `npm test`, `npm run lint`, `npm run
 
 - [Roadmap](docs/ROADMAP.md) and [backlog](docs/BACKLOG.md)
 - [Architecture](docs/ARCHITECTURE.md), [security threat model](docs/SECURITY_THREAT_MODEL.md), and [research](docs/RESEARCH/PHASE-0-RESEARCH.md)
-- [AI agent rules](AGENTS.md)
+- [AI agent rules](AGENTS.md), [PR task-table and plan integrity audit](docs/AUDIT/2026-11-23-ai-plan-pr-governance.md)

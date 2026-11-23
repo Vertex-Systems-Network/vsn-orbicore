@@ -32,6 +32,12 @@ function validate(schema, value, path) {
     try { const url = new URL(value); if (!url.protocol) throw new Error(); }
     catch { errors.push(`${path}: invalid URI`); }
   }
+  // Arrays must be traversed before the object-only branch: otherwise item
+  // schemas were silently skipped, allowing invalid nested records through CI.
+  if (Array.isArray(value)) {
+    if (schema.items) value.forEach((item, index) => validate(schema.items, item, `${path}[${index}]`));
+    return;
+  }
   if (!isObject(value)) return;
   for (const key of schema.required ?? []) if (!(key in value)) errors.push(`${path}: missing required property ${key}`);
   if (schema.additionalProperties === false) {
@@ -43,7 +49,6 @@ function validate(schema, value, path) {
   if (schema.additionalProperties && isObject(schema.additionalProperties)) {
     for (const [key, child] of Object.entries(value)) if (!(key in (schema.properties ?? {}))) validate(schema.additionalProperties, child, `${path}.${key}`);
   }
-  if (schema.items && Array.isArray(value)) value.forEach((item, index) => validate(schema.items, item, `${path}[${index}]`));
 }
 
 async function jsonFiles(directory) {

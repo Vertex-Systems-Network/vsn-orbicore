@@ -10,8 +10,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -22,7 +22,7 @@ jobs:
       - name: Export lockfile CycloneDX SBOM
         run: node scripts/generate-sbom.mjs
       - name: Set up pinned Python schema-validator runtime
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install JSON Schema validator
@@ -31,7 +31,7 @@ jobs:
         run: python scripts/verify-cyclonedx-schema.py .data/ci/orbicore-sbom.cdx.json
       - name: Upload SBOM artifact
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: orb-015-cyclonedx-sbom
           path: .data/ci/orbicore-sbom.cdx.json

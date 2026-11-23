@@ -1,0 +1,35 @@
+name: PR task ledger (trusted base, auto-sync)
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited, ready_for_review, converted_to_draft, labeled, unlabeled]
+  push:
+    branches: [main]
+    paths:
+      - "backlog/tasks.json"
+      - "scripts/pr-task-table.mjs"
+      - "scripts/sync-pr-task-table.mjs"
+      - ".github/workflows/ci-pr-task-ledger.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: pr-ledger-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  sync-ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trusted default-branch code only (never PR head)
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Read bounded task JSON and refresh PR description table
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/sync-pr-task-table.mjs
