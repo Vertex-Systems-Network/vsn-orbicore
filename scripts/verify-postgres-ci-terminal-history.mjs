@@ -127,6 +127,17 @@ try {
   assert.equal(await pgCount("jobs"),0);
   assert.equal(await pgCount("organizations"),0);
 
+  // Source schema metadata must be exactly known and intact before any PG IO.
+  const originalV7 = app.db.prepare("SELECT name, applied_at FROM schema_migrations WHERE version=7").get();
+  app.db.prepare("UPDATE schema_migrations SET name=? WHERE version=7").run("tampered_future_migration");
+  await assert.rejects(copy(),/sqlite_v7_migration_manifest_mismatch/);
+  app.db.prepare("UPDATE schema_migrations SET name=? WHERE version=7").run(originalV7.name);
+  app.db.prepare("DELETE FROM schema_migrations WHERE version=7").run();
+  await assert.rejects(copy(),/sqlite_v7_migration_manifest_mismatch/);
+  app.db.prepare("INSERT INTO schema_migrations(version,name,applied_at) VALUES (7,?,?)")
+    .run(originalV7.name,originalV7.applied_at);
+  assert.equal(await pgCount("organizations"),0,"schema gate wrote PG rows");
+
   // Fail after identity, feature, and first job were inserted; whole PG
   // transaction must roll back, rather than leaving a partial authority.
   await pool.query(
@@ -176,6 +187,7 @@ try {
     copiedJobs:[complete.id,failed.id],
     rejectedQueuedAndRunning:true,rejectedUnsafePayload:true,
     rejectedCrossTenantRequestedBy:true,
+    tamperedAndMissingSourceSchemaManifestDenied:true,
     realLocalMockWorkerCompletedHistoryImported:true,
     rollbackOnPostgresFailure:true,tenantRlsReadProved:true,
     postgresJobOutboxRows:0,

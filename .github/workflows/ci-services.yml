@@ -29,6 +29,8 @@ on:
       - "tests/synthetic-worker-backoff.test.mjs"
       - "scripts/verify-postgres-ci-signal-quarantine.mjs"
       - "apps/api/postgres-identity-core.mjs"
+      - "apps/api/sqlite-v7-manifest.mjs"
+      - "tests/sqlite-v7-manifest.test.mjs"
       - "apps/api/postgres-synthetic-gateway.mjs"
       - "apps/api/postgres-synthetic-http-harness.mjs"
       - "apps/api/postgres-ci-login.mjs"
