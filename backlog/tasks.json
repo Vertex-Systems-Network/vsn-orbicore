@@ -588,7 +588,8 @@
         "tests/security-gate-expansion.test.mjs",
         "scripts/security-gate.mjs",
         "docs/TEST_EVIDENCE/2026-11-23-orb-010-unknown-license-lockfile-denial.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-010-offline-schema-ci.md"
       ],
       "blockers": [
         "PR #44 113 Node tests and 242-file Git-tracked recognized source check passed at 1ebcd978, including fail-closed license UNKNOWN/missing metadata and no/mismatched lockfile. Full historical/binary secrets discovery, deployed-system SBOM, release attestation, legal review, production service/identity, backup and provider gates remain open."
@@ -832,7 +833,8 @@
         "tests/sbom.test.mjs",
         ".github/workflows/ci.yml",
         "docs/TEST_EVIDENCE/2026-11-22-orb-015-audit-sbom-ci.md",
-        "docs/THIRD_PARTY_NOTICES.md"
+        "docs/THIRD_PARTY_NOTICES.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-010-offline-schema-ci.md"
       ],
       "blockers": [],
       "blocker_type": null,

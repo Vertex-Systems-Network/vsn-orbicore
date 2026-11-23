@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-010/015 vendored official CycloneDX 1.5 CI](2026-11-23-orb-010-offline-schema-ci.md): 136 hosted Node tests, four Python fail-closed pin tests, official JSON Schema + three invalid BOMs passed at functional SHA 104b0b5; docs/head CI pending.
+
 - [2026-11-23 ORB-006/010 fake-fetch UAPI response/redirect guard](2026-11-23-orb-006-uapi-response-redirect-guard.md): no-live-credentials response-status and outbound redirect denial regressions passed 136/136 hosted Node tests, Chromium and PR task-ledger at dfa3eda; docs-head CI pending.
 
 - [2026-11-23 ORB-005/017 loopback development and proxy header guard](2026-11-23-orb-005-017-loopback-proxy-guard.md): default listener hosts and forwarded authority regressions passed 133/133 hosted Node tests, Chromium, PG16/Redis7 and task ledger at functional head eb47845; docs-head CI pending.

@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-010/015 verified offline official CycloneDX schema functional checkpoint (PR #58)
+
+- [Functional GitHub CI #45143195069](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45143195069) passed **136/136** Node tests, **4/4** offline Python checksum/missing/corruption tests, and official pinned 1.5 Draft7 validation of 189 lockfile components with 3 negative BOM fixtures; validator output: `schemaSource: vendored_verified_git_blobs_no_network`. Vendored all three exact official schemas and source Apache-2.0 license (upstream Git blob SHAs matched before commit) and updated attribution. Docs + extra Node invariant test head still need final CI and merge. Previous main run #45141894808 failed due external schema HTTP 503 `Backend.max_conn reached`, with subsequent run #45142124493 passing at same SHA. Schema download network dependency is eliminated; pip installation remains external. ORB-010 stays in_progress and ORB-015 stays verified, without production attestation. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-offline-schema-ci.md).
+
+
 ## 2026-11-23 — ORB-006/010 provider adapter response and redirect boundary (feature PR)
 
 - Implemented no-live-credential mock fixes: `/execute` transport explicitly refuses redirects, handles direct/nested UAPI status metadata, and fails closed on status 0/malformed/absent metadata or nonempty error lists. Three fake-`fetchImpl` Node tests passed **136/136** total at SHA `dfa3eda` ([CI #45142304785](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142304785), [Chromium #45142304894](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142304894), [PR ledger #45142305018](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45142305018)); no real provider requests. Final docs-head CI pending. ORB-006/019 remain external blocked and ORB-010 in progress.
