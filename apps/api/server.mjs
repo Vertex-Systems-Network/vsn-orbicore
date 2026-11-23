@@ -12,7 +12,7 @@ import { buildDeploymentReadiness, buildDiagnosticBundle, createDatabaseBackup, 
 import { createMockCpanelAdapter, LiveCpanelAdapterBoundary } from "./cpanel-adapter.mjs";
 import { APPROVAL_MODES, buildAgencyReadinessReport, executePolicyRuleDryRun, generateAdvisoryInsights, RULE_TYPES } from "./automation.mjs";
 import { appendAuditEvent, verifyAuditChain } from "./audit.mjs";
-import { rejectCiSourceRecoveryHold } from "./sqlite-recovery-hold.mjs";
+import { CI_SOURCE_RECOVERY_HOLD_ERROR, rejectCiSourceRecoveryHold } from "./sqlite-recovery-hold.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultFixturePath = resolve(here, "fixtures/cpanel-uapi-inventory.json");
@@ -803,11 +803,18 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
   }
 
   async function processNextJob() {
-    const candidate = db.prepare("SELECT id, account_id, organization_id, requested_by FROM jobs WHERE status = 'queued' ORDER BY created_at, id LIMIT 1").get();
+    // The source hold can be established after app startup. Lock before
+    // inspecting the marker and claiming so marker DDL cannot slip between
+    // the deny check and the queued -> running transition.
+    const candidate = transaction(() => {
+      rejectCiSourceRecoveryHold(db);
+      const queued = db.prepare("SELECT id, account_id, organization_id, requested_by FROM jobs WHERE status = 'queued' ORDER BY created_at, id LIMIT 1").get();
+      if (!queued) return null;
+      const startedAt = new Date().toISOString();
+      const claimed = db.prepare("UPDATE jobs SET status = 'running', started_at = ? WHERE id = ? AND status = 'queued'").run(startedAt, queued.id);
+      return claimed.changes === 1 ? queued : null;
+    });
     if (!candidate) return null;
-    const startedAt = new Date().toISOString();
-    const claimed = db.prepare("UPDATE jobs SET status = 'running', started_at = ? WHERE id = ? AND status = 'queued'").run(startedAt, candidate.id);
-    if (claimed.changes !== 1) return null;
     try {
       const actor = db.prepare("SELECT id, organization_id, role, disabled FROM users WHERE id = ?").get(candidate.requested_by);
       if (!actor || actor.disabled || actor.organization_id !== candidate.organization_id || !["owner", "admin", "operator"].includes(actor.role)) {
@@ -823,6 +830,9 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const now = new Date().toISOString();
       const result = { source: "mock_fixture", live: false, accountId: account.id, sites: siteCount, fetchedAt: now };
       transaction(() => {
+        // A hold committed after claim but before completion must not allow
+        // job/account/audit mutations to advance the signed source snapshot.
+        rejectCiSourceRecoveryHold(db);
         db.prepare("UPDATE accounts SET last_synced_at = ?, source = 'mock_fixture' WHERE id = ? AND organization_id = ?").run(now, account.id, candidate.organization_id);
         db.prepare("UPDATE jobs SET status = 'completed', completed_at = ?, result_json = ?, error = NULL WHERE id = ?")
           .run(now, JSON.stringify(result), candidate.id);
@@ -830,9 +840,13 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       });
       return { id: candidate.id, status: "completed", result };
     } catch (error) {
+      // A hold is not an ordinary job failure; never rewrite the held row
+      // to failed or append a misleading error audit.
+      if (error?.message === CI_SOURCE_RECOVERY_HOLD_ERROR) throw error;
       const now = new Date().toISOString();
       const safeError = error instanceof Error ? error.message.slice(0, 240) : "Refresh failed.";
       transaction(() => {
+        rejectCiSourceRecoveryHold(db);
         db.prepare("UPDATE jobs SET status = 'failed', completed_at = ?, error = ? WHERE id = ?").run(now, safeError, candidate.id);
         appendAuditEvent(db, { organizationId: candidate.organization_id, actor: candidate.requested_by ?? "system", action: "inventory.refresh", targetId: candidate.account_id, outcome: "failed", createdAt: now, details: { jobId: candidate.id, reason: safeError } });
       });
@@ -2288,7 +2302,18 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
 
   let timer;
   if (startWorker) {
-    timer = setInterval(() => { void processNextJob(); }, 250);
+    timer = setInterval(() => {
+      void processNextJob().catch((error) => {
+        // Stop the already-running local timer on a late CI fixture hold,
+        // rather than generating repeated unhandled Promise rejections.
+        // Static redacted diagnostics only; no job IDs or credentials.
+        if (timer) clearInterval(timer);
+        timer = undefined;
+        console.error(error?.message === CI_SOURCE_RECOVERY_HOLD_ERROR
+          ? "orbicore_ci_source_hold_worker_stopped_manual_review_required"
+          : "orbicore_mock_worker_stopped_unexpectedly");
+      });
+    }, 250);
     timer.unref();
   }
 
