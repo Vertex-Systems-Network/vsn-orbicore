@@ -70,16 +70,26 @@ try {
     "VALUES (?,?,?,'mock','fixture.example.invalid','fixture','healthy',0,1,'mock_fixture')")
     .run(otherAccount,otherOrg,"Synthetic fixture-only account");
 
-  const complete = {
-    id:"ci-terminal-job-success",type:"inventory_refresh",
-    organization_id:"org-demo",account_id:first,requested_by:owner,
-    status:"completed",idempotency_key:"ci-terminal-completed",
-    created_at:now,started_at:start,completed_at:done,
-    result_json:JSON.stringify({
-      source:"mock_fixture",live:false,ciFixture:true,accountId:first,sites:2,
-    }),
-    error:null,
-  };
+  // Exercise the real local synthetic worker rather than only manually
+  // inserting a fabricated success row. Its output has no ciFixture marker.
+  const created = await fetch("http://127.0.0.1:" + app.server.address().port + "/api/jobs/refresh", {
+    method:"POST",
+    headers:{
+      "content-type":"application/json",
+      cookie:boot.headers.get("set-cookie").split(";")[0],
+      "idempotency-key":"ci-terminal-completed",
+    },
+    body:JSON.stringify({accountId:first}),
+  });
+  assert.equal(created.status,202);
+  const queued = await created.json();
+  assert.equal((await app.processNextJob()).status,"completed");
+  const complete = app.db.prepare("SELECT * FROM jobs WHERE id=?").get(queued.jobId);
+  assert.equal(complete.requested_by,owner);
+  assert.equal(complete.status,"completed");
+  assert.equal(JSON.parse(complete.result_json).source,"mock_fixture");
+  assert.equal(JSON.parse(complete.result_json).live,false);
+  assert.equal("ciFixture" in JSON.parse(complete.result_json),false);
   const failed = {
     id:"ci-terminal-job-failed",type:"inventory_refresh",
     organization_id:otherOrg,account_id:otherAccount,requested_by:otherUser,
@@ -93,7 +103,6 @@ try {
     "(@id,@type,@organization_id,@account_id,@requested_by,@status,@idempotency_key," +
     "@created_at,@started_at,@completed_at,@result_json,@error)",
   );
-  insert.run(complete);
   insert.run(failed);
   const original = app.db.prepare("SELECT * FROM jobs ORDER BY id").all();
   // A legacy/retry-running workload cannot migrate as immutable terminal history.
@@ -146,11 +155,13 @@ try {
     "FROM jobs ORDER BY id")).rows;
   assert.equal(values.length,2);
   const succeeded = values.find(x=>x.id===complete.id);
-  assert.equal(succeeded.result_json.ciFixture,true);
+  assert.equal(succeeded.result_json.source,"mock_fixture");
+  assert.equal(succeeded.result_json.live,false);
+  assert.equal(succeeded.result_json.sites >= 0,true);
   assert.equal(succeeded.result_json.accountId,first);
   assert.equal(succeeded.attempts,0,"history import cannot acquire a live worker lease");
-  assert.equal(succeeded.started_at.toISOString(),start);
-  assert.equal(succeeded.completed_at.toISOString(),done);
+  assert.equal(succeeded.started_at.toISOString(),complete.started_at);
+  assert.equal(succeeded.completed_at.toISOString(),complete.completed_at);
 
   assert.deepEqual((await readTenant("org-demo")).map(x=>x.id),[complete.id]);
   assert.deepEqual((await readTenant(otherOrg)).map(x=>x.id),[failed.id]);
@@ -164,6 +175,7 @@ try {
     copiedJobs:[complete.id,failed.id],
     rejectedQueuedAndRunning:true,rejectedUnsafePayload:true,
     rejectedCrossTenantRequestedBy:true,
+    realLocalMockWorkerCompletedHistoryImported:true,
     rollbackOnPostgresFailure:true,tenantRlsReadProved:true,
     postgresJobOutboxRows:0,
     reimportBlocked:true,

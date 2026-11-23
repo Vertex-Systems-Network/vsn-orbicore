@@ -48,7 +48,7 @@ export function validateSyntheticTerminalJobs(jobs, source) {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
         Object.keys(parsed).some((key) => !SAFE_RESULT_KEYS.has(key)) ||
         parsed.source !== "mock_fixture" || parsed.live !== false ||
-        parsed.ciFixture !== true || parsed.accountId !== row.account_id ||
+        (parsed.ciFixture !== undefined && parsed.ciFixture !== true) || parsed.accountId !== row.account_id ||
         (parsed.sites !== undefined && (!Number.isInteger(parsed.sites) || parsed.sites < 0)) ||
         (parsed.fetchedAt !== undefined && !timestamp(parsed.fetchedAt))) {
       throw new Error("terminal_job_result_not_fixture_safe");

@@ -15,6 +15,9 @@ const job = () => ({
 
 test("ORB-004/005 terminal history accepts only closed synthetic tenant-scoped snapshots", () => {
   assert.equal(validateSyntheticTerminalJobs([job()],source).length,1);
+  const generated = {...job(),result_json:JSON.stringify({source:"mock_fixture",live:false,accountId:"acct-ci",sites:2,fetchedAt:now})};
+  assert.deepEqual(validateSyntheticTerminalJobs([generated],source)[0],JSON.parse(generated.result_json),
+    "real mock worker results have no ciFixture key and must remain importable");
   assert.equal(validateSyntheticTerminalJobs([{...job(), status:"failed",result_json:null,error:"ci_fixture_failure"}],source)[0],null);
   for (const status of ["queued","running","paused"]) {
     assert.throws(() => validateSyntheticTerminalJobs([{...job(),status}],source),/unsupported_nonterminal/);
