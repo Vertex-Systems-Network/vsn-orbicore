@@ -69,6 +69,9 @@ on:
       - "apps/api/postgres-terminal-job-history.mjs"
       - "apps/api/ci-active-job-quarantine.mjs"
       - "apps/api/ci-active-quarantine-reconcile.mjs"
+      - "apps/api/ci-active-quarantine-cross-runner.mjs"
+      - "tests/ci-active-quarantine-cross-runner.test.mjs"
+      - "scripts/ci-verify-active-quarantine-evidence.mjs"
       - "tests/ci-active-quarantine-reconcile.test.mjs"
       - "tests/ci-active-job-quarantine.test.mjs"
       - "scripts/verify-postgres-ci-active-quarantine.mjs"
@@ -451,8 +454,49 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  ci-active-quarantine-independent-verifier:
+    name: CI-only quarantine public-key evidence check (runner B)
+    needs: postgres-ci-active-job-quarantine
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      ORBICORE_CI_ACTIVE_QUARANTINE: "1"
+      EXPECTED_PUBLIC_KEY_SHA256: ${{ needs.postgres-ci-active-job-quarantine.outputs.public_key_fingerprint }}
+      EXPECTED_ENVELOPE_SHA256: ${{ needs.postgres-ci-active-job-quarantine.outputs.envelope_sha256 }}
+      EXPECTED_SEQUENCE: ${{ needs.postgres-ci-active-job-quarantine.outputs.sequence }}
+      EXPECTED_QUARANTINED_COUNT: ${{ needs.postgres-ci-active-job-quarantine.outputs.quarantined_count }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Download signed quarantined metadata without private signer
+        uses: actions/download-artifact@v7
+        with:
+          name: orb-004-ci-cross-runner-quarantine
+          path: .data/ci/active-quarantine-cross-runner
+      - name: Verify pinned public key and fake-only job metadata in isolated runner
+        run: |
+          mkdir -p .data/ci
+          node scripts/ci-verify-active-quarantine-evidence.mjs > .data/ci/orb-004-ci-independent-quarantine.json
+      - name: Upload public-only independent verifier proof
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: orb-004-ci-independent-quarantine-proof
+          path: .data/ci/orb-004-ci-independent-quarantine.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   postgres-ci-active-job-quarantine:
     name: Disposable PG16 CI-only active job quarantine without replay
+    outputs:
+      public_key_fingerprint: ${{ steps.quarantine_evidence.outputs.public_key_fingerprint }}
+      envelope_sha256: ${{ steps.quarantine_evidence.outputs.envelope_sha256 }}
+      sequence: ${{ steps.quarantine_evidence.outputs.sequence }}
+      quarantined_count: ${{ steps.quarantine_evidence.outputs.quarantined_count }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -493,6 +537,7 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f db/ci-fixtures/011_ci_active_job_quarantine.sql
           psql -X -v ON_ERROR_STOP=1 -f db/ci-fixtures/011_ci_active_job_quarantine.sql
       - name: Verify quarantined active job snapshots, denied runtime access and rollback
+        id: quarantine_evidence
         run: |
           mkdir -p .data/ci
           node scripts/verify-postgres-ci-active-quarantine.mjs > .data/ci/orb-004-ci-active-quarantine.json
@@ -504,6 +549,13 @@ jobs:
           path: .data/ci/orb-004-ci-active-quarantine.json
           if-no-files-found: ignore
           retention-days: 14
+      - name: Upload signed fake-only quarantine metadata (public key only)
+        uses: actions/upload-artifact@v6
+        with:
+          name: orb-004-ci-cross-runner-quarantine
+          path: .data/ci/active-quarantine-cross-runner/evidence.json
+          if-no-files-found: error
+          retention-days: 7
 
   postgres-ci-terminal-history:
     name: Disposable PostgreSQL 16 terminal synthetic job ledger and atomic rollback

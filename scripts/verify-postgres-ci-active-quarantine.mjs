@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { Pool } from "pg";
 import { createApp } from "../apps/api/server.mjs";
 import { stageSyntheticActiveJobQuarantine } from "../apps/api/ci-active-job-quarantine.mjs";
+import { createCiActiveQuarantineAttestation, verifyCiActiveQuarantineAttestation } from "../apps/api/ci-active-quarantine-cross-runner.mjs";
 import {
   createSyntheticActiveQuarantineWitness, reconcileSyntheticActiveQuarantine,
 } from "../apps/api/ci-active-quarantine-reconcile.mjs";
@@ -214,6 +215,45 @@ try {
   }
   await assert.rejects(copy(),/nonempty_quarantine_target_refused/,
     "quarantine must not permit replay or duplicate staging");
+  // A distinct CI runner will verify this artifact using public-only pins.
+  // Private Ed25519 key never leaves this process; only mock job metadata
+  // (no source users/emails/password hashes, results or tokens) is exported.
+  if (!process.env.GITHUB_OUTPUT || !process.env.GITHUB_RUN_ID ||
+      !process.env.GITHUB_SHA) throw new Error("ci_attestation_run_context_missing");
+  const signedPgRows=(await pool.query(
+    "SELECT source_job_id,organization_id,account_id,requested_by,source_status,"+
+    "idempotency_key,created_at,started_at,metadata_sha256 "+
+    "FROM orbicore_ci_quarantine.active_jobs ORDER BY source_job_id",
+  )).rows;
+  const evidenceRows=signedPgRows.map(row=>({
+    id:row.source_job_id,organizationId:row.organization_id,
+    accountId:row.account_id,requestedBy:row.requested_by,
+    status:row.source_status,idempotencyKey:row.idempotency_key,
+    createdAt:row.created_at.toISOString(),
+    startedAt:row.started_at===null?null:row.started_at.toISOString(),
+    digest:row.metadata_sha256,
+  }));
+  const signed=createCiActiveQuarantineAttestation({
+    rows:evidenceRows,runId:process.env.GITHUB_RUN_ID,
+    headSha:process.env.GITHUB_SHA,
+    consent:"ci_fixture_active_jobs_quarantine_no_replay",
+  });
+  assert.equal(verifyCiActiveQuarantineAttestation({
+    envelope:signed.envelope,publicKeySha256:signed.publicKeySha256,
+    envelopeSha256:signed.envelopeSha256,
+    expectedRunId:process.env.GITHUB_RUN_ID,
+    expectedHeadSha:process.env.GITHUB_SHA,expectedSequence:1,expectedCount:2,
+  }),true);
+  const evidencePath=".data/ci/active-quarantine-cross-runner/evidence.json";
+  mkdirSync(dirname(evidencePath),{recursive:true});
+  writeFileSync(evidencePath,JSON.stringify(signed.envelope)+"\n",{flag:"wx",mode:0o600});
+  appendFileSync(process.env.GITHUB_OUTPUT,
+    "public_key_fingerprint="+signed.publicKeySha256+"\n"+
+    "envelope_sha256="+signed.envelopeSha256+"\n"+
+    "sequence="+signed.sequence+"\n"+
+    "quarantined_count="+signed.count+"\n",
+  );
+
   console.log(JSON.stringify({
     tasks:["ORB-004","ORB-005","ORB-016","ORB-017"],
     mode:"ci_only_metadata_quarantine_no_replay",

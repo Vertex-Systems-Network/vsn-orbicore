@@ -1,5 +1,8 @@
 # Project state
 
+**Next ORB-004/016 synthetic independent attestation (functional PR CI passed):** New CI-only Ed25519 source/PG quarantine evidence from actual PG16 fixture workflow will be downloaded by a different runner and validated with a separately transported public-key SHA fingerprint, envelope checksum and run/commit pin. No production key custody, live job recovery, Redis event replay, cross-store atomicity or real-provider authorization. Functional PR head `5693e059` passed 151 Node tests, all 26 hosted PG16/Redis7 jobs including independent runner, Chromium and trusted ledger; final docs-head CI/merge pending. [Measured test results](TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md).
+
+
 **New ORB-004/016 synthetic quarantine cross-store reconciliation (functional CI passed):** Detached, ephemeral-key HMAC checkpoint binds the accepted SQLite active-job metadata independently of PostgreSQL staging. Read-only re-verification denies signed witness forgery, later source edits, PostgreSQL metadata tampering or extra rows, and public job/outbox contamination. CI-only no-replay gate; no key custody, live source, provider or production auth cutover. At functional PR head `f69351fb`, 148/148 Node tests, 25/25 PG16/Redis7 service jobs, Chromium and ledger passed; docs-head final CI/merge pending. [Measured evidence](TEST_EVIDENCE/2026-11-23-orb-004-ci-signed-quarantine-reconciliation.md).
 
 
