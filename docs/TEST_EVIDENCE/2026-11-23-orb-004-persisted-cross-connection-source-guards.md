@@ -20,6 +20,7 @@ PR #78 installed SQLite `TEMP` BEFORE INSERT/UPDATE/DELETE triggers on each loca
 3. Stop the app; reopen source using two independent SQLite connections, install hold, then attempt independent INSERT/UPDATE/DELETE and ensure unchanged organization/account/migration counts. A held restart still refuses schema initialization.
 4. Add a new source table alphabetically earlier than all originals between two clean app startups; the old trigger list must remain unchanged and exactly three stable new guards must appear.
 5. Invalid inputs rejected and repeated installation must not duplicate triggers.
+6. Deliberately replace an existing persisted INSERT trigger with a harmless, same-name but **non-denying** trigger; clean source restart must fail with `ci_sqlite_source_guard_conflict` rather than silently trust a malformed definition, without changing existing account/migration rows.
 
 GitHub Node CI, browser jobs, path-scoped PG16/Redis7 service jobs, and trusted PR ledger are verification gates. Until the measured results are recorded no pass claim is made.
 
