@@ -6,7 +6,7 @@ import { randomUUID, randomBytes, createHash, scryptSync, timingSafeEqual } from
 import { DatabaseSync } from "node:sqlite";
 import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from "@simplewebauthn/server";
 import { decryptMfaSecret, decryptMfaSecretWithFallback, encodeBase32, encryptMfaSecret, mfaEncryptionKey, newRecoveryCodes, parseMfaKeyring, recoveryCodeHash, verifyTotp } from "./mfa.mjs";
-import { CAPABILITY_PROFILES, redactSecrets, resolveContainedPath, validateExternalEndpoint } from "./security.mjs";
+import { CAPABILITY_PROFILES, redactSecrets, resolveContainedPath, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
 import { createLocalNotificationAdapter, dispatchRecoveryNotification, issueRecoveryContactVerification, verifyRecoveryContactToken } from "./notifications.mjs";
 import { buildDeploymentReadiness, buildDiagnosticBundle, createDatabaseBackup, listBackups, runPreflight, runRestoreDrill, verifyBackupFile } from "./preflight.mjs";
 import { createMockCpanelAdapter, LiveCpanelAdapterBoundary } from "./cpanel-adapter.mjs";
@@ -1620,7 +1620,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const username = typeof body.username === "string" ? body.username.trim().slice(0, 40) : "";
         const profileName = typeof body.capabilityProfile === "string" && body.capabilityProfile in CAPABILITY_PROFILES ? body.capabilityProfile : "cpanel_uapi_standard";
         const quotaGb = Number(body.quotaGb ?? 50);
-        const hostCheck = validateExternalEndpoint(body.host, { requireHttps: false });
+        const hostCheck = validateCpanelApiHost(body.host);
         if (!label || !/^[a-zA-Z0-9_-]{2,32}$/.test(username) || !hostCheck.valid || !Number.isFinite(quotaGb) || quotaGb < 1 || quotaGb > 5000) {
           return json(response, 400, { error: hostCheck.valid ? "invalid_sandbox_account" : hostCheck.reason });
         }
@@ -2201,8 +2201,8 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!["owner", "admin"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
       try {
         const body = await readJson(request);
-        const host = typeof body.host === "string" ? body.host.trim() : "";
-        const endpoint = validateExternalEndpoint(`https://${host}:2083`, { requireHttps: true });
+        const host = typeof body.host === "string" ? body.host : "";
+        const endpoint = validateCpanelApiHost(host);
         if (!host || !endpoint.valid) return json(response, 400, { error: endpoint.reason || "invalid_host" });
         const boundary = await liveAdapterBoundary.discoverCapabilities({ host: endpoint.hostname, authorized: false });
         return json(response, 200, {

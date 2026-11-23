@@ -77,6 +77,29 @@ export function isBlockedNetworkAddress(hostOrIp) {
   return false;
 }
 
+// Accept only a bare cPanel API hostname. A URL-shaped "host" such as
+// cp.example.org/path could otherwise resolve to HTTPS port 443 when callers
+// append :2083, silently moving a credentialed UAPI request off its fixed port.
+// Do not infer safety from a syntactically valid arbitrary URL alone.
+export function validateCpanelApiHost(input) {
+  if (typeof input !== "string" || input.length < 1 || input.length > 253 ||
+      input !== input.trim()) {
+    return { valid: false, reason: "invalid_cpanel_host" };
+  }
+  const bracketedIpv6 = /^\\[[0-9a-f:.]+\\]$/i.test(input);
+  const dnsOrIpv4 = /^[\\p{L}\\p{N}._-]+$/u.test(input);
+  if (!bracketedIpv6 && !dnsOrIpv4) {
+    return { valid: false, reason: "invalid_cpanel_host" };
+  }
+  const endpoint = validateExternalEndpoint(`https://${input}:2083`, { requireHttps: true });
+  if (!endpoint.valid) return endpoint;
+  // Explicitly enforce the provider port even if URL interpretation changes.
+  if (new URL(endpoint.origin).port !== "2083") {
+    return { valid: false, reason: "invalid_cpanel_host" };
+  }
+  return endpoint;
+}
+
 export function validateExternalEndpoint(input, { allowedHosts = null, requireHttps = true } = {}) {
   if (typeof input !== "string" || input.length < 4 || input.length > 512) {
     return { valid: false, reason: "invalid_endpoint_length" };

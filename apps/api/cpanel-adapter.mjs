@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { CAPABILITY_PROFILES, validateExternalEndpoint } from "./security.mjs";
+import { CAPABILITY_PROFILES, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -20,7 +20,7 @@ export class LiveCpanelAdapterBoundary {
         reason: `Live cPanel connection for ${connectionRef?.host ?? "unknown"} is blocked until owner-authorized sandbox tokens are explicitly provisioned.`,
       };
     }
-    const endpoint = validateExternalEndpoint(`https://${connectionRef.host}:2083`, { requireHttps: true });
+    const endpoint = validateCpanelApiHost(connectionRef.host);
     if (!endpoint.valid) {
       return { ok: false, live: true, error: endpoint.reason, reason: "Host rejected by outbound SSRF policy." };
     }
