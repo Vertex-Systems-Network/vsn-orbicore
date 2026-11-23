@@ -6,6 +6,8 @@ Canonical machine-readable tasks: [`backlog/tasks.json`](../backlog/tasks.json).
 
 **Current unverified PR hardening (ORB-006/010):** 2 MiB maximum streamed UAPI JSON response size, with declared-length early denial and independent decoded byte cap before parsing; fake-response tests cover lied-about length and invalid JSON/UTF-8, without real provider credentials. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md). Existing live sandbox blocker and broader verification levels unchanged.
 
+**Current unverified PR hardening (ORB-004/005):** post-start file-backed SQLite CI recovery hold blocks unsafe local HTTP methods, rechecks JSON ingress after awaits and guards generic SQLite transactions/bootstrapping. Three synthetic real-HTTP tests cover unchanged job/audit/session state and read-only health; [test plan](TEST_EVIDENCE/2026-11-23-orb-004-http-late-source-hold.md). Not complete distributed/runtime fencing; lifecycle/verification levels unchanged.
+
 ## Status vocabulary
 
 **Automatic PR task table:** All new/reopened/edited/pushed PRs receive the complete canonical task table through a trusted-base GitHub Action. PR head backlog status overrides main baseline; all open PR tables refresh when main backlog changes. Source updates must include honest dates, evidence and blockers; no bot can auto-verify a task. See [PR governance](AUDIT/2026-11-23-ai-plan-pr-governance.md).
