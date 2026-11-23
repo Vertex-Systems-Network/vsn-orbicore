@@ -1074,7 +1074,7 @@
         "docs/BACKLOG.md",
         "docs/ROADMAP.md"
       ],
-      "commit_hash": "c4fbc3728bfe353b5a0fb51d635cb3ff5c28ae3e",
+      "commit_hash": "91dc9e9706ce9a1980a2e7f85f939c47d3f4de49",
       "evidence_paths": [
         "scripts/pr-task-table.mjs",
         "scripts/sync-pr-task-table.mjs",
@@ -1082,13 +1082,14 @@
         "tests/plan-governance.test.mjs",
         ".github/workflows/ci-pr-task-ledger.yml",
         "docs/AUDIT/2026-11-23-ai-plan-pr-governance.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-020-plan-governance-ci.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md"
       ],
       "blockers": [
-        "Functional CI passed at c4fbc372 (122 tests, 23 service jobs, Chromium E2E). Automatic GitHub PR-body sync still requires an actual default-branch postmerge opened/synchronize/edited live PR proof and write-token permission verification; branch protection API returns 403. Do not treat unit-tested formatter as GitHub webhook verification."
+        "GitHub PR #52 opened/synchronize/edited task-table updates are live-verified in trusted-base Actions, but push/main backfill of a separate stale open PR has not yet been observed, and concurrent main/PR task merge-base fix needs postmerge functional proof. GitHub branch protection API returned 403; no enforced ruleset claim."
       ],
       "blocker_type": "technical",
-      "verification_level": "unit",
+      "verification_level": "integration_tested",
       "started_at": "2026-11-23",
       "completed_at": null,
       "verified_at": null,

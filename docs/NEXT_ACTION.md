@@ -1,5 +1,8 @@
 # Next action
 
+**ORB-020 next gate:** PR #52 real on-open/synchronize/edited GitHub Actions webhook tests passed on 20 canonical rows; merge-base overlay CI protects older PRs from masking updated main statuses. Merge only after docs-head CI then verify **main push updates unchanged PR #53** (still at head SHA `4554d867e9c1048e92787aa61d7bd7cf4f1feff2`) to ORB-020 `testing/integration_tested`. Record actual run. Only then plan an evidence-backed `verified` task closeout (without conflating branch-protection 403, external cPanel/KMS etc). See [live evidence](TEST_EVIDENCE/2026-11-23-orb-020-live-pr-ledger-webhook.md).
+
+
 **ORB-020 governance priority after this audit:** Validate GitHub Actions PR ledger's actual opened/synchronize/edited behavior on a real PR after workflow merge to default branch; record bot run URL, exact head task table count, idempotence, source SHA and runner permission, and retain honest task statuses. If the integration gets 403 on a PR-body update, preserve the PR and escalate the exact permission/ruleset gap instead of claiming sync. Run `npm run plan:check` on each checkpoint; maintain task/evidence text consistency. External cPanel/KMS/SMTP production blockers remain independently gated; see [2026-11-23 audit](AUDIT/2026-11-23-ai-plan-pr-governance.md).
 
 
