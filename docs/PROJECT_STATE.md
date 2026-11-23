@@ -1,5 +1,7 @@
 # Project state
 
+**New ORB-005/017 SQLite v7 lineage guard (pending CI):** Explicit offline full/core/auth snapshot now checks the exact source `schema_migrations` version/name/timestamp manifest before a PostgreSQL connection is made. A new unit test matrix and existing synthetic PG16 service fixture exercise missing/altered metadata. This is source preflight only and not evidence of complete production SQLite-v7/active-queue/secret material migration. [Plan](TEST_EVIDENCE/2026-11-23-orb-005-017-sqlite-source-manifest.md).
+
 **New CI-only synthetic terminal history checkpoint (pending GitHub PR proof):** The offline PostgreSQL importer is extended to completed/failed job rows only, gated by fixture-only consent, checked tenant/actor references, terminal timestamps and strictly synthetic response payloads. A dedicated [PG16 service job](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45153391660) passed rollback, RLS and absence of outbox re-enqueue at functional SHA `a6a0f577` alongside 23 other hosted service jobs. It is deliberately **not** full SQLite v7/worker/secrets cutover and does not copy active jobs. See [test plan](TEST_EVIDENCE/2026-11-23-orb-004-005-terminal-job-history-ci.md).
 
 **Updated:** 2026-11-23

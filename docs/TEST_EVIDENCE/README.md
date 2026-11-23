@@ -1,5 +1,8 @@
 # Test evidence index
 
+- [2026-11-23 ORB-005/017 SQLite v7 source migration manifest preflight](2026-11-23-orb-005-017-sqlite-source-manifest.md): exact seven-name/version/source-timestamp validation and PG16 negative tamper checks; hosted CI pending.
+
+
 - [2026-11-23 ORB-004/005/016/017 synthetic terminal job history migration](2026-11-23-orb-004-005-terminal-job-history-ci.md): synthetic terminal history and real local mock-worker job copy passed latest 24/24 PG/Redis jobs + 140 Node tests at 6890baa6, with intermediate red-to-green regression recorded; final docs-head CI pending.
 
 
