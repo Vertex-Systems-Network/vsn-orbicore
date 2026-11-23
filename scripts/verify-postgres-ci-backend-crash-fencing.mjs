@@ -68,6 +68,10 @@ try {
   // A worker claims under a transaction but is killed before COMMIT.
   // PG16 rollback must atomically undo both status and the attempt counter.
   const preCommit=await pool.connect();
+  const preTerminationErrors=[];
+  // Terminated checked-out clients emit an asynchronous 'error' event even
+  // if COMMIT also rejects. A real worker must handle this crash path.
+  preCommit.on("error", error => preTerminationErrors.push(error));
   let tentative;
   try {
     await preCommit.query("BEGIN");
@@ -84,6 +88,8 @@ try {
   } finally {
     preCommit.release(true);
   }
+  assert.ok(preTerminationErrors.every(error => error?.code === "57P01"),
+    "unexpected PostgreSQL client failure during injected termination");
   const undone=await getJob(jobA);
   assert.equal(undone.status,"queued");
   assert.equal(undone.attempts,0);
@@ -103,11 +109,15 @@ try {
   // A second crash AFTER COMMIT cannot undo a durable claim. No provider
   // call is invoked here, and ownership remains unresolved until expiry.
   const postCommit=await pool.connect();
+  const postTerminationErrors=[];
+  postCommit.on("error", error => postTerminationErrors.push(error));
   try {
     await terminateClient(postCommit);
   } finally {
     postCommit.release(true);
   }
+  assert.ok(postTerminationErrors.every(error => error?.code === "57P01"),
+    "unexpected PostgreSQL client failure after durable claim");
   const durable=await getJob(jobA);
   assert.equal(durable.status,"running");
   assert.equal(durable.attempts,1);
