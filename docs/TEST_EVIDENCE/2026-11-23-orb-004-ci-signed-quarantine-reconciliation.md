@@ -1,6 +1,6 @@
 # ORB-004/005/016/017 — signed CI-only active-job quarantine reconciliation
 
-**Date:** 2026-11-23. **State:** Initial feature branch `e245e5bf38d84ab57fa4ec553fc5179d8bab46d7` [standard CI #45161060789](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45161060789) green. **Hosted PR PostgreSQL service tests pending**; CI results and any red-to-green updates must be appended after actual verification.
+**Date:** 2026-11-23. **State:** Initial feature branch `e245e5bf38d84ab57fa4ec553fc5179d8bab46d7` [standard CI #45161060789](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45161060789) green. **Hosted PR PostgreSQL integration passed at functional head**; final evidence-head CI and merge pending.
 
 ## Why
 
@@ -25,3 +25,10 @@
 - CI environment flags and HMAC signing key are **not** production-grade security boundaries. Anyone controlling the privileged same-runner process/key can forge a checkpoint. This is *not* an independent external witness or offsite signed audit. The test uses temporary same-runner file storage; restart durability and host compromise remain unproven.
 - The source read contains only currently `queued/running` jobs; historical `completed/failed` jobs follow a different CI-only importer. This does not verify a complete real active queue, pending notifications, worker leases, cross-database crash consistency, Redis replay sequencing or external cPanel operations.
 - No real login cutover, live credentials, production DB migration, worker operation, DNS or destructive actions. ORB-004/016/017 remain `testing/integration_tested`, ORB-005 remains `in_progress/integration_tested`; ORB-006/019 live checks are independently externally blocked.
+
+## Observed GitHub proof at functional PR SHA `f69351fb6ca85258e151b71a09c60aa6996f9431`
+
+- [Standard PR CI #45161407853](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45161407853) succeeded: **148/148 Node tests, zero failures**, including three new HMAC witness/reconciliation tests; plan, security, license and build gates passed. [Feature branch CI #45161346374](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45161346374) also succeeded.
+- [Full PG16/Redis7 Service Integration #45161407766](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45161407766): **25/25 hosted jobs succeeded**, including **Disposable PG16 CI-only active job quarantine without replay** and the enhanced signed-source recheck fixture. The private PG job script ran the temporary-file HMAC witness, denied wrong signer/MAC before DB IO, denied signed SQLite drift before PG IO, rejected a PostgreSQL account mutation even when its stored SHA-256 was recomputed, rejected extra quarantine rows and public table contamination, then verified restored 2/2 synthetic rows read-only. The earlier PG trigger-fault rollback, no-grants tenant-role refusal, and empty public jobs/outbox gates continued passing. No real jobs were resumed.
+- [Chromium browser/WebAuthn #45161407933](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45161407933) succeeded. [Trusted PR task ledger #45161407732](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45161407732) succeeded, preserving canonical **6 verified / 9 testing / 3 in_progress / 2 blocked** statuses.
+- This is **a single disposable CI process plus an independent temporary file**, not an HSM/KMS, externally retained signature key, privileged PG adversary-proof audit, cross-machine offsite recovery, or production verification. The witnessed metadata is deliberately non-executable.
