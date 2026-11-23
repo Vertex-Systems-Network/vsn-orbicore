@@ -179,9 +179,13 @@ try {
       dialog.getByRole("button", { name: "Add a passkey" }), "Add a passkey"),
     enrollPassword: await checkModalFocusVisible(
       dialog.locator("input[autocomplete='current-password']").first(), "Current password"),
-    enrollAction: await checkModalFocusVisible(
-      dialog.getByRole("button", { name: "Start enrollment" }), "Start enrollment"),
   };
+  // Enable the real conditional action before asserting focusability; never
+  // submit this fixture credential or record its value in evidence.
+  await dialog.locator("input[autocomplete='current-password']").first().fill(
+    "zoom-browser-unique-passphrase-99");
+  securityModalAt400.enrollAction = await checkModalFocusVisible(
+    dialog.getByRole("button", { name: "Start enrollment" }), "Start enrollment");
   await dialog.getByRole("button", { name: "Add a passkey" }).click();
   const passkeyField = dialog.locator(".passkey-setup input[autocomplete='current-password']");
   securityModalAt400.passkeyPassword = await checkModalFocusVisible(
