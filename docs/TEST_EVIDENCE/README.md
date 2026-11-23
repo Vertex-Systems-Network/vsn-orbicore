@@ -1,6 +1,6 @@
 # Test evidence index
 
-- [2026-11-23 ORB-004/005/016/017 synthetic terminal job history migration](2026-11-23-orb-004-005-terminal-job-history-ci.md): synthetic-only terminal history PG rollback and RLS successful at a6a0f577; 140/140 Node, 24/24 PG16/Redis7 jobs, Chromium and task ledger passed; final docs-head CI pending.
+- [2026-11-23 ORB-004/005/016/017 synthetic terminal job history migration](2026-11-23-orb-004-005-terminal-job-history-ci.md): synthetic terminal history and real local mock-worker job copy passed latest 24/24 PG/Redis jobs + 140 Node tests at 6890baa6, with intermediate red-to-green regression recorded; final docs-head CI pending.
 
 
 - [2026-11-23 ORB-010/015 vendored official CycloneDX 1.5 CI](2026-11-23-orb-010-offline-schema-ci.md): 136 hosted Node tests, four Python fail-closed pin tests, official JSON Schema + three invalid BOMs passed at functional SHA 104b0b5; docs/head CI pending.

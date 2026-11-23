@@ -1,6 +1,6 @@
 # ORB-004 / ORB-005 / ORB-016 / ORB-017 — terminal synthetic job ledger import
 
-**Status:** GitHub-hosted functional PR head `a6a0f57763341113d480dab2e00cddab9f00cb55` verified in CI. **Date:** 2026-11-23 (UTC). Documentation-head rerun and merge pending.
+**Status:** Latest functional PR head `6890baa607cb2a1452d25116f4c6886a3d7b83a9` verified by GitHub CI, Chromium and **24/24 PostgreSQL/Redis service jobs**, including the real mock-worker history case; intermediate failed regression and correction recorded below. **Date:** 2026-11-23 (UTC). Documentation-head rerun and merge pending.
 
 ## Scope
 The existing CI-only SQLite→PostgreSQL source importer had explicit refusal of any existing SQLite `jobs` rows. This checkpoint introduces a separate, stricter consent path, `fixture_only_terminal_jobs_offline_copy`, which copies core identity, authentication fixture state, seven operational feature tables, **and solely completed/failed synthetic inventory-refresh job history** in one PostgreSQL serializable transaction. The standard core/auth/feature import paths retain their refusal of nonempty `jobs`.
@@ -22,3 +22,14 @@ Only after workflow completion may counts and a run URL be reported as verified.
 - Required final documentation-head CI and postmerge main SHA check remain to be observed; do not overstate as already merged here.
 
 **Boundaries remain unchanged:** The new PostgreSQL rows represent fixture history, not live queue state, operational recovery, production credential authority, data-deletion approval, full SQLite migration, real MFA/secret custody, HA, or external/off-host restores. The default HTTP application still authenticates from SQLite, and ORB task statuses do not change.
+
+## Real local-worker compatibility regression, discovered and fixed
+
+The first manually seeded terminal-job proof was green at `a6a0f577` but did not mirror the actual SQLite worker's output. The follow-up test created the successful job via normal `POST /api/jobs/refresh` and `app.processNextJob()`, revealing two real differences: completed mock results omit `ciFixture`, and the SQLite route persists the idempotency key as `organizationId:ci-terminal-...`. An intermediate [service run #45154036082](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45154036082) failed correctly on that mismatch (`unsupported_nonterminal_or_nonfixture_job` instead of the expected unsafe-payload error), while standard and browser CI remained green. The importer was fixed to recognize only its **own exact tenant prefix** plus a fixture-key marker, accept actual strictly allowlisted local-worker result fields with no `ciFixture` marker, and continue rejecting cross-tenant/wrong-prefix keys.
+
+**Corrected functional SHA:** `6890baa607cb2a1452d25116f4c6886a3d7b83a9`.
+
+- [Hosted full PostgreSQL16/Redis7 service suite #45154216350](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45154216350): **all 24 jobs success**. The dedicated terminal job history workflow's setup, schema migrations, real worker proof, forced PG rollback, tenant RLS, source immutability, target replay denial, zero outbox and artifact upload all passed.
+- [PR standard Node/security/build CI #45154216274](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45154216274) **success**; [feature branch CI #45154214014](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45154214014) **success**.
+- [Chromium/WebAuthn/accessibility #45154216313](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45154216313) **success**; [task ledger #45154216249](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45154216249) **success**.
+- The test intentionally writes **only** synthetic fixture history. These observations neither migrate real job queues nor authorize production identities or credentials. ORB task lifecycle statuses remain unchanged.
