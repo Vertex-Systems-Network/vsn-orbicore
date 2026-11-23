@@ -70,3 +70,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 ## 2026-11-23 — ORB-010 absolute FQDN SSRF alias checkpoint (functional PR CI passed)
 
 - [Root-dot local hostname and dotted IPv4 validation](TEST_EVIDENCE/2026-11-23-orb-010-absolute-hostname-ssrf.md) denies equivalent local domains even when the requested hostname is fully qualified. Two negative/positive Node tests passed at `bbfe770c` alongside 170/170 Node, Chromium and ledger; PG16/Redis7 not triggered and docs-head CI/merge pending. ORB-010 `in_progress/unit`, ORB-006 `blocked/none`; DNS rebinding and live provider sandbox gates still open.
+
+## 2026-11-23 — ORB-009/018 independent Firefox and WebKit browser gate (pending hosted CI)
+
+- [Two-engine Playwright CI and synthetic UI reflow/keyboard coverage](TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md) adds Firefox/WebKit to existing Chromium job, including 320/390/1280 CSS px and security dialog. No native Firefox text-only zoom, physical device or manual accessibility sign-off. Both tasks remain `testing/browser_tested`.

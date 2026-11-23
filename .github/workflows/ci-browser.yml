@@ -7,6 +7,7 @@ on:
       - "scripts/browser-verify.mjs"
       - "scripts/browser-native-zoom.mjs"
       - "scripts/browser-text-resize.mjs"
+      - "scripts/browser-cross-engine.mjs"
       - "tests/fixtures/native-zoom-extension/**"
       - ".github/workflows/ci-browser.yml"
   workflow_dispatch:
@@ -44,5 +45,36 @@ jobs:
         with:
           name: orb-012-browser-evidence
           path: .data/browser-evidence/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  firefox-webkit-reflow:
+    name: ${{ matrix.engine }} responsive auth/workspace and keyboard check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Install Playwright browser and Ubuntu dependencies
+        run: npm install --no-save playwright && npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Run isolated Firefox/WebKit responsive and keyboard regressions
+        env:
+          ORBICORE_BOOTSTRAP_TOKEN: ci-cross-engine-owner-token-32bytes
+          ORBICORE_CROSS_BROWSER_ENGINE: ${{ matrix.engine }}
+        run: node scripts/browser-cross-engine.mjs
+      - name: Upload synthetic cross-engine evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: orb-009-018-cross-engine-${{ matrix.engine }}
+          path: .data/browser-evidence/cross-engine-${{ matrix.engine }}.json
           if-no-files-found: ignore
           retention-days: 14

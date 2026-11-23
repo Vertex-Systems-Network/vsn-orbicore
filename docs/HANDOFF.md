@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-009/018 independent Firefox and WebKit browser CI (verification pending)
+
+- Extended hosted browser workflow to a 2-engine Playwright Firefox/WebKit matrix with OS dependencies; retained the existing Chromium/WebAuthn/400% zoom checks. New local synthetic browser driver tests bootstrap/keyboard, 3 widths × 4 sections and 320px security dialog, recording metadata-only evidence.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md). Must review actual hosted engine results and fix any genuine reflow issues before claiming pass; no native Firefox text-only zoom, manual WCAG or production provider claim.
+
 ## 2026-11-23 — ORB-010 absolute DNS root-dot local host denial (functional PR CI passed)
 
 - Updated hostname-only guard to normalize terminal DNS root dots and IDNA period variants before matching local domains and IPv4 literal checks. Added localdomain alias denial and two Node regressions covering helpers and endpoint validation.

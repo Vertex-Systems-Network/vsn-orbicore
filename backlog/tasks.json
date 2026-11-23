@@ -554,7 +554,8 @@
         "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md",
         "docs/RESEARCH/2026-11-23-wcag-144-font-only-resize-method.md",
-        "scripts/browser-text-resize.mjs"
+        "scripts/browser-text-resize.mjs",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md"
       ],
       "blockers": [
         "PR #50 Chromium text-only 200% simulated user stylesheet passed 60 samples over 17 UI states and 320/390/1280px at 969fc631; CI reproduced and fixed 4 actual auth/security layout and control clipping faults. Existing native zoom/WebAuthn/MFA/tenant/browser suite and 113 Node tests remain green. NOT native Firefox text-only zoom. Remaining Firefox/WebKit browser controls, manual screen-reader/full WCAG contrast/touch/focus, full error/table state matrix and production provider/identity/tenant security."
@@ -1034,7 +1035,8 @@
         "docs/RESEARCH/2026-11-23-wcag-1412-automated-sample.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-200percent-text-only-simulated-browser.md",
         "docs/RESEARCH/2026-11-23-wcag-144-font-only-resize-method.md",
-        "scripts/browser-text-resize.mjs"
+        "scripts/browser-text-resize.mjs",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md"
       ],
       "blockers": [
         "PR #50 Chromium text-only 200% simulated user stylesheet passed 60 samples over 17 UI states and 320/390/1280px at 969fc631; CI reproduced and fixed 4 actual auth/security layout and control clipping faults. Existing native zoom/WebAuthn/MFA/tenant/browser suite and 113 Node tests remain green. NOT native Firefox text-only zoom. Remaining Firefox/WebKit browser controls, manual screen-reader/full WCAG contrast/touch/focus, full error/table state matrix and production provider/identity/tenant security."
