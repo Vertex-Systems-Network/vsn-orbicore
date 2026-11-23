@@ -50,3 +50,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 - ORB-009/018 are **testing/browser_tested**: Chromium native zoom and 200% font-only simulation found/fixed four CSS faults; manual WCAG and native Firefox/WebKit coverage remain open.
 - ORB-007 covers local preflight; ORB-017 gates production services and upgrade/recovery.
 - New work must record exact commit and workflow evidence. Historical task commit mappings remain null where the audit cannot attribute a precise commit.
+
+## 2026-11-23 — ORB-005 request-Origin security checkpoint (pending CI)
+
+- [Scheme-bound Origin validation and HTTP negative bootstrap test](TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md): fail-closed on opposite-scheme, invalid and non-serialized supplied origins while preserving missing-Origin non-browser requests. This is a bounded local API regression, not production TLS/CSRF/token or PostgreSQL authority proof. Canonical ORB-005 remains `in_progress/integration_tested`; ORB-017 remains `testing/integration_tested`.

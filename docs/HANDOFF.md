@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-005 scheme-bound Origin gate (GitHub CI pending)
+
+- Hardened ordinary local HTTP API `Origin` validation against cross-scheme same-host acceptance, non-serialized paths/credentials and empty values. Preserved trusted loopback forwarder and missing-Origin non-browser behavior. Added pure and real HTTP bootstrap regression asserting cross-scheme denial before any user insertion.
+- [Evidence / test plan](TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md). Await hosted Node/security/build/browser/PG16/Redis7 checks and mandatory trusted PR ledger before merge. ORB-005 `in_progress/integration_tested` unchanged; production blockers remain.
+
 ## 2026-11-23 — ORB-004/005/016/017 durable CI-only SQLite source startup hold (functional PR CI passed)
 
 - New `apps/api/sqlite-recovery-hold.mjs` refuses app startup when the reserved `orbicore_ci_active_recovery_hold` marker exists; no row content is trusted. `createApp` checks it **inside the same `BEGIN IMMEDIATE` transaction** used for automatic `running` → `queued` restart recovery, and cleans up the SQLite handle if the guard throws. Ordinary databases without marker retain their existing auto-requeue behavior. New `apps/api/ci-sqlite-source-recovery-hold.mjs` establishes an HMAC-pinned, source-validated marker **only under GH Actions + two CI opt-ins + explicit fixture no-replay consent**, with DDL and single marker row in one source transaction. No release API or execution ability.
