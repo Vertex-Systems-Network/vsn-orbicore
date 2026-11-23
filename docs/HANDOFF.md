@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-010 absolute DNS root-dot local host denial (functional PR CI passed)
+
+- Updated hostname-only guard to normalize terminal DNS root dots and IDNA period variants before matching local domains and IPv4 literal checks. Added localdomain alias denial and two Node regressions covering helpers and endpoint validation.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-010-absolute-hostname-ssrf.md). Functional PR SHA `bbfe770c` passed [170/170 Node tests #45184250737](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45184250737), [Chromium #45184250970](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45184250970) and [task ledger #45184250759](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45184250759). PG16/Redis7 not triggered for path. Docs-head CI/merge pending. This does not implement DNS peer pinning, live cPanel UAPI or production deployment.
+
 ## 2026-11-23 — ORB-010 canonical mapped IPv6 endpoint block (functional PR CI passed)
 
 - Canonicalized IPv6 literals so hex and expanded IPv4-mapped forms enter the same private/loopback/metadata IPv4 guard as dotted-quad forms. Added pure Node and `validateExternalEndpoint` tests for hex/expanded mapped-address denial plus public examples.
