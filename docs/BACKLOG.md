@@ -2,6 +2,8 @@
 
 Canonical machine-readable tasks: [`backlog/tasks.json`](../backlog/tasks.json). Keep this summary synchronized. `status` is lifecycle; `verification_level` is evidence strength. A mock pass does not imply live-provider verification.
 
+**Current unverified PR hardening (ORB-006/010):** strict bare-host and fixed HTTPS :2083 cPanel UAPI authority; regression matrix covers host URL-component injection, injected no-network transport and synthetic HTTP probe/account APIs. This is a security unit boundary, not live UAPI, DNS pinning or credentialed production verification. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-006-010-strict-cpanel-host-port.md). Task lifecycle and verification levels intentionally unchanged.
+
 ## Status vocabulary
 
 **Automatic PR task table:** All new/reopened/edited/pushed PRs receive the complete canonical task table through a trusted-base GitHub Action. PR head backlog status overrides main baseline; all open PR tables refresh when main backlog changes. Source updates must include honest dates, evidence and blockers; no bot can auto-verify a task. See [PR governance](AUDIT/2026-11-23-ai-plan-pr-governance.md).
