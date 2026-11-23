@@ -163,3 +163,9 @@ html[data-theme="dark"] .auth-restart{color:#8ef1cb}
 /* At narrow widths a doubled 22px security heading becomes 44px; permit
    long nonbreaking words to wrap instead of overflowing the dialog. */
 .mfa-panel{min-width:0;overflow-wrap:anywhere}
+
+/* A text-only 200% font override increases the intrinsic min-content size
+   of password inputs; keep the security dialog's grid column and its field
+   below the available 222px content width rather than forcing horizontal scroll. */
+.mfa-panel label{min-width:0;grid-template-columns:minmax(0,1fr)}
+.mfa-panel input{min-width:0;width:100%}
