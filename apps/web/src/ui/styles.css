@@ -159,3 +159,7 @@ html[data-theme="dark"] .auth-restart{color:#8ef1cb}
 /* ORB-009: the first-owner button can legitimately wrap onto two lines
    after user-requested 200% font enlargement at a 320px text viewport. */
 .auth-submit{height:auto;min-height:40px;padding:10px 12px;line-height:1.4;white-space:normal}
+
+/* At narrow widths a doubled 22px security heading becomes 44px; permit
+   long nonbreaking words to wrap instead of overflowing the dialog. */
+.mfa-panel{min-width:0;overflow-wrap:anywhere}
