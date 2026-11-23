@@ -1,6 +1,6 @@
 # ORB-004/005/016/017 — interrupted SQLite v7 and PG16 active-job staging
 
-**Date:** 2026-11-23 UTC. **Status:** Hosted GitHub PR checks pending. **No production recovery or cross-database atomic commit claimed.**
+**Date:** 2026-11-23 UTC. **Status:** Functional PR head `bc1457a06ad7c7f4a3faec59cbf5a7cf86b0f720` passed hosted Node, service integration and task ledger; final documentation-head CI and merge pending. **No production recovery or cross-database atomic commit claimed.**
 
 ## Why this gap matters
 
@@ -22,4 +22,9 @@ The setup deliberately models process death **around PG commit**, not a distribu
 
 ## Hosted evidence
 
-Pending GitHub Actions PR validation. Record the exact tested functional SHA, Node test counts, service job count and links, failures and fixes, final documentation-head checks and post-merge CI only after observing them.
+**Functional PR SHA:** `bc1457a06ad7c7f4a3faec59cbf5a7cf86b0f720`.
+
+- [Standard PR CI #45173182884](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45173182884) passed **158/158 Node tests, zero failures**, including two new strict environment/loopback/password gate tests, together with plan, security, lint, build and smoke gates.
+- [Service integration #45173182917](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45173182917) passed **28/28 PG16/Redis7 jobs**. The independent [file-backed SQLite v7 ↔ PG16 child-crash job #137687635953](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45173182917/job/137687635953) completed successfully: SIGKILL before the PG COMMIT left source unchanged and PG target empty; SIGKILL after PG COMMIT left two **private** quarantined metadata rows and unchanged reopened SQLite. The signed read-only recheck matched, repeat staging refused and later committed source drift was denied before PostgreSQL I/O. Actual `createApp` restart then requeued the once-`running` source row, marking `recovered_after_restart`; old witness validation failed closed while PG private rows remained quarantined and operational public jobs/outbox stayed empty. No live/provider/worker/Redis execution was run.
+- [Trusted PR ledger #45173182802](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45173182802) passed on the same functional head; backlog states unchanged. No Chromium workflow was triggered on this non-UI diff; browser checks are **not** claimed as part of this PR.
+- **Limitations remain:** This uses deterministic IPC crash windows on a disposable GitHub runner; not actual host power loss, independently anchored signing, SQLite↔PG atomic commit, source-side application fencing, provider idempotency, cross-store rollback, live cPanel access or production replay authorization. Final documentation-head CI and merge require separate verification.
