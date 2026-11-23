@@ -62,3 +62,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 ## 2026-11-23 — ORB-005 session-cookie SameSite checkpoint (functional PR CI passed)
 
 - [Session-cookie TLS transport versus cross-site authorization hardening](TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md): issue and expiry keep Strict; Secure follows explicit settings or trusted TLS signal. Two HTTP regressions passed at `9feff476` with 166/166 Node, 28/28 PG16/Redis7, Chromium/ledger (docs-head CI/merge pending). This does not claim production TLS, cross-origin frontend or complete CSRF defense. ORB-005 remains `in_progress/integration_tested`.
+
+## 2026-11-23 — ORB-010 mapped IPv6 literal SSRF hardening (functional PR CI passed)
+
+- [Canonical hexadecimal/expanded IPv4-mapped IPv6 deny regression](TEST_EVIDENCE/2026-11-23-orb-010-ipv4-mapped-ipv6-ssrf.md). Functional SHA `d300eed4` passed 168/168 Node CI, Chromium and trusted PR ledger; PG16/Redis7 workflow was not triggered, docs-head CI/merge pending. DNS rebinding/peer pinning and live ORB-006 authorization remain blocked. ORB-010 stays `in_progress/unit`, ORB-006 `blocked/none`, ORB-015 `verified/unit`.
