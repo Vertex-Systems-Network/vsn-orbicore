@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-009/018 WCAG 1.4.12 text spacing at native Chromium 400% zoom](2026-11-23-orb-009-018-text-spacing-400-browser.md): 12 sampled auth/dashboard text nodes and 320px page width passed injected line/letter/word-spacing clipping checks; sampled only, not full WCAG.
+
 - [2026-11-23 ORB-009/018 security dialog 400% native Chromium zoom focus/scrollport](2026-11-23-orb-009-018-native-400-security-dialog-focus.md): six focused controls fully inside browser and modal viewports; real Tab/Shift+Tab/Escape focus checks, no secrets captured; still no full WCAG.
 
 - [2026-11-23 ORB-009/018 native Chromium 200%/400% zoom and scrollable collapsed sidebar](2026-11-23-orb-009-018-native-chromium-zoom.md): real tab zoom, measured 1280/640/320 px, 400% offscreen Jobs link fixed, no page-wide overflow for sampled dashboard screens; not full WCAG.
