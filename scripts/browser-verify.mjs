@@ -38,7 +38,7 @@ try {
         const card = document.querySelector("form.auth-card");
         if (!card) throw new Error("Auth card missing during contrast audit");
         const rgb = (value) => {
-          const matches = value.match(/[\\d.]+/g);
+          const matches = value.match(/[\d.]+/g);
           if (!matches || matches.length < 3) throw new Error("Unexpected computed color value");
           return matches.slice(0, 3).map(Number);
         };
