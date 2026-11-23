@@ -90,23 +90,48 @@ export class LiveCpanelAdapterBoundary {
     if (!domainsRes.ok) {
       return { ...domainsRes, accounts: [], sites: [] };
     }
-    const data = domainsRes.data ?? {};
+    const data = domainsRes.data;
+    // HTTP + UAPI status=1 is not proof of a usable domain snapshot.
+    // Do not silently report an empty inventory or fabricate a file path
+    // when the provider returned missing/malformed domain records.
+    const malformed = () => ({
+      ok: false, live: true, error: "invalid_uapi_inventory_response",
+      accounts: [], sites: [],
+    });
+    if (!data || typeof data !== "object" || Array.isArray(data) ||
+        !data.main_domain || typeof data.main_domain !== "object" ||
+        Array.isArray(data.main_domain) ||
+        (data.addon_domains != null && !Array.isArray(data.addon_domains)) ||
+        (data.sub_domains != null && !Array.isArray(data.sub_domains))) {
+      return malformed();
+    }
     const list = [
-      ...(data.main_domain ? [data.main_domain] : []),
-      ...(Array.isArray(data.addon_domains) ? data.addon_domains : []),
-      ...(Array.isArray(data.sub_domains) ? data.sub_domains : []),
+      data.main_domain,
+      ...(data.addon_domains ?? []),
+      ...(data.sub_domains ?? []),
     ];
+    if (!list.every((d) => d && typeof d === "object" && !Array.isArray(d) &&
+      typeof d.domain === "string" && d.domain.trim().length > 0)) {
+      return malformed();
+    }
     return {
       ok: true,
       live: true,
       source: "cpanel_uapi_read_only",
       fetchedAt: new Date().toISOString(),
-      sites: list.map((d) => ({
-        domain: String(d.domain ?? "unknown.invalid"),
-        documentRoot: String(d.documentroot ?? "/public_html"),
-        phpVersion: String(d.phpversion ?? "unknown"),
-        kind: d.type === "main_domain" ? "Primary" : "Domain",
-      })),
+      sites: list.map((d) => {
+        const documentRoot = typeof d.documentroot === "string" && d.documentroot.trim()
+          ? d.documentroot : null;
+        const phpVersion = typeof d.phpversion === "string" && d.phpversion.trim()
+          ? d.phpversion : null;
+        return {
+          domain: d.domain,
+          documentRoot,
+          phpVersion,
+          metadataComplete: documentRoot !== null && phpVersion !== null,
+          kind: d.type === "main_domain" ? "Primary" : "Domain",
+        };
+      }),
     };
   }
 

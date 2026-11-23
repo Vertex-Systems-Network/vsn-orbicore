@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-006/010 synthetic UAPI domain inventory shape safety (functional PR CI passed)
+
+- Changed only fake-injectable cPanel UAPI inventory parsing: reject 200/status:1 payloads with missing/invalid main domain, invalid optional domain lists or missing per-row domain; never return invented domain/document root/PHP values. Add `metadataComplete` to mark missing document root/PHP as unknown.
+- Two injected-fetch Node regressions (ten malformed, one valid partial record), no live network/credential actions. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-006-uapi-inventory-shape.md). Functional SHA `c18491d7` passed [172/172 Node PR CI #45188700065](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45188700065), [3/3 Chromium/Firefox/WebKit #45188699952](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45188699952), and [ledger #45188700038](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45188700038). PostgreSQL/Redis service workflow not triggered on this diff; docs-head CI/merge pending. ORB-006 owner-authorized sandbox remains a hard external blocker.
+
 ## 2026-11-23 — ORB-009/018 independent Firefox and WebKit browser CI (functional PR CI passed)
 
 - Extended hosted browser workflow to a 2-engine Playwright Firefox/WebKit matrix with OS dependencies; retained the existing Chromium/WebAuthn/400% zoom checks. New local synthetic browser driver tests bootstrap/keyboard, 3 widths × 4 sections and 320px security dialog, recording metadata-only evidence.

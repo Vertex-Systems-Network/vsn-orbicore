@@ -78,3 +78,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 ### ORB-009/018 pinned browser image follow-up (CI passed at functional head)
 
 The official Playwright `v1.64.1-noble` container avoids repeated Ubuntu apt/browser downloads for the Firefox/WebKit matrix. [Host-run evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md) is supplemented by [3/3 pinned-container browser CI #45187415658](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415658) (Firefox 157.0, WebKit 27.2, Chromium) and [PR standard CI #45187415518](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45187415518), both green at `35df0a54`. Final documentation-head verification/merge pending; ORB-009/018 remain `testing/browser_tested`, no native Firefox Text Only Zoom or full WCAG claim.
+
+## 2026-11-23 — ORB-006/010 UAPI inventory schema safety (functional PR CI passed)
+
+- [Fail-closed malformed UAPI domain inventory and no fabricated document roots](TEST_EVIDENCE/2026-11-23-orb-006-uapi-inventory-shape.md) adds fake-fetch Node regressions for missing/wrong type domain lists, empty domain names and explicitly unknown paths. Functional SHA `c18491d7` passed 172/172 Node, Chromium/Firefox/WebKit 3/3, ledger; PG16/Redis7 not triggered; docs-head CI/merge pending. This is not actual provider validation. ORB-006 remains `blocked/none` and ORB-010 `in_progress/unit`.
