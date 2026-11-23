@@ -1,5 +1,11 @@
 # Handoff
 
+## 2026-11-23 — ORB-004 pre-initialization held SQLite opener gate (PR #78 checks pending)
+
+- Found prior recovery hold detection occurred after createDatabase executed schema DDL, migration-manifest insert-or-ignore and initial fixture seeding. New opener-level guard now rejects and closes a pre-existing held SQLite source **before** these writes, preserving the later transactional job recovery denial.
+- Two file-backed regressions: held marker-only partial source remains uninitialized; held seeded source with intentionally missing schema_migrations rows remains without migration rows after rejected startup. [Updated test evidence](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md).
+- Explicit remaining exposure: a marker racing between opener check and subsequent initialization statements still lacks a global atomic fence. No live PG/Redis production auth, provider, external witness or offsite restore claims. ORB-004/005 statuses unchanged.
+
 ## 2026-11-23 — ORB-004/005 CI-only SQLite source connection-local write guard (PR CI pending)
 
 - Extended durable source hold enforcement with temporary connection-bound `BEFORE INSERT/UPDATE/DELETE` triggers on all ordinary local SQLite tables. Installed after app initial migrations/fixture seeding; each row write checks the late external hold marker in main.sqlite_master and aborts before any changes. This catches direct app.db DML not passing through the HTTP/worker guards.

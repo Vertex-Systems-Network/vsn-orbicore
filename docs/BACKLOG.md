@@ -12,6 +12,8 @@ Canonical machine-readable tasks: [`backlog/tasks.json`](../backlog/tasks.json).
 
 **Current unverified PR hardening (ORB-004/005):** in-memory SQLite connection-local DML triggers guard app-owned source tables against direct INSERT/UPDATE/DELETE once the CI-only recovery hold appears, even without HTTP/worker wrappers. Three file-backed tests cover every table and explicitly demonstrate **other connections are not fenced**. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md). Lifecycle and verification level unchanged; no external key/worker or production authority.
 
+**Additional ORB-004/005 PR #78 startup gate:** existing recovery marker now checked before any SQLite schema/migration/fixture write on startup; two tests verify no new tables and no repaired migration manifest on held-source reopen. This is distinct from connection-local TEMP triggers; still no complete cross-process source or distributed worker fence. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md). No lifecycle promotion.
+
 ## Status vocabulary
 
 **Automatic PR task table:** All new/reopened/edited/pushed PRs receive the complete canonical task table through a trusted-base GitHub Action. PR head backlog status overrides main baseline; all open PR tables refresh when main backlog changes. Source updates must include honest dates, evidence and blockers; no bot can auto-verify a task. See [PR governance](AUDIT/2026-11-23-ai-plan-pr-governance.md).
