@@ -12,7 +12,7 @@ import { buildDeploymentReadiness, buildDiagnosticBundle, createDatabaseBackup, 
 import { createMockCpanelAdapter, LiveCpanelAdapterBoundary } from "./cpanel-adapter.mjs";
 import { APPROVAL_MODES, buildAgencyReadinessReport, executePolicyRuleDryRun, generateAdvisoryInsights, RULE_TYPES } from "./automation.mjs";
 import { appendAuditEvent, verifyAuditChain } from "./audit.mjs";
-import { CI_SOURCE_RECOVERY_HOLD_ERROR, rejectCiSourceRecoveryHold } from "./sqlite-recovery-hold.mjs";
+import { CI_SOURCE_RECOVERY_HOLD_ERROR, installCiSourceHoldWriteGuards, rejectCiSourceRecoveryHold } from "./sqlite-recovery-hold.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultFixturePath = resolve(here, "fixtures/cpanel-uapi-inventory.json");
@@ -163,6 +163,15 @@ function readFixture(fixturePath) {
 function createDatabase(dbPath, fixture) {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
+  // A held source must be rejected before schema DDL, migration metadata,
+  // fixture seeding or any other SQLite write on a restart. The later
+  // BEGIN IMMEDIATE gate still protects automatic running-job requeue.
+  try {
+    rejectCiSourceRecoveryHold(db);
+  } catch (error) {
+    db.close();
+    throw error;
+  }
   db.exec(`
     PRAGMA foreign_keys = ON;
     PRAGMA journal_mode = WAL;
@@ -612,6 +621,9 @@ function createDatabase(dbPath, fixture) {
       throw error;
     }
   }
+  // Install once after schema migration/fixture seeding. Any later hold
+  // created by a separate connection will deny local direct row writes too.
+  installCiSourceHoldWriteGuards(db);
   return db;
 }
 

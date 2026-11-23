@@ -1,5 +1,22 @@
 # Handoff
 
+## 2026-11-23 — ORB-004/005 tested PR #78 SQLite source write + startup hold
+
+- Measured head `2320b2f3`: [standard CI #45202385518](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385518) 188/188 Node passed; [PG16/Redis7 #45202385411](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385411) 28/28 service jobs passed; [Chromium/Firefox/WebKit #45202385459](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385459) 3/3 browser jobs passed; [trusted task ledger #45202513433](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202513433) passed.
+- Five file-backed regressions target per-connection DML denial on 20+ source tables, external connection no-WORM limitation and preexisting hold before migration/seeding. [Detailed evidence](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md). This documentation-only annotation still requires final-head checks/merge. ORB-004/005 statuses unchanged, no production authorization or independent source/PG fencing claim.
+
+## 2026-11-23 — ORB-004 pre-initialization held SQLite opener gate (PR #78 checks pending)
+
+- Found prior recovery hold detection occurred after createDatabase executed schema DDL, migration-manifest insert-or-ignore and initial fixture seeding. New opener-level guard now rejects and closes a pre-existing held SQLite source **before** these writes, preserving the later transactional job recovery denial.
+- Two file-backed regressions: held marker-only partial source remains uninitialized; held seeded source with intentionally missing schema_migrations rows remains without migration rows after rejected startup. [Updated test evidence](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md).
+- Explicit remaining exposure: a marker racing between opener check and subsequent initialization statements still lacks a global atomic fence. No live PG/Redis production auth, provider, external witness or offsite restore claims. ORB-004/005 statuses unchanged.
+
+## 2026-11-23 — ORB-004/005 CI-only SQLite source connection-local write guard (PR CI pending)
+
+- Extended durable source hold enforcement with temporary connection-bound `BEFORE INSERT/UPDATE/DELETE` triggers on all ordinary local SQLite tables. Installed after app initial migrations/fixture seeding; each row write checks the late external hold marker in main.sqlite_master and aborts before any changes. This catches direct app.db DML not passing through the HTTP/worker guards.
+- Three tests verify all-table trigger coverage and direct insert denial, populated-row update/delete denial, and the explicit limit that another SQLite connection can still write while the app connection's TEMP guards are active. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md). GitHub checks/PR/merge pending at write.
+- This is not database-wide durable write fencing, a production hold-release policy, cross-store atomicity, PG/Redis worker suspension, immutable/offsite witness, real provider safety or live identity migration. ORB-004 stays `testing/integration_tested`, ORB-005 `in_progress/integration_tested`.
+
 ## 2026-11-23 — ORB-016/017 PG archive tamper CI fixture collision repaired (PR #77)
 
 - [First PR #77 service CI #45197497191](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45197497191) exposed an actual **false-negative test fixture**: writing a literal `X` to randomly generated authenticated ciphertext offset 39 can be a no-op if that byte is already `X`. The job reported `tampered encrypted archive unexpectedly accepted`; that result is not counted as passed.
