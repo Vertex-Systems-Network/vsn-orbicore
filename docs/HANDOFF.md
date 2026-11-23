@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-004/005/016/017 CI-only terminal synthetic job history snapshot
+
+- Added opt-in snapshot consent `fixture_only_terminal_jobs_offline_copy`, strict fixture tenant/actor/result/status checks and PostgreSQL transaction-bound terminal job rows; active queued/running jobs still fail before PG writes, no Redis or PG outbox replay. New Node tests and separate PG16 service workflow exercise cross-tenant requested-by denial, malicious result refusal, injected mid-transaction PG failure rollback, no-source-mutation, job status/timestamp retention, per-tenant read RLS and re-import refusal. CI-only fixtures; **service job outcome pending on PR**. [Checkpoint plan](TEST_EVIDENCE/2026-11-23-orb-004-005-terminal-job-history-ci.md). ORB-004,005,016,017 lifecycle unchanged, no production cutover.
+
+
 ## 2026-11-23 — ORB-010/015 verified offline official CycloneDX schema functional checkpoint (PR #58)
 
 - [Functional GitHub CI #45143195069](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45143195069) passed **136/136** Node tests, **4/4** offline Python checksum/missing/corruption tests, and official pinned 1.5 Draft7 validation of 189 lockfile components with 3 negative BOM fixtures; validator output: `schemaSource: vendored_verified_git_blobs_no_network`. Vendored all three exact official schemas and source Apache-2.0 license (upstream Git blob SHAs matched before commit) and updated attribution. Docs + extra Node invariant test head still need final CI and merge. Previous main run #45141894808 failed due external schema HTTP 503 `Backend.max_conn reached`, with subsequent run #45142124493 passing at same SHA. Schema download network dependency is eliminated; pip installation remains external. ORB-010 stays in_progress and ORB-015 stays verified, without production attestation. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-offline-schema-ci.md).
