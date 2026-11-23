@@ -15,30 +15,45 @@ export function rejectCiSourceRecoveryHold(sqlite) {
   return true;
 }
 
-// Connection-local trigger guards extend the CI hold to direct SQLite DML
-// that bypasses the HTTP/worker transaction helpers. TEMP triggers are
-// intentionally bound only to this application connection; they do not
-// rewrite the source schema or interfere with a separate forensic auditor.
-// A hold created by another connection is checked when each row is written.
+// Durable source-local SQLite triggers protect ordinary DML on *all*
+// connections using this file, including ones that never called createApp.
+// This is a CI-only safety net, not a DDL/administrator/WORM boundary.
+// The transaction-owning initializer installs these while holding SQLite's
+// BEGIN IMMEDIATE writer lock. A later committed hold marker fails all writes.
 export function installCiSourceHoldWriteGuards(sqlite) {
   if (!sqlite || typeof sqlite.prepare !== "function" || typeof sqlite.exec !== "function") {
     throw new TypeError("sqlite_source_required");
   }
+  rejectCiSourceRecoveryHold(sqlite);
   const tables = sqlite.prepare(
     "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> ? ORDER BY name",
   ).all(TABLE);
-  for (let i = 0; i < tables.length; i += 1) {
-    // The name is SQLite schema data, not trusted source code.
-    const tableName = '"' + tables[i].name.replaceAll('"', '""') + '"';
+  const existingTrigger = sqlite.prepare(
+    "SELECT tbl_name AS tableName, sql FROM main.sqlite_master WHERE type='trigger' AND name=?",
+  );
+  for (const table of tables) {
+    // Encode the *name*, not its sorted index: schema upgrades may add tables
+    // before current ones. Names must remain stable after restart/upgrade.
+    const stableId = Buffer.from(table.name, "utf8").toString("hex");
+    const tableName = '"' + table.name.replaceAll('"', '""') + '"';
     for (const operation of ["INSERT", "UPDATE", "DELETE"]) {
-      const triggerName = 'orbicore_ci_hold_' + i + '_' + operation.toLowerCase();
-      sqlite.exec(`CREATE TEMP TRIGGER IF NOT EXISTS "${triggerName}"
+      const triggerName = `orbicore_ci_hold_${stableId}_${operation.toLowerCase()}`;
+      const triggerSql = `CREATE TRIGGER IF NOT EXISTS "${triggerName}"
         BEFORE ${operation} ON main.${tableName}
         WHEN EXISTS (
           SELECT 1 FROM main.sqlite_master
           WHERE name = '${TABLE}' AND type IN ('table', 'view')
         )
-        BEGIN SELECT RAISE(ABORT, '${CI_SOURCE_RECOVERY_HOLD_ERROR}'); END`);
+        BEGIN SELECT RAISE(ABORT, '${CI_SOURCE_RECOVERY_HOLD_ERROR}'); END`;
+      const installed = existingTrigger.get(triggerName);
+      // Do not silently reuse a same-name schema trigger with a different
+      // table/denial contract after a malformed schema upgrade.
+      if (installed && (
+        installed.tableName !== table.name ||
+        !installed.sql?.includes(`WHERE name = '${TABLE}'`) ||
+        !installed.sql?.includes(`RAISE(ABORT, '${CI_SOURCE_RECOVERY_HOLD_ERROR}')`)
+      )) throw new Error("ci_sqlite_source_guard_conflict");
+      sqlite.exec(triggerSql);
     }
   }
   return tables.length;

@@ -18,6 +18,8 @@ Canonical machine-readable tasks: [`backlog/tasks.json`](../backlog/tasks.json).
 
 **Latest scoped work in PR (ORB-004/005):** SQLite local source initializer now uses one immediate-writer transaction for schema/upgrade/seed/TEMP guard installation, with under-lock marker recheck and rollback of all DDL/DML on failure. Three file-backed regressions cover failed fixture, malformed legacy source and idempotent restart. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-atomic-sqlite-initialization.md). No task promotion; not a multi-process full migration/production consistency proof.
 
+**Latest scoped ORB-004/005 PR work:** convert connection-local TEMP source hold triggers to persisted main-schema DML guards, covering normal INSERT/UPDATE/DELETE from separate SQLite file connections, even after the app closes. UTF-8 table-name-encoded trigger identities remain stable across incremental schema upgrades; reject inconsistent preexisting guard names. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-persisted-cross-connection-source-guards.md). The change is **not** admin-proof WORM or full PG/Redis cross-store fencing, and does not promote lifecycle status.
+
 ## Status vocabulary
 
 **Automatic PR task table:** All new/reopened/edited/pushed PRs receive the complete canonical task table through a trusted-base GitHub Action. PR head backlog status overrides main baseline; all open PR tables refresh when main backlog changes. Source updates must include honest dates, evidence and blockers; no bot can auto-verify a task. See [PR governance](AUDIT/2026-11-23-ai-plan-pr-governance.md).
