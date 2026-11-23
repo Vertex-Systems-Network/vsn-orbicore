@@ -1,6 +1,7 @@
 import { verifyAuditChain } from "./audit.mjs";
 import { FEATURE_TABLES, insertSyntheticFeatureState } from "./postgres-feature-state.mjs";
 import { insertSyntheticTerminalJobs, validateSyntheticTerminalJobs } from "./postgres-terminal-job-history.mjs";
+import { assertSupportedSqliteV7Manifest } from "./sqlite-v7-manifest.mjs";
 
 // Deliberately limited offline copy of a synthetic SQLite identity snapshot.
 // It does not switch HTTP authentication, migrate MFA/passkeys, or write to an
@@ -57,6 +58,9 @@ export function createPostgresIdentityCoreReader(database) {
 }
 
 function verifySyntheticSource(sqlite, includeAuthState = false, includeFeatureState = false, includeJobHistory = false) {
+  // Validate the actual source migration lineage before opening PostgreSQL.
+  // Never silently interpret a partial/future SQLite schema as supported v7.
+  assertSupportedSqliteV7Manifest(sqlite);
   const scoped = {};
   for (const table of [
     ...SQL_TABLES,
