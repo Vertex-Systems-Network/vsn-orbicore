@@ -26,3 +26,9 @@ GitHub standard Node tests, lint, supply chain, browser, PG/Redis service workfl
 - These ephemeral triggers do **not** fence independent SQLite connections, late-added schema tables, DDL/DROP, background PostgreSQL/Redis workers or out-of-process provider effects.
 - New long-running async writes and other external runtimes still require per-connection guards / distributed leasing; no source/PG transactional commit or off-host immutable audit/key custody is proved.
 - No automatic hold release is implemented or authorized. No change to ORB-004 `testing/integration_tested` or ORB-005 `in_progress/integration_tested`.
+
+## Pre-initialization hold check and additional regression tests
+
+Previously, startup called `createDatabase` (schema DDL, `schema_migrations` writes and fixture seeding) before the existing transactional recovery marker check. A **pre-existing hold** could therefore be ignored by initialization even though automatic running-job requeue was denied later. The database opener now checks the marker and closes/throws immediately **before** schema initialization; the existing transactional auto-requeue gate remains.
+
+Two file-backed tests verify: (1) a marker-only partial source with an independent forensic checkpoint cannot acquire any newly seeded ORBICORE schema on denied app restart; and (2) an existing SQLite v7 source with a deliberately erased schema migration manifest cannot have that manifest silently reinserted on rejected startup. This does not establish a globally atomic fence for a hold inserted *between* opener check and later DDL, nor PostgreSQL/Redis or independent-provider isolation.
