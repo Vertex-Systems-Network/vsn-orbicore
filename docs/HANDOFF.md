@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-006/010 bounded UAPI JSON success bodies (PR CI pending)
+
+- Stopped consuming untrusted credentialed UAPI HTTP-200 bodies with unbounded `res.json()`; enforce 2 MiB declared Content-Length early denial and independent Web Stream decoded byte cap, abort/cancel on overflow. Strict UTF-8 decoding and JSON parsing now fail with redacted `invalid_uapi_response` rather than a generic transport failure. Unchanged manual redirect and 401/403 semantics.
+- Three injected fake-response tests cover false-small/oversized length, valid compact JSON, invalid UTF-8/JSON and redirect denial. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md). CI/merge pending; no authorized cPanel live account, DNS peer pinning, production credential/cutover or offsite recovery. ORB-006 remains `blocked/none`, ORB-010 `in_progress/unit`.
+
 ## 2026-11-23 — ORB-006/010 fixed-port public cPanel host boundary (PR CI pending)
 
 - Added strict bare cPanel host validation before any credentialed UAPI call, preventing a `host/path` or `host?query` string from converting the intended `:2083` suffix into URL path/query and silently downgrading request authority to HTTPS port 443. Denies URL components/embedded ports/credentials and private/local aliases; canonical public host remains on HTTPS :2083 with redirect manual. Applied to mock sandbox-account creation and network-disabled boundary probe.
