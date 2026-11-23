@@ -23,6 +23,64 @@ await new Promise((resolveListen, reject) => {
 const browser = await chromium.launch();
 
 try {
+  // ORB-009: inspect computed text/background contrast in both auth themes.
+  // This is a targeted Chromium sample audit, not a WCAG conformance claim.
+  const authThemeContrastRatios = {};
+  for (const theme of ["light", "dark"]) {
+    const contrastContext = await browser.newContext();
+    try {
+      const contrastPage = await contrastContext.newPage();
+      await contrastPage.addInitScript((name) => window.localStorage.setItem("orbicore-theme", name), theme);
+      await contrastPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+      await contrastPage.locator("form.auth-card input[type='password']").waitFor();
+      await contrastPage.waitForFunction((name) => document.documentElement.dataset.theme === name, theme);
+      const ratios = await contrastPage.evaluate(() => {
+        const card = document.querySelector("form.auth-card");
+        if (!card) throw new Error("Auth card missing during contrast audit");
+        const rgb = (value) => {
+          const matches = value.match(/[\\d.]+/g);
+          if (!matches || matches.length < 3) throw new Error("Unexpected computed color value");
+          return matches.slice(0, 3).map(Number);
+        };
+        const luminance = (color) => {
+          const channels = rgb(color).map((value) => {
+            const v = value / 255;
+            return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+        };
+        const contrast = (a, b) => {
+          const x = luminance(a);
+          const y = luminance(b);
+          return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+        };
+        const cardBackground = getComputedStyle(card).backgroundColor;
+        const computedText = (selector) => {
+          const element = card.querySelector(selector);
+          if (!element) throw new Error("Auth contrast selector missing: " + selector);
+          return getComputedStyle(element).color;
+        };
+        const input = card.querySelector("input[type='password']");
+        if (!input) throw new Error("Auth password input missing");
+        return {
+          hint: contrast(computedText(":scope > p"), cardBackground),
+          label: contrast(computedText("label"), cardBackground),
+          footnote: contrast(computedText(".auth-footnote"), cardBackground),
+          passwordInput: contrast(getComputedStyle(input).color, getComputedStyle(input).backgroundColor),
+        };
+      });
+      for (const [surface, ratio] of Object.entries(ratios)) {
+        assert.ok(Number.isFinite(ratio) && ratio >= 4.5,
+          `Auth ${theme} ${surface} must reach WCAG AA normal-text 4.5:1 contrast in computed Chromium colors; got ${ratio.toFixed(2)}`);
+      }
+      authThemeContrastRatios[theme] = Object.fromEntries(
+        Object.entries(ratios).map(([surface, ratio]) => [surface, Math.round(ratio * 100) / 100]),
+      );
+    } finally {
+      await contrastContext.close();
+    }
+  }
+
   const context = await browser.newContext();
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
@@ -612,6 +670,7 @@ try {
     missingAccountSelectionReconciled: "passed",
     distinctTenantSessionScope: "passed", delayedOldTenantResponseDiscarded: "passed",
     physicalAuthenticator: "not_tested", liveProvider: "not_tested",
+    authThemeSampledTextContrast: "passed", authThemeContrastRatios,
     manualScreenReaderAudit: "not_tested", fullWcagContrastAudit: "not_tested",
   };
   writeFileSync(evidenceDir + "/runtime.json", JSON.stringify(runtime, null, 2) + "\n");
