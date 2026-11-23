@@ -1,9 +1,9 @@
 # Handoff
 
-## 2026-11-23 — ORB-005 Strict cookies under loopback HTTPS (CI pending)
+## 2026-11-23 — ORB-005 Strict cookies under loopback HTTPS (functional PR CI passed)
 
 - Made HTTPS a transport-only signal for cookie `Secure`, not a reason to change `SameSite=Strict` into `None`. Direct TLS sockets also set Secure. Local direct HTTP remains Strict/HttpOnly without false Secure.
-- Two new real local HTTP regressions cover issuance + deletion under trusted synthetic forwarded HTTPS and direct HTTP. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md). Await hosted Node/PG16/Redis7/Chromium/ledger checks; production TLS/proxy authorization and PostgreSQL auth cutover remain open.
+- Two new real local HTTP regressions cover issuance + deletion under trusted synthetic forwarded HTTPS and direct HTTP. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md). At functional SHA `9feff476`, [166/166 Node PR CI #45181646049](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45181646049), [28/28 PG16/Redis7 #45181645840](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45181645840), [Chromium #45181645934](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45181645934) and [task ledger #45181645785](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45181645785) all passed. Docs-head CI/merge pending; production TLS/proxy authorization and PostgreSQL auth cutover remain open.
 
 ## 2026-11-23 — ORB-004 late source hold enforcement for existing mock worker (functional PR CI passed)
 

@@ -59,6 +59,6 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 
 - [Bounded local SQLite worker claim/audit marker gating](TEST_EVIDENCE/2026-11-23-orb-004-late-runtime-worker-hold.md) checks the CI-only durable source marker atomically with local queued-job claim and stops pre-existing local timer after a late hold. It does not fence any external provider/SQL writer or permit recovery replay. At `af23563e`, 164/164 Node, 28/28 PG16/Redis7, Chromium/ledger passed; docs-head CI/merge pending. Canonical ORB-004 remains `testing/integration_tested` and ORB-005 `in_progress/integration_tested`.
 
-## 2026-11-23 — ORB-005 session-cookie SameSite checkpoint (pending CI)
+## 2026-11-23 — ORB-005 session-cookie SameSite checkpoint (functional PR CI passed)
 
-- [Session-cookie TLS transport versus cross-site authorization hardening](TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md): issue and expiry keep Strict; Secure follows explicit settings or trusted TLS signal. Two HTTP regressions. This does not claim production TLS, cross-origin frontend or complete CSRF defense. ORB-005 remains `in_progress/integration_tested`.
+- [Session-cookie TLS transport versus cross-site authorization hardening](TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md): issue and expiry keep Strict; Secure follows explicit settings or trusted TLS signal. Two HTTP regressions passed at `9feff476` with 166/166 Node, 28/28 PG16/Redis7, Chromium/ledger (docs-head CI/merge pending). This does not claim production TLS, cross-origin frontend or complete CSRF defense. ORB-005 remains `in_progress/integration_tested`.
