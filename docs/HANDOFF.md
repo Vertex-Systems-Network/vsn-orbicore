@@ -1,5 +1,13 @@
 # Handoff
 
+## 2026-11-23 — ORB-020 master plan audit, PR task table and supply-chain install approval
+
+- [Plan audit](AUDIT/2026-11-23-ai-plan-pr-governance.md) found contradictory verification/timestamps, outdated browser/PG/SBOM notes, stale 44-test roadmap and nested JSON array items silently not schema-validated. Updated canonical 20-task backlog, epic mapping, AI agent rules/PR template and CI plan check.
+- The trusted-base `ci-pr-task-ledger.yml` uses exact read-only task JSON from each PR head and an idempotent PR description marked block; on new/synchronized/edited PRs and changes to the main backlog it updates all current task statuses without changing task lifecycle itself. **The workflow does not exist on main until this PR merges, so do not claim live API permissions/trigger behavior yet.**
+- Scoped reviewed npm `esbuild@0.28.2` postinstall authorization and fail-closed unreviewed-script config replaces the historical unreviewed install-script warning. See official npm 11 [install-scripts documentation](https://docs.npmjs.com/cli/v11/commands/npm-install-scripts/). CI evidence required before claiming warning eliminated.
+- CI [branch run #45135678441](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45135678441) passed **122 tests**, 72 bank records and 20-task plan alignment at earlier functional head `6eb3a06`. Re-run final docs head; after merge open a real test PR and verify PR body sync, then record next checkpoint and only then consider ORB-020 verified. No fake branch-protection, external-cPanel, KMS or full production claims.
+
+
 ## 2026-11-23 — ORB-009/018 simulated font-only 200% resize and browser-proven fixes (PR #50)
 
 - [PR #50](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/50) at functional SHA `969fc6312d4f75b1bf1d4aa0c99114956a72b699`: [branch CI #45099384272](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45099384272), [PR CI #45099390177](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45099390177) and [Chromium + existing WebAuthn/native zoom #45099390144](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45099390144) **passed**, including **113 Node tests**.

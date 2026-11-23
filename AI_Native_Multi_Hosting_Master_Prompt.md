@@ -252,6 +252,8 @@ Implement a **development backlog in-repo immediately**, plus a visual Backlog/J
 
 **Backlog screens:** Epics/roadmap, dependency graph, current sprint/work queue, statuses with counts, blockers, CI health, risk, test coverage, job timeline, Git commits, release candidates, and actual completed vs deferred. No fabricated percent completion. Machine-readable reports and human-readable snapshots must agree.
 
+**PR-level task ledger and status continuity (mandatory):** Every pull request must include a current full `backlog/tasks.json` task table in the PR description, not only a task number in its title. On every meaningful PR commit/update, review affected tasks and update the canonical `status`, `verification_level`, `last_updated`, evidence paths and blockers **when facts warrant changes**, while keeping `docs/BACKLOG.md` aligned. A trusted default-branch GitHub Action automatically refreshes an idempotent marked section of PR descriptions on create/edit/reopen/synchronize and changes to the main backlog; never execute untrusted PR-head code with a write token. The bot shows PR-head status but never invents completion, alters task JSON, overrides owner authorization or marks a task `verified`. CI validates plan consistency, epic/dependency mapping and false verification timestamps. A skipped or permission-blocked auto-update must be reported and repaired before merge.
+
 **AI operating loop:**
 `inspect -> research -> plan -> choose task -> implement -> test -> review -> document -> checkpoint -> pick next task`
 
