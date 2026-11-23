@@ -1,6 +1,6 @@
 # ORB-010/006 — FQDN trailing-dot local hostname SSRF aliases
 
-**Date:** 2026-11-23 UTC. **State:** Feature-branch implementation; GitHub Actions results pending.
+**Date:** 2026-11-23 UTC. **State:** Functional PR SHA `bbfe770ca9043821d145a394f5fa5b33bbd227e0` passed hosted GitHub CI. Documentation-head verification and merge pending.
 
 ## Finding
 
@@ -12,9 +12,11 @@ The literal hostname restriction in `isBlockedNetworkAddress` denied `localhost`
 - Include the conventional `*.localdomain` local alias family as non-public, so `localhost.localdomain.` is refused.
 - Two focused Node tests assert direct-helper and `validateExternalEndpoint` denials for 10 blocked local hostname/address spellings and preserve valid ordinary public/FQDN IPv6 handling. No network calls, reverse DNS or real UAPI access.
 
-## Required GitHub evidence
+## Observed GitHub evidence and pending verification
 
-Standard branch and PR-head Node suite, lint/plan, security gate, offline CycloneDX schema + SBOM, npm audit, build/smoke/doctor. Chromium/WebAuthn and trusted PR ledger triggered by path. PostgreSQL16/Redis7 workflow is path-scoped and may not trigger for this code path; do not misstate it as executed. Record the functional tested SHA and all actual run URLs. Perform final docs-head verification and post-merge `main` CI before signoff.
+- [Branch CI #45184186363](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45184186363) and [PR CI #45184250737](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45184250737) **passed** on functional SHA `bbfe770c`: **170/170 Node tests**, zero failed; plan/lint, security scan, npm audit, pinned local official CycloneDX schema/SBOM, build/smoke/doctor passed.
+- [Chromium/WebAuthn/a11y #45184250970](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45184250970) and [trusted task ledger #45184250759](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45184250759) **passed** on same PR head. PG16/Redis7 workflow did **not** trigger for this scoped diff, and must not be credited as tested on this PR.
+- **Remaining:** final docs-head PR checks, squash merge and post-merge main CI. No live provider/network operations were performed.
 
 ## Boundaries
 
