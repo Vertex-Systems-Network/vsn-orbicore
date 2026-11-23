@@ -81,12 +81,39 @@ function setSessionCookie(response, token, secure, request = null) {
   response.setHeader("set-cookie", token ? `orbicore_session=${token}; ${flags}` : `orbicore_session=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0${useSecure ? "; Secure" : ""}`);
 }
 
-function allowSameOrigin(request, response) {
-  const origin = request.headers.origin;
-  if (!origin) return true;
+// Origin is a scheme + authority tuple, not just a Host match. A browser
+// Origin from HTTPS must not authorize writes over direct HTTP (or vice versa).
+// Do not trust X-Forwarded-* from non-loopback peers.
+export function isSameOriginRequest(request) {
+  const origin = request?.headers?.origin;
+  const authority = effectiveOriginHost(request);
+  if (typeof origin !== "string" || !origin ||
+      typeof authority !== "string" || !authority ||
+      /[\s\/?#@\\]/u.test(authority)) return false;
+  const scheme = request?.socket?.encrypted === true || isForwardedHttps(request)
+    ? "https:" : "http:";
   try {
-    if (new URL(origin).host === effectiveOriginHost(request)) return true;
-  } catch { /* rejected below */ }
+    const actual = new URL(origin);
+    const expected = new URL(`${scheme}//${authority}`);
+    // Origin header values must be serialized origins, without a path,
+    // query, fragment or user-info. Normalized ports/hostnames compare equal.
+    return actual.protocol === scheme &&
+      actual.origin === expected.origin &&
+      actual.origin !== "null" &&
+      actual.pathname === "/" && !actual.search && !actual.hash &&
+      !actual.username && !actual.password &&
+      expected.pathname === "/" && !expected.search && !expected.hash &&
+      !expected.username && !expected.password;
+  } catch {
+    return false;
+  }
+}
+
+function allowSameOrigin(request, response) {
+  // Missing Origin is allowed for non-browser clients, as before. An
+  // explicitly supplied invalid/empty Origin fails closed.
+  if (request.headers.origin === undefined) return true;
+  if (isSameOriginRequest(request)) return true;
   json(response, 403, { error: "origin_denied" });
   return false;
 }

@@ -356,7 +356,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-cross-runner-quarantine-attestation.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-replay-policy-dry-run.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-sqlite-pg-crash-window.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-004-durable-sqlite-source-hold.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-004-durable-sqlite-source-hold.md",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
@@ -372,7 +373,7 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-22",
+      "last_updated": "2026-11-23",
       "verification_level": "integration_tested",
       "blocker_type": "technical"
     },
