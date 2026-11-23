@@ -66,3 +66,7 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 ## 2026-11-23 — ORB-010 mapped IPv6 literal SSRF hardening (functional PR CI passed)
 
 - [Canonical hexadecimal/expanded IPv4-mapped IPv6 deny regression](TEST_EVIDENCE/2026-11-23-orb-010-ipv4-mapped-ipv6-ssrf.md). Functional SHA `d300eed4` passed 168/168 Node CI, Chromium and trusted PR ledger; PG16/Redis7 workflow was not triggered, docs-head CI/merge pending. DNS rebinding/peer pinning and live ORB-006 authorization remain blocked. ORB-010 stays `in_progress/unit`, ORB-006 `blocked/none`, ORB-015 `verified/unit`.
+
+## 2026-11-23 — ORB-010 absolute FQDN SSRF alias checkpoint (pending CI)
+
+- [Root-dot local hostname and dotted IPv4 validation](TEST_EVIDENCE/2026-11-23-orb-010-absolute-hostname-ssrf.md) denies equivalent local domains even when the requested hostname is fully qualified. Two negative/positive Node tests. ORB-010 `in_progress/unit`, ORB-006 `blocked/none`; DNS rebinding and live provider sandbox gates still open.

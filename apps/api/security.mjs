@@ -58,9 +58,17 @@ function isBlockedIPv6(ip) {
 }
 
 export function isBlockedNetworkAddress(hostOrIp) {
-  const clean = String(hostOrIp ?? "").trim().replace(/^\[|\]$/g, "").toLowerCase();
+  // A fully-qualified DNS hostname can end in a root dot. Trim it before
+  // applying suffix / address checks, or localhost. and *.internal. would
+  // evade the same restriction as their ordinary DNS spellings. Normalize
+  // IDNA-recognized alternative dot characters for direct helper callers.
+  const clean = String(hostOrIp ?? "").trim().replace(/^\[|\]$/g, "")
+    .replace(/[\u3002\uFF0E\uFF61]/gu, ".")
+    .replace(/\.+$/u, "").toLowerCase();
   if (!clean) return true;
-  if (clean === "localhost" || clean.endsWith(".localhost") || clean.endsWith(".local") || clean.endsWith(".internal")) {
+  if (clean === "localhost" || clean.endsWith(".localhost") ||
+      clean.endsWith(".local") || clean.endsWith(".internal") ||
+      clean.endsWith(".localdomain")) {
     return true;
   }
   const version = isIP(clean);
