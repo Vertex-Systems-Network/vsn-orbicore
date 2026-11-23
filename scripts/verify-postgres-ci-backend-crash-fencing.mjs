@@ -105,20 +105,26 @@ try {
   assert.equal(undone.lease_expires_at,null);
   assert.equal(undone.completed_at,null);
 
-  // The next worker can claim exactly once after that aborted transaction.
-  const committed=await claim(tenantA,"ci-postcommit-worker");
-  assert.equal(committed?.job_id,jobA);
-  assert.equal(committed.attempt,1);
-  assert.notEqual(committed.claim_token,tentative.claim_token);
-  const waiting=await claim(tenantA,"ci-competing-worker");
-  assert.equal(waiting,null,"unexpired claim was granted twice");
-
-  // A second crash AFTER COMMIT cannot undo a durable claim. No provider
-  // call is invoked here, and ownership remains unresolved until expiry.
+  // The next worker uses one dedicated PostgreSQL connection to claim via
+  // an autocommit statement. Terminate THAT SAME claiming backend after the
+  // claim's COMMIT, rather than terminating an unrelated idle connection.
   const postCommit=await pool.connect();
   const postTerminationErrors=[];
   postCommit.on("error", error => postTerminationErrors.push(error));
+  let committed;
   try {
+    const result=await postCommit.query(
+      "SELECT job_id,claim_token,attempt FROM orbicore_claim_job($1,$2,$3)",
+      [tenantA,"ci-postcommit-worker",120],
+    );
+    committed=result.rows[0];
+    assert.equal(committed?.job_id,jobA);
+    assert.equal(committed.attempt,1);
+    assert.notEqual(committed.claim_token,tentative.claim_token);
+    const waiting=await claim(tenantA,"ci-competing-worker");
+    assert.equal(waiting,null,"unexpired claim was granted twice");
+
+    // Same claiming connection is lost AFTER COMMIT. It never calls provider.
     await terminateClient(postCommit);
   } finally {
     postCommit.release(true);
