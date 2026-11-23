@@ -32,3 +32,15 @@ GitHub standard Node tests, lint, supply chain, browser, PG/Redis service workfl
 Previously, startup called `createDatabase` (schema DDL, `schema_migrations` writes and fixture seeding) before the existing transactional recovery marker check. A **pre-existing hold** could therefore be ignored by initialization even though automatic running-job requeue was denied later. The database opener now checks the marker and closes/throws immediately **before** schema initialization; the existing transactional auto-requeue gate remains.
 
 Two file-backed tests verify: (1) a marker-only partial source with an independent forensic checkpoint cannot acquire any newly seeded ORBICORE schema on denied app restart; and (2) an existing SQLite v7 source with a deliberately erased schema migration manifest cannot have that manifest silently reinserted on rejected startup. This does not establish a globally atomic fence for a hold inserted *between* opener check and later DDL, nor PostgreSQL/Redis or independent-provider isolation.
+
+## Measured hosted CI checkpoint (pre-final evidence annotation)
+
+At PR #78 head `2320b2f33f16b765da32a820cb3fe1635d2f6a38`:
+
+- [Standard CI #45202385518](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385518) passed **188/188 Node tests**, including 5 new local file-backed source hold cases; the workflow includes lint/plan/security, CycloneDX schema, dependency audit, build/smoke/doctor.
+- [PostgreSQL16 / Redis7 integration #45202385411](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385411) passed **28/28 jobs**, all disposable synthetic and service-scoped.
+- [Browser accessibility #45202385459](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385459) passed **3/3 jobs** (Chromium, Firefox, WebKit).
+- [Trusted PR task ledger #45202513433](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202513433) passed and preserved the canonical 20-row table. Final evidence-only commit checks and merge were pending when recording this checkpoint.
+
+These are measured GitHub-hosted checks, not production safety or a cross-store atomicity demonstration. TEMP source triggers remain per connection and opener-level marker gate remains pre-existing-marker only.
+

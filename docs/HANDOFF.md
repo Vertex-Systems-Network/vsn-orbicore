@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-004/005 tested PR #78 SQLite source write + startup hold
+
+- Measured head `2320b2f3`: [standard CI #45202385518](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385518) 188/188 Node passed; [PG16/Redis7 #45202385411](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385411) 28/28 service jobs passed; [Chromium/Firefox/WebKit #45202385459](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202385459) 3/3 browser jobs passed; [trusted task ledger #45202513433](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45202513433) passed.
+- Five file-backed regressions target per-connection DML denial on 20+ source tables, external connection no-WORM limitation and preexisting hold before migration/seeding. [Detailed evidence](TEST_EVIDENCE/2026-11-23-orb-004-connection-local-write-guards.md). This documentation-only annotation still requires final-head checks/merge. ORB-004/005 statuses unchanged, no production authorization or independent source/PG fencing claim.
+
 ## 2026-11-23 — ORB-004 pre-initialization held SQLite opener gate (PR #78 checks pending)
 
 - Found prior recovery hold detection occurred after createDatabase executed schema DDL, migration-manifest insert-or-ignore and initial fixture seeding. New opener-level guard now rejects and closes a pre-existing held SQLite source **before** these writes, preserving the later transactional job recovery denial.
