@@ -68,6 +68,8 @@ on:
       - "apps/api/postgres-feature-state.mjs"
       - "apps/api/postgres-terminal-job-history.mjs"
       - "apps/api/ci-active-job-quarantine.mjs"
+      - "apps/api/ci-active-quarantine-reconcile.mjs"
+      - "tests/ci-active-quarantine-reconcile.test.mjs"
       - "tests/ci-active-job-quarantine.test.mjs"
       - "scripts/verify-postgres-ci-active-quarantine.mjs"
       - "scripts/verify-postgres-ci-terminal-history.mjs"

@@ -1,5 +1,8 @@
 # Project state
 
+**New ORB-004/016 synthetic quarantine cross-store reconciliation (functional CI passed):** Detached, ephemeral-key HMAC checkpoint binds the accepted SQLite active-job metadata independently of PostgreSQL staging. Read-only re-verification denies signed witness forgery, later source edits, PostgreSQL metadata tampering or extra rows, and public job/outbox contamination. CI-only no-replay gate; no key custody, live source, provider or production auth cutover. At functional PR head `f69351fb`, 148/148 Node tests, 25/25 PG16/Redis7 service jobs, Chromium and ledger passed; docs-head final CI/merge pending. [Measured evidence](TEST_EVIDENCE/2026-11-23-orb-004-ci-signed-quarantine-reconciliation.md).
+
+
 **New ORB-004/005/016/017 active job quarantine design (CI pending):** A disposable-only private PostgreSQL relation holds synthetic queued/running source-job metadata for audit/reconciliation, with explicit consent, strict fixture/source-manifest checks, no public job/outbox writes, read-role denial and no worker execution. Functional SHA `d4e0e130` passed 145 Node tests, all 25 hosted PostgreSQL/Redis jobs including non-executable CI quarantine, Chromium and task ledger; final docs-head pending; does not authorize active queue cutover or real provider/KMS operations. [Test plan](TEST_EVIDENCE/2026-11-23-orb-004-ci-active-job-quarantine.md).
 
 
