@@ -34,8 +34,14 @@ export class LiveCpanelAdapterBoundary {
           Authorization: `cpanel ${connectionRef.username}:${connectionRef.apiToken}`,
           Accept: "application/json",
         },
+        // A redirect could cross the SSRF allow boundary even when the
+        // original HTTPS endpoint passed validation. Never follow it.
+        redirect: "manual",
         signal: controller.signal,
       });
+      if (res.status >= 300 && res.status < 400) {
+        return { ok: false, live: true, error: "uapi_redirect_denied" };
+      }
       if (res.status === 401 || res.status === 403) {
         return { ok: false, live: true, error: "revoked_or_denied_token", status: res.status };
       }
@@ -43,10 +49,22 @@ export class LiveCpanelAdapterBoundary {
         return { ok: false, live: true, error: "uapi_http_error", status: res.status };
       }
       const payload = await res.json();
-      if (payload?.status === 0) {
-        return { ok: false, live: true, error: "uapi_call_failed", messagesCount: Array.isArray(payload.errors) ? payload.errors.length : 0 };
+      // cPanel direct /execute responses contain status/data at the top level;
+      // some documented UAPI transports use a result envelope. Never accept
+      // an HTTP 200 with missing/malformed UAPI success metadata as success.
+      const result = payload && typeof payload === "object" && !Array.isArray(payload) && "result" in payload
+        ? payload.result : payload;
+      if (!result || typeof result !== "object" || Array.isArray(result)) {
+        return { ok: false, live: true, error: "invalid_uapi_response" };
       }
-      return { ok: true, live: true, data: payload?.data ?? null };
+      const messagesCount = Array.isArray(result.errors) ? result.errors.length : 0;
+      if (result.status === 0 || messagesCount > 0) {
+        return { ok: false, live: true, error: "uapi_call_failed", messagesCount };
+      }
+      if (result.status !== 1) {
+        return { ok: false, live: true, error: "invalid_uapi_response" };
+      }
+      return { ok: true, live: true, data: result.data ?? null };
     } catch {
       return { ok: false, live: true, error: "provider_unreachable" };
     } finally {
