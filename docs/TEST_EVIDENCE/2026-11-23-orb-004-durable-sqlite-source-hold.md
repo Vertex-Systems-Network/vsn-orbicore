@@ -1,0 +1,25 @@
+# ORB-004/005/016/017 — durable SQLite source startup hold before automatic requeue
+
+**Date:** 2026-11-23 UTC. **State:** Hosted PR validation pending. This is a **CI-only fixture hold**, not production-grade distributed fencing, external authorization or an executable recovery mechanism.
+
+## Confirmed prior issue
+
+[PR #66 cross-store crash-window evidence](2026-11-23-orb-004-sqlite-pg-crash-window.md) proves that a file-backed SQLite source and a PG16 private quarantine can diverge after process termination. A new SQLite `createApp` previously transformed `running` jobs into `queued` (with `error='recovered_after_restart'`) before the signed metadata could be reconciled. This is expected standalone prototype behavior but unsafe to treat as source-side proof of a two-database migration.
+
+## Implementation
+
+- **Read-only universal guard** `apps/api/sqlite-recovery-hold.mjs` checks `sqlite_master` for the reserved, CI-prefixed source hold table `orbicore_ci_active_recovery_hold`. Any table/view of that name is enough to refuse startup; no attacker-controlled row content can clear or bypass it. No global environment flag disables this check. It exports **no release action**.
+- **Startup transaction** in `apps/api/server.mjs` executes `BEGIN IMMEDIATE`, then guard, then the existing conditional running→queued + chained audit recovery, and `COMMIT`; exceptions roll back and close the SQLite handle. The guard and requeue share one SQLite writer lock, preventing hold DDL from racing between the check and source mutation. Databases with no marker continue to requeue previously running standalone prototype jobs as before. No app HTTP, MFA, provider or worker paths otherwise change.
+- **CI-only writer** `apps/api/ci-sqlite-source-recovery-hold.mjs` accepts only `GITHUB_ACTIONS=true`, `ORBICORE_CI_ACTIVE_QUARANTINE=1`, `ORBICORE_CI_SOURCE_RECOVERY_HOLD=1`, and `ci_fixture_active_jobs_quarantine_no_replay` consent. It validates the HMAC witness before any DB access, enters `BEGIN IMMEDIATE`, refuses any existing hold, rechecks the strict SQLite v7 source fixture and its bound witness (tenant/account/actor/status/idempotency/dates), then creates a **STRICT** table and a sole marker row `slot=1,scope,source_digest,nonce,row_count` atomically. Key is never stored. Bad consent, wrong key, source drift or repeat call fail closed and leave the source unchanged.
+- **Hosted PostgreSQL16 integration:** The existing `postgres-ci-cross-store-crash` test extends the post-commit PG16/SQLite scenarios with a separate, freshly initialized, two-tenant file-backed source fixture. It signs the snapshot in memory, establishes the source hold, closes the SQLite connection, and attempts `createApp` on the source with `startWorker:false` and `startWorker:true`. Both must refuse before job recovery or audit, even while the prior CI target holds two private quarantined PG rows. It reopens the file and verifies the `running` row, HMAC metadata count, and zero crash-recovery audit entries are unchanged. Original *unheld* source fixture still proves automatic requeue and signed source drift denial.
+- **Node tests:** `tests/ci-sqlite-source-recovery-hold.test.mjs` checks empty/malformed hold presence blocks both worker modes and unchanged source rows/audit; after explicit test-only SQL table removal, normal standalone auto-requeue still works. Additional unit test proves CI writer rejects wrong consent before database I/O.
+
+## Actual acceptance checks to record
+
+- PR Node `npm test` counts, `npm run plan:check`, security/build/smoke workflow gates, all PG16/Redis7 hosted service jobs (expected 28), trusted base PR task ledger and final PR commit SHA; browser workflow triggers only when scoped UI paths changed.
+- The **server startup behavior** is amended: opt-in, CI-created source marker blocks future standalone startup, but it does **not** fence an already-running process, PostgreSQL worker, SQLite direct SQL writer or external provider. It does not guarantee host power-loss durability beyond SQLite's settings nor cross-store atomicity. There is **no unhold/auto-recovery API**; a human-approved migration/disposition and production-safe release protocol must be developed separately before wider use.
+- No production credentials, WHM/root/cPanel operations, Redis signals, outbox entries or job execution are introduced. Canonical lifecycle remains ORB-004/016/017 `testing/integration_tested`, ORB-005 `in_progress/integration_tested`.
+
+## Hosted results
+
+Pending the exact PR head workflow run results. Do not infer production readiness from synthetic green CI.
