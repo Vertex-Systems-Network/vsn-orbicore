@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-005 Strict cookies under loopback HTTPS (CI pending)
+
+- Made HTTPS a transport-only signal for cookie `Secure`, not a reason to change `SameSite=Strict` into `None`. Direct TLS sockets also set Secure. Local direct HTTP remains Strict/HttpOnly without false Secure.
+- Two new real local HTTP regressions cover issuance + deletion under trusted synthetic forwarded HTTPS and direct HTTP. [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-005-strict-cookie-proxy.md). Await hosted Node/PG16/Redis7/Chromium/ledger checks; production TLS/proxy authorization and PostgreSQL auth cutover remain open.
+
 ## 2026-11-23 — ORB-004 late source hold enforcement for existing mock worker (functional PR CI passed)
 
 - Added a worker claim transaction sharing SQLite write lock with the CI hold marker; second guard before success/error writes and interval shutdown on marker rejection. Two new Node regressions exercise second-connection late hold and existing auto-timer with unchanged queued row/audit.
