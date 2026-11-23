@@ -70,6 +70,8 @@ on:
       - "apps/api/ci-active-job-quarantine.mjs"
       - "apps/api/ci-active-quarantine-reconcile.mjs"
       - "apps/api/ci-active-quarantine-cross-runner.mjs"
+      - "apps/api/ci-active-quarantine-replay-preflight.mjs"
+      - "tests/ci-active-quarantine-replay-preflight.test.mjs"
       - "tests/ci-active-quarantine-cross-runner.test.mjs"
       - "scripts/ci-verify-active-quarantine-evidence.mjs"
       - "tests/ci-active-quarantine-reconcile.test.mjs"

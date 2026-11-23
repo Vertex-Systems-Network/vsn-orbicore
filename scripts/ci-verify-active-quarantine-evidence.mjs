@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { verifyCiActiveQuarantineAttestation } from "../apps/api/ci-active-quarantine-cross-runner.mjs";
+import { evaluateCiActiveQuarantineReplayPreflight } from "../apps/api/ci-active-quarantine-replay-preflight.mjs";
 
 if (process.env.GITHUB_ACTIONS !== "true" ||
     process.env.ORBICORE_CI_ACTIVE_QUARANTINE !== "1" ||
@@ -25,6 +26,26 @@ const trusted={
 const check=(value=envelope,overrides={})=>
   verifyCiActiveQuarantineAttestation({envelope:value,...trusted,...overrides});
 assert.equal(check(),true,"fresh CI runner must verify the producer's genuine signature");
+const preflight=evaluateCiActiveQuarantineReplayPreflight({
+  envelope,...trusted,consent:"ci_fixture_active_jobs_quarantine_no_replay",
+});
+assert.equal(preflight.attestedMetadataCount,2);
+assert.equal(preflight.queuedRequiresManualReview,1);
+assert.equal(preflight.runningRequiresInvestigation,1);
+assert.deepEqual(preflight.dispositions.map(x=>x.disposition),
+  ["manual_review_only","isolate_and_investigate"]);
+assert.equal(preflight.executable,false);
+assert.equal(preflight.replayAuthorized,false);
+assert.equal(preflight.jobOutboxWrites,0);
+assert.equal(preflight.redisSignals,0);
+assert.equal(preflight.providerCalls,0);
+const ignoredApproval=evaluateCiActiveQuarantineReplayPreflight({
+  envelope,...trusted,consent:"ci_fixture_active_jobs_quarantine_no_replay",
+  approved:true,forceReplay:true,
+});
+assert.equal(ignoredApproval.replayAuthorized,false,
+  "untrusted caller approval cannot make signed metadata executable");
+
 assert.equal(envelope.rows.length,2);
 const changed=structuredClone(envelope);
 changed.rows[0].status="running";
@@ -74,5 +95,8 @@ console.log(JSON.stringify({
   privateSignerExported:false,containsProductionCredentials:false,
   sqliteOrPostgresRestoredInSecondRunner:false,
   executableJobs:0,jobOutboxWrites:0,redisReplays:0,liveProviderCalls:0,
+  recoveryPreflightNonExecutable:true,queuedForManualReview:1,
+  runningIsolatedForInvestigation:1,approvalFlagsIgnored:true,
+  productionReplayAuthorization:false,
   productionKeyCustody:false,productionCutover:false,
 }));
