@@ -1,5 +1,17 @@
 # Handoff
 
+## 2026-11-23 — ORB-016/017 PG archive tamper CI fixture collision repaired (PR #77)
+
+- [First PR #77 service CI #45197497191](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45197497191) exposed an actual **false-negative test fixture**: writing a literal `X` to randomly generated authenticated ciphertext offset 39 can be a no-op if that byte is already `X`. The job reported `tampered encrypted archive unexpectedly accepted`; that result is not counted as passed.
+- Replaced fixed overwrite with deterministic XOR-one-bit in a copied archive, validated before exercising AES-256-GCM decryption rejection; two added Node tests cover the exact former `X` collision and actual seal/decrypt + flipped-ciphertext rejection. [Evidence record](TEST_EVIDENCE/2026-11-23-orb-016-deterministic-archive-tamper-ci.md).
+- Functional fix head `f5c79190` subsequently passed [hosted services #45198067530](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198067530), [standard CI #45198067594](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198067594), [browser #45198067521](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198067521), and [ledger #45198064314](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198064314). Documentation head `16bbf258` also passed [services #45198263032](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198263032), [standard CI #45198263071](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198263071), [browser #45198263025](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198263025) and [ledger #45198258745](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45198258745). Final handoff-head rerun/merge pending at documentation write.
+- No external immutable storage, offsite restore, KMS, production data migration or live auth cutover is claimed. ORB-016/017 remain `testing/integration_tested`.
+
+## 2026-11-23 — ORB-004/005 post-start source hold denies local HTTP unsafe methods (PR CI pending)
+
+- Added a 503 fail-closed gate on unsafe `/api/` methods when a CI-only SQLite source hold appears after startup, plus post-body rechecks across 30 JSON awaits, locked common transaction checks and bootstrap/session issue checks. Existing local worker marker gates remain unchanged. File-backed tests cover five denied HTTP mutations with unchanged ledgers, pre-owner bootstrap denial and a split-chunk in-flight queued job request.
+- [Evidence plan](TEST_EVIDENCE/2026-11-23-orb-004-http-late-source-hold.md). Functional branch SHA `cbb10f65` passed 181/181 Node tests in [branch CI #45197103449](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45197103449); PR-final CI/merge pending. No universal in-flight async fencing, production PG/Redis, DNS or provider operations, real auth cutover, independent off-host witness or hold-release. ORB-004 stays `testing/integration_tested`, ORB-005 `in_progress/integration_tested`.
+
 ## 2026-11-23 — ORB-006/010 bounded UAPI JSON success bodies (PR CI pending)
 
 - Stopped consuming untrusted credentialed UAPI HTTP-200 bodies with unbounded `res.json()`; enforce 2 MiB declared Content-Length early denial and independent Web Stream decoded byte cap, abort/cancel on overflow. Strict UTF-8 decoding and JSON parsing now fail with redacted `invalid_uapi_response` rather than a generic transport failure. Unchanged manual redirect and 401/403 semantics.

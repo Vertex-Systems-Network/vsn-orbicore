@@ -31,6 +31,18 @@ export function sealCiPgArchive(data,{keyHex,context}={}){
   const content=Buffer.concat([cipher.update(data),cipher.final()]);
   return Buffer.concat([MAGIC,nonce,cipher.getAuthTag(),content]);
 }
+// The negative recovery fixture must differ even when its original byte
+// coincidentally equals the proposed overwrite value. XOR guarantees change.
+export function flipCiPgArchiveCiphertextByte(envelope){
+  const index=MAGIC.length+NONCE_LENGTH+TAG_LENGTH+3;
+  if(!Buffer.isBuffer(envelope)||envelope.length<=index||
+     !envelope.subarray(0,MAGIC.length).equals(MAGIC))
+    throw new Error("ci_pg_archive_tamper_fixture_invalid");
+  const corrupted=Buffer.from(envelope);
+  corrupted[index]^=0x01;
+  return corrupted;
+}
+
 export function openCiPgArchive(envelope,{keyHex,context}={}){
   gate();
   try{
