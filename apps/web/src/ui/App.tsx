@@ -76,8 +76,17 @@ function AuthGate({ bootstrapRequired, onAuthenticated }: { bootstrapRequired: b
       if (!response.ok || !data.user) {
         if (data.error === "invalid_bootstrap_token" && bootstrapRequired) setInvalidField("token");
         else if (data.error === "password_policy" && bootstrapRequired) setInvalidField("password");
-        else if (mfaChallenge) setInvalidField("code");
-        throw new Error(data.error === "password_policy" ? "Choose a password with at least 12 characters." : data.error === "invalid_bootstrap_token" ? "The setup token is incorrect or has already been used." : "Could not sign in. Check the details and try again.");
+        else if (mfaChallenge && data.error === "invalid_mfa_code") setInvalidField("code");
+        // An expired challenge, rate limit or unavailable API is not a bad
+        // authenticator code. Keep the distinction available to assistive tech.
+        const message = data.error === "password_policy" ? "Choose a password with at least 12 characters."
+          : data.error === "invalid_bootstrap_token" ? "The setup token is incorrect or has already been used."
+          : mfaChallenge && data.error === "invalid_mfa_code" ? "That authenticator or recovery code was not accepted. Try another code."
+          : mfaChallenge && data.error === "invalid_mfa_challenge" ? "This sign-in request expired or became invalid. Start sign-in again."
+          : response.status === 429 ? "Too many sign-in attempts. Try again later."
+          : response.status === 503 ? "Sign-in service is temporarily unavailable. Try again later."
+          : "Could not sign in. Check the details and try again.";
+        throw new Error(message);
       }
       onAuthenticated(data.user);
     } catch (cause) {
