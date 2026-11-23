@@ -1,6 +1,6 @@
 # Test evidence index
 
-- [2026-11-23 ORB-004/005/016/017 non-executable synthetic active-job quarantine](2026-11-23-orb-004-ci-active-job-quarantine.md): private PG16 fixture schema, strict consent, tenant checks, audit metadata, injected rollback, denied non-owner access and no Redis/job-outbox replay; hosted CI pending.
+- [2026-11-23 ORB-004/005/016/017 non-executable synthetic active-job quarantine](2026-11-23-orb-004-ci-active-job-quarantine.md): private PG16 fixture schema, strict consent, tenant checks, audit metadata, injected rollback, denied non-owner access and no Redis/job-outbox replay; functional PR head `d4e0e130` passed 145/145 Node, 25/25 PG16/Redis7, browser/ledger; final docs-head CI pending.
 
 
 - [2026-11-23 ORB-005/017 SQLite v7 source migration manifest preflight](2026-11-23-orb-005-017-sqlite-source-manifest.md): exact 7-version/name/timestamp gate, negative PG16 source tamper/refusal checks passed at c17e32e8; 142 Node tests, 24 PG16/Redis7 jobs, Chromium and ledger success. Final docs-head CI pending.
