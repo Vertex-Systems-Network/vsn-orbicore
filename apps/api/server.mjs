@@ -163,6 +163,15 @@ function readFixture(fixturePath) {
 function createDatabase(dbPath, fixture) {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
+  // A held source must be rejected before schema DDL, migration metadata,
+  // fixture seeding or any other SQLite write on a restart. The later
+  // BEGIN IMMEDIATE gate still protects automatic running-job requeue.
+  try {
+    rejectCiSourceRecoveryHold(db);
+  } catch (error) {
+    db.close();
+    throw error;
+  }
   db.exec(`
     PRAGMA foreign_keys = ON;
     PRAGMA journal_mode = WAL;
