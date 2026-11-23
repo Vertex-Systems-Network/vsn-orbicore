@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, randomBytes, scryptSync } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createApp } from "../apps/api/server.mjs";
+import { totpAt } from "../apps/api/mfa.mjs";
 
 const { chromium } = await import("playwright");
 
@@ -10,7 +11,9 @@ const mfaKey = process.env.ORBICORE_MFA_ENCRYPTION_KEY || "MDEyMzQ1Njc4OWFiY2RlZ
 // A stable localhost origin is required: WebAuthn RP ID and expected origin must match the browser URL.
 const port = Number(process.env.ORBICORE_BROWSER_PORT ?? 41753);
 const baseUrl = "http://localhost:" + port;
-const app = createApp({ dbPath: ":memory:", startWorker: true, bootstrapToken, mfaKey, webauthnRPID: "localhost", webauthnOrigin: baseUrl });
+// Deterministic fixture-only clock for TOTP confirmation near real-time window boundaries.
+const mfaTestClockMs = 1_700_000_000_000;
+const app = createApp({ dbPath: ":memory:", startWorker: true, bootstrapToken, mfaKey, mfaClock: () => mfaTestClockMs, webauthnRPID: "localhost", webauthnOrigin: baseUrl });
 
 await new Promise((resolveListen, reject) => {
   app.server.once("error", reject);
@@ -479,6 +482,115 @@ try {
   assert.equal(await page.locator(".account-rows .account-row").getByText(foreignLabel).count(), 0,
     "the restored first tenant must not see the other tenant's account");
 
+  // ORB-009: a second real Chromium login exercises the full MFA UI contract.
+  // Every secret below is a disposable in-memory test value and is never logged,
+  // captured in screenshots or written to evidence artifacts.
+  const mfaContext = await browser.newContext();
+  try {
+    const mfaPage = await mfaContext.newPage();
+    await mfaPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    const mfaEmail = mfaPage.locator("form.auth-card input[type='email']");
+    const mfaPassword = mfaPage.locator("form.auth-card input[type='password']");
+    await mfaEmail.fill(foreignEmail);
+    await mfaPassword.fill("intentionally-wrong-password");
+    await mfaPage.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+    await mfaPage.locator("#auth-error").getByText(/could not sign in/i).waitFor();
+    assert.equal(await mfaEmail.getAttribute("aria-invalid"), "false",
+      "generic incorrect credentials must not blame the email address");
+    assert.equal(await mfaPassword.getAttribute("aria-invalid"), "false",
+      "generic incorrect credentials must not identify the password field");
+
+    await mfaPassword.fill(foreignPassword);
+    await mfaPage.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+    await mfaPage.getByRole("button", { name: "Set up MFA" }).waitFor();
+    await mfaPage.getByRole("button", { name: "Set up MFA" }).click();
+    await mfaPage.locator(".mfa-panel input[autocomplete='current-password']").fill(foreignPassword);
+    await mfaPage.getByRole("button", { name: "Start enrollment" }).click();
+    const mfaSecret = (await mfaPage.locator(".mfa-panel .mfa-secret").textContent())?.trim();
+    assert.ok(mfaSecret, "fixture enrollment must display the TOTP seed only to this authorized session");
+    const enrollmentCode = totpAt(mfaSecret, Math.floor(mfaTestClockMs / 30_000) * 30);
+    const rejectedCode = String((Number(enrollmentCode) + 1) % 1_000_000).padStart(6, "0");
+    await mfaPage.locator(".mfa-panel input[autocomplete='one-time-code']").fill(enrollmentCode);
+    await mfaPage.getByRole("button", { name: "Verify and enable" }).click();
+    const recoveryItem = mfaPage.locator(".mfa-panel .recovery-codes li").first();
+    await recoveryItem.waitFor();
+    const singleUseRecovery = (await recoveryItem.textContent())?.trim();
+    assert.ok(singleUseRecovery && singleUseRecovery.length >= 20,
+      "fixture MFA confirmation must issue a one-time recovery option");
+    await mfaPage.getByRole("button", { name: "I saved the codes" }).click();
+
+    // Password verification must challenge, not create a session immediately.
+    await mfaPage.getByRole("button", { name: "Sign out" }).click();
+    await mfaPage.locator("form.auth-card input[type='email']").fill(foreignEmail);
+    await mfaPage.locator("form.auth-card input[type='password']").fill(foreignPassword);
+    await mfaPage.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+    await mfaPage.getByRole("heading", { name: "Verify your sign-in" }).waitFor();
+    const challengeInput = mfaPage.locator("form.auth-card input[autocomplete='one-time-code']");
+    assert.equal(await mfaPage.evaluate(async () => (await fetch("/api/auth/me")).status), 401,
+      "password-only phase of MFA must not establish an authenticated browser session");
+
+    // Simulate a rate limiter and a temporary outage without consuming the
+    // real challenge. Neither condition may mark the authenticator code wrong.
+    const challengeUrl = "**/api/auth/mfa/challenge";
+    for (const scenario of [
+      { status: 429, error: "rate_limited", message: /too many sign-in attempts/i },
+      { status: 503, error: "mfa_key_unavailable", message: /temporarily unavailable/i },
+      { status: 401, error: "invalid_mfa_challenge", message: /start sign-in again/i },
+    ]) {
+      await mfaPage.route(challengeUrl, (route) => route.fulfill({
+        status: scenario.status, contentType: "application/json",
+        body: JSON.stringify({ error: scenario.error }),
+      }));
+      await challengeInput.fill("123456");
+      await mfaPage.getByRole("button", { name: "Verify and sign in" }).click();
+      await mfaPage.locator("#auth-error").getByText(scenario.message).waitFor();
+      assert.equal(await challengeInput.getAttribute("aria-invalid"), "false",
+        "transport, rate limiting and expired challenge cannot blame the MFA code");
+      assert.equal(await challengeInput.getAttribute("aria-describedby"), null,
+        "non-code errors must not associate a wrong-code message with the input");
+      await mfaPage.unroute(challengeUrl);
+    }
+    await mfaPage.getByRole("button", { name: "Start sign-in again" }).click();
+    await mfaPage.getByRole("heading", { name: "Welcome back" }).waitFor();
+    assert.equal(await mfaPage.locator("#auth-error").count(), 0,
+      "restarting an expired MFA request must clear the obsolete error");
+
+    // A new challenge must attribute an actually rejected code to that input.
+    await mfaPage.locator("form.auth-card input[type='email']").fill(foreignEmail);
+    await mfaPage.locator("form.auth-card input[type='password']").fill(foreignPassword);
+    await mfaPage.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+    await mfaPage.getByRole("heading", { name: "Verify your sign-in" }).waitFor();
+    const freshCode = mfaPage.locator("form.auth-card input[autocomplete='one-time-code']");
+    await freshCode.fill(rejectedCode);
+    await mfaPage.getByRole("button", { name: "Verify and sign in" }).click();
+    await mfaPage.locator("#auth-error").getByText(/code was not accepted/i).waitFor();
+    assert.equal(await freshCode.getAttribute("aria-invalid"), "true",
+      "a real invalid_mfa_code must mark the actual MFA input");
+    assert.equal(await freshCode.getAttribute("aria-describedby"), "auth-error",
+      "a rejected MFA code must be linked programmatically to its alert");
+
+    // Recover through the real browser, then prove this recovery code is
+    // consumed on the next login rather than allowing a second session.
+    await freshCode.fill(singleUseRecovery);
+    await mfaPage.getByRole("button", { name: "Verify and sign in" }).click();
+    await mfaPage.getByRole("button", { name: "Overview", exact: true }).waitFor();
+    await mfaPage.locator(".account-row.selected").getByText(foreignLabel, { exact: true }).waitFor();
+    await mfaPage.getByRole("button", { name: "Sign out" }).click();
+    await mfaPage.locator("form.auth-card input[type='email']").fill(foreignEmail);
+    await mfaPage.locator("form.auth-card input[type='password']").fill(foreignPassword);
+    await mfaPage.locator("form.auth-card").getByRole("button", { name: "Sign in", exact: true }).click();
+    await mfaPage.getByRole("heading", { name: "Verify your sign-in" }).waitFor();
+    const reusedCode = mfaPage.locator("form.auth-card input[autocomplete='one-time-code']");
+    await reusedCode.fill(singleUseRecovery);
+    await mfaPage.getByRole("button", { name: "Verify and sign in" }).click();
+    await mfaPage.locator("#auth-error").getByText(/code was not accepted/i).waitFor();
+    assert.equal(await reusedCode.getAttribute("aria-invalid"), "true");
+    assert.equal(await mfaPage.evaluate(async () => (await fetch("/api/auth/me")).status), 401,
+      "used recovery code must not issue a second authenticated session");
+  } finally {
+    await mfaContext.close();
+  }
+
   const runtime = {
     testIds: ["AUTH-WEBAUTHN-E2E-001", "AUTH-WEBAUTHN-REPLAY-001",
       "ORB-009-KEYBOARD", "ORB-018-RESPONSIVE"],
@@ -492,6 +604,10 @@ try {
     responsive320pxReflow: "passed", reducedMotionPreference: "passed",
     emptyFilterAndFailedNetworkStates: "passed", readOnlyRoleRefreshControl: "passed",
     authBootstrapTokenErrorAssociation: "passed", passkeyMissingEmailErrorAssociation: "passed",
+    genericBadCredentialsFieldsUnattributed: "passed",
+    mfaRateLimitServiceChallengeErrorsUnattributed: "passed",
+    mfaRealWrongCodeFieldAssociation: "passed",
+    mfaBrowserRecoveryCodeConsumedOnce: "passed",
     accountSiteFailureAndRetry: "passed", crossSessionSelectionReset: "passed",
     missingAccountSelectionReconciled: "passed",
     distinctTenantSessionScope: "passed", delayedOldTenantResponseDiscarded: "passed",

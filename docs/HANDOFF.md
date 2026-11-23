@@ -1,5 +1,11 @@
 # Handoff
 
+## 2026-11-23 — ORB-009 MFA error discrimination and recovery browser proof (PR #45)
+
+- [PR #45](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/45) functional SHA `75337b13b7723e1f809ed1f092e1310823b458bd` passed [PR CI #45088700533](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45088700533), [branch CI #45088674901](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45088674901), and [Chromium browser #45088700892](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45088700892). 113 Node tests and isolated browser MFA enrollment/challenge UI, 429/503/stale challenge distinctions, real rejected code attribution, used recovery denial; no fixture secrets in evidence. [Full evidence](TEST_EVIDENCE/2026-11-23-orb-009-mfa-browser-error-matrix.md).
+- Task stays `testing/browser_tested`; no manual WCAG, true 200/400% zoom, external identity/KMS/provider or production session clusters were proven. Check final docs-head and postmerge CI before claiming merge.
+
+
 ## 2026-11-23 — ORB-010 deny missing license/lockfile evidence (PR #44)
 
 - [PR #44](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/44) functional SHA `1ebcd9788a53a719180928be6d6161a073bfaf59` passed [PR CI #45084583870](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084583870) and [branch CI #45084568862](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45084568862): 113 Node tests, 242 recognized Git-tracked text files scanned, no source signature findings, no unreviewed/disallowed licenses and npm audit 0 at time of run. [Evidence](TEST_EVIDENCE/2026-11-23-orb-010-unknown-license-lockfile-denial.md).
