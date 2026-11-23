@@ -1,9 +1,9 @@
 # Handoff
 
-## 2026-11-23 — ORB-005 scheme-bound Origin gate (GitHub CI pending)
+## 2026-11-23 — ORB-005 scheme-bound Origin gate (functional PR CI passed)
 
 - Hardened ordinary local HTTP API `Origin` validation against cross-scheme same-host acceptance, non-serialized paths/credentials and empty values. Preserved trusted loopback forwarder and missing-Origin non-browser behavior. Added pure and real HTTP bootstrap regression asserting cross-scheme denial before any user insertion.
-- [Evidence / test plan](TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md). Await hosted Node/security/build/browser/PG16/Redis7 checks and mandatory trusted PR ledger before merge. ORB-005 `in_progress/integration_tested` unchanged; production blockers remain.
+- [Evidence / test plan](TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md). At functional PR SHA `e5fbea6f`, [162/162 Node + full build/security #45179442764](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45179442764), [28/28 PG16/Redis7 #45179442703](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45179442703), [Chromium #45179442776](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45179442776), and [PR ledger #45179438980](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45179438980) passed. Final documentation-head checks/merge remain pending. ORB-005 `in_progress/integration_tested` unchanged; production blockers remain.
 
 ## 2026-11-23 — ORB-004/005/016/017 durable CI-only SQLite source startup hold (functional PR CI passed)
 

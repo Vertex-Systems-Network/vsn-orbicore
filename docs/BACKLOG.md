@@ -51,6 +51,6 @@ Evidence: `none`, `static`, `unit`, `mock_tested`, `browser_tested`, `integratio
 - ORB-007 covers local preflight; ORB-017 gates production services and upgrade/recovery.
 - New work must record exact commit and workflow evidence. Historical task commit mappings remain null where the audit cannot attribute a precise commit.
 
-## 2026-11-23 — ORB-005 request-Origin security checkpoint (pending CI)
+## 2026-11-23 — ORB-005 request-Origin security checkpoint (functional PR CI passed)
 
-- [Scheme-bound Origin validation and HTTP negative bootstrap test](TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md): fail-closed on opposite-scheme, invalid and non-serialized supplied origins while preserving missing-Origin non-browser requests. This is a bounded local API regression, not production TLS/CSRF/token or PostgreSQL authority proof. Canonical ORB-005 remains `in_progress/integration_tested`; ORB-017 remains `testing/integration_tested`.
+- [Scheme-bound Origin validation and HTTP negative bootstrap test](TEST_EVIDENCE/2026-11-23-orb-005-scheme-bound-origin-gate.md): fail-closed on opposite-scheme, invalid and non-serialized supplied origins while preserving missing-Origin non-browser requests. This is a bounded local API regression, not production TLS/CSRF/token or PostgreSQL authority proof. At `e5fbea6f`, 162/162 Node, 28/28 PG16/Redis7, Chromium/ledger passed; final docs-head CI/merge pending. Canonical ORB-005 remains `in_progress/integration_tested`; ORB-017 remains `testing/integration_tested`.
