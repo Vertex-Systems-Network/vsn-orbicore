@@ -514,7 +514,7 @@
         "docs/UX_SPEC.md",
         "docs/TEST_STRATEGY.md"
       ],
-      "commit_hash": "ce945a86c5739902051b3abb844b22af7543b21b",
+      "commit_hash": "d5103e72561982d272fa36544404fe005f03cf43",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
@@ -525,10 +525,11 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-chromium-zoom.md",
         "docs/RESEARCH/2026-11-23-native-chromium-zoom-automation.md",
         "scripts/browser-native-zoom.mjs",
-        "apps/web/src/ui/styles.css"
+        "apps/web/src/ui/styles.css",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md"
       ],
       "blockers": [
-        "PR #47 hosted Chromium at ce945a86 verified native Chrome tab zoom 100/200/400% with actual 1280/640/320 CSS widths, a real 400% collapsed-sidebar offscreen navigation defect fixed, and no global horizontal overflow on auth/four dashboard sections. Standard CI 113 Node tests passed. Remaining: full manual WCAG screen-reader/contrast/touch/focus-occlusion and 200% text resize audits, all screens and browsers/device matrix, production tenant/identity/session and external provider verification."
+        "PR #48 real Chromium native 400% security-dialog focus and scrollport evidence passed at d5103e72: six controls visible and focusable, Tab/Shift+Tab trapped, Escape returned to visible sidebar opener. 113 Node tests and prior native zoom/WebAuthn/MFA/tenant checks passed. Remaining: full manual WCAG screen reader/contrast/touch/focus-obscured review, other browsers and 200% text-only resizing, entire UI/error state matrix and production identity/provider/cluster security."
       ],
       "started_at": "2026-11-09T19:00:00Z",
       "completed_at": null,
@@ -965,7 +966,7 @@
         "docs/TEST_STRATEGY.md",
         "docs/SECURITY_THREAT_MODEL.md"
       ],
-      "commit_hash": "ce945a86c5739902051b3abb844b22af7543b21b",
+      "commit_hash": "d5103e72561982d272fa36544404fe005f03cf43",
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-017-018-hardening.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-truthful-ui-states.md",
@@ -976,10 +977,11 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-chromium-zoom.md",
         "docs/RESEARCH/2026-11-23-native-chromium-zoom-automation.md",
         "scripts/browser-native-zoom.mjs",
-        "apps/web/src/ui/styles.css"
+        "apps/web/src/ui/styles.css",
+        "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md"
       ],
       "blockers": [
-        "PR #47 hosted Chromium at ce945a86 verified native Chrome tab zoom 100/200/400% with actual 1280/640/320 CSS widths, a real 400% collapsed-sidebar offscreen navigation defect fixed, and no global horizontal overflow on auth/four dashboard sections. Standard CI 113 Node tests passed. Remaining: full manual WCAG screen-reader/contrast/touch/focus-occlusion and 200% text resize audits, all screens and browsers/device matrix, production tenant/identity/session and external provider verification."
+        "PR #48 real Chromium native 400% security-dialog focus and scrollport evidence passed at d5103e72: six controls visible and focusable, Tab/Shift+Tab trapped, Escape returned to visible sidebar opener. 113 Node tests and prior native zoom/WebAuthn/MFA/tenant checks passed. Remaining: full manual WCAG screen reader/contrast/touch/focus-obscured review, other browsers and 200% text-only resizing, entire UI/error state matrix and production identity/provider/cluster security."
       ],
       "blocker_type": null,
       "verification_level": "browser_tested",

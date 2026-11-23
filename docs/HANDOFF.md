@@ -1,5 +1,12 @@
 # Handoff
 
+## 2026-11-23 — ORB-009/018 native 400% security-dialog keyboard/focus bounds (PR #48)
+
+- [PR #48](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/48) functional SHA `d5103e72561982d272fa36544404fe005f03cf43` passed [PR CI #45092426138](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45092426138), [branch CI #45092422244](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45092422244), and [Chromium/WebAuthn/native zoom CI #45092426123](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45092426123). **113 Node tests**, full synthetic Chromium suite green.
+- At real Chrome 400% tab zoom (320×240 effective CSS px), six security modal controls gained keyboard focus wholly within the browser and modal scrollport; two modal content heights 388/671px, visible scrollport 214px; real Tab/Shift+Tab trap and Escape→visible sidebar opener passed. Original disabled Start enrollment button negative was a **test sequencing error**, corrected before final tests. [Full evidence](TEST_EVIDENCE/2026-11-23-orb-009-018-native-400-security-dialog-focus.md).
+- Browser-only regression **without product-code change**. Manual WCAG, other browsers and production identity/provider/tenant tests remain open. Verify final doc-head and postmerge `main` CI.
+
+
 ## 2026-11-23 — ORB-009/018 native browser 200%/400% zoom and reachable navigation (PR #47)
 
 - [PR #47](https://github.com/Vertex-Systems-Network/vsn-orbicore/pull/47) functional SHA `ce945a86c5739902051b3abb844b22af7543b21b` passed [PR CI #45090538238](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45090538238), [branch CI #45090534355](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45090534355), and [native Chromium + prior WebAuthn browser #45090538186](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45090538186). **113 Node tests**; all reflow and native 100/200/400% zoom states succeeded; original browser/MFA/tenant checks still green.

@@ -1,5 +1,7 @@
 # Test evidence index
 
+- [2026-11-23 ORB-009/018 security dialog 400% native Chromium zoom focus/scrollport](2026-11-23-orb-009-018-native-400-security-dialog-focus.md): six focused controls fully inside browser and modal viewports; real Tab/Shift+Tab/Escape focus checks, no secrets captured; still no full WCAG.
+
 - [2026-11-23 ORB-009/018 native Chromium 200%/400% zoom and scrollable collapsed sidebar](2026-11-23-orb-009-018-native-chromium-zoom.md): real tab zoom, measured 1280/640/320 px, 400% offscreen Jobs link fixed, no page-wide overflow for sampled dashboard screens; not full WCAG.
 
 - [2026-11-23 ORB-009 light/dark sign-in computed-color contrast](2026-11-23-orb-009-auth-theme-contrast-browser.md): four normal-text roles checked per theme at 4.5:1; does not certify full WCAG.
