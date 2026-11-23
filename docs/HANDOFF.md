@@ -1,5 +1,10 @@
 # Handoff
 
+## 2026-11-23 — ORB-004/005/016/017 CI-only active-queue quarantine, no replay
+
+- Added isolated `orbicore_ci_quarantine.active_jobs` PG16 fixture schema with default-deny RLS, no grants to workers, and explicit **CI-only** staging consent. Synthetic SQLite source v7 manifest, fixture accounts/emails, tenant-scoped authorized actors, strict queued/running timestamps/fields, bounded job IDs and fixture idempotency keys are validated before touching PostgreSQL. A separate PostgreSQL serializable transaction and row-by-row SHA256 parity check record metadata, with zero public job/outbox writes. Added negative/unit and hosted service integration for forced late fault rollback, target occupation, role denial and unchanged SQLite source. **Hosted PR tests pending**; no resume/replay/cutover or provider access. [Evidence](TEST_EVIDENCE/2026-11-23-orb-004-ci-active-job-quarantine.md).
+
+
 ## 2026-11-23 — ORB-005/017 SQLite v7 source manifest preflight (feature PR)
 
 - Added readonly source `schema_migrations` integrity check for the exact seven named local SQLite v7 migrations and their ISO timestamps, before any PostgreSQL connection. Unit tests fail on missing, extra, renamed or invalid history; the existing dedicated PG16 terminal-history integration script now tampers with and removes version 7, verifies hard refusal and restores the fixture. At functional head `c17e32e8`, [142/142 Node tests](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45155046168) and [all 24 PG16/Redis7 jobs](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45155046035) passed, including the tamper and missing-row fixture. [Chromium](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45155045921) and [PR ledger](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45155045968) also green. Final documentation-head CI and merge still pending. This is not a full production schema integrity attestation, migration rollback or credential cutover. [Test plan](TEST_EVIDENCE/2026-11-23-orb-005-017-sqlite-source-manifest.md).
