@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BEGIN, END, upsertTaskLedger, renderTaskLedger, extractLinkedTaskIds } from "../scripts/pr-task-table.mjs";
+import { BEGIN, END, upsertTaskLedger, renderTaskLedger, extractLinkedTaskIds, mergeTaskSnapshots } from "../scripts/pr-task-table.mjs";
 import { inspectPlan } from "../scripts/audit-plan.mjs";
 
 const mkTask = (id, status = "testing") => ({
@@ -85,4 +85,43 @@ test("Plan audit catches cycles, unmapped tasks, missing blocker types", () => {
   assert.ok(errors.some(s => s.includes("cyclic")));
   assert.ok(errors.some(s => s.includes("requires blocker_type")));
   assert.ok(errors.some(s => s.includes("missing epic")));
+});
+
+test("untouched old PR keeps new main task status and additions", () => {
+  const ancestor = [mkTask("ORB-020")];
+  const head = [mkTask("ORB-020")];
+  const mainTask = { ...mkTask("ORB-020", "verified"), evidence_paths: ["main-evidence"] };
+  const merged = mergeTaskSnapshots([mainTask, mkTask("ORB-009")], ancestor, head);
+  assert.equal(merged.length, 2);
+  assert.deepEqual(merged.find(t => t.id === "ORB-020"), mainTask);
+});
+test("PR-specific changes overlay current main without discarding unrelated fields", () => {
+  const ancestor = [mkTask("ORB-020")];
+  const head = [{ ...mkTask("ORB-020"), verification_level: "integration_tested" }];
+  const current = [{ ...mkTask("ORB-020"), blockers: ["main gate updated"] }];
+  const merged = mergeTaskSnapshots(current, ancestor, head);
+  assert.equal(merged[0].verification_level, "integration_tested");
+  assert.deepEqual(merged[0].blockers, ["main gate updated"]);
+});
+test("PR-only new task stays visible beside newer main additions", () => {
+  const base = [mkTask("ORB-009")];
+  const main = [mkTask("ORB-009"), mkTask("ORB-020")];
+  const head = [mkTask("ORB-009"), mkTask("ORB-021")];
+  const merged = mergeTaskSnapshots(main, base, head);
+  assert.deepEqual(merged.map(t => t.id), ["ORB-009", "ORB-020", "ORB-021"]);
+});
+test("PR/main conflicting status changes fail closed, never silently overwrite", () => {
+  const before = [mkTask("ORB-020")];
+  const head = [{ ...mkTask("ORB-020"), status: "in_progress" }];
+  const main = [mkTask("ORB-020", "verified")];
+  assert.throws(() => mergeTaskSnapshots(main, before, head), /conflicting concurrent update to status/);
+});
+test("PR cannot silently remove a canonical task or invent a duplicate", () => {
+  assert.throws(() => mergeTaskSnapshots(
+    [mkTask("ORB-009")], [mkTask("ORB-009")], []
+  ), /removed a canonical task/);
+  assert.throws(() => mergeTaskSnapshots(
+    [mkTask("ORB-009")], [mkTask("ORB-009")],
+    [mkTask("ORB-009"), mkTask("ORB-009")]
+  ), /duplicate/);
 });
