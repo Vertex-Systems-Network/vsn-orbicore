@@ -32,7 +32,7 @@ try {
       const contrastPage = await contrastContext.newPage();
       await contrastPage.addInitScript((name) => window.localStorage.setItem("orbicore-theme", name), theme);
       await contrastPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
-      await contrastPage.locator("form.auth-card input[type='password']").waitFor();
+      await contrastPage.locator("form.auth-card input[autocomplete='new-password']").waitFor();
       await contrastPage.waitForFunction((name) => document.documentElement.dataset.theme === name, theme);
       const ratios = await contrastPage.evaluate(() => {
         const card = document.querySelector("form.auth-card");
@@ -60,7 +60,7 @@ try {
           if (!element) throw new Error("Auth contrast selector missing: " + selector);
           return getComputedStyle(element).color;
         };
-        const input = card.querySelector("input[type='password']");
+        const input = card.querySelector("input[autocomplete='new-password'], input[autocomplete='current-password']");
         if (!input) throw new Error("Auth password input missing");
         return {
           hint: contrast(computedText(":scope > p"), cardBackground),
