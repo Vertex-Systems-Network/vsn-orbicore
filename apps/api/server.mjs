@@ -1422,7 +1422,11 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         if (typeof body.accountId !== "string" || body.accountId.length > 100) return json(response, 400, { error: "invalid_account_id" });
         const account = db.prepare("SELECT id FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
         if (!account) return json(response, 404, { error: "account_not_found" });
-        const suppliedKey = request.headers["idempotency-key"]?.toString().slice(0, 120) ?? null;
+        const suppliedKey = request.headers["idempotency-key"] ?? null;
+        if (suppliedKey !== null && (typeof suppliedKey !== "string" ||
+            suppliedKey.length > 120 || !suppliedKey.trim() || suppliedKey.includes(","))) {
+          return json(response, 400, { error: "invalid_idempotency_key" });
+        }
         if (jobRepository) {
           try {
             // The job is durable in PostgreSQL but the SQLite audit is not in
@@ -1457,16 +1461,26 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           }
         }
         const idempotencyKey = suppliedKey ? `${actor.organizationId}:${suppliedKey}` : null;
-        const existing = idempotencyKey ? db.prepare("SELECT id FROM jobs WHERE organization_id = ? AND idempotency_key = ?").get(actor.organizationId, idempotencyKey) : null;
-        if (existing) return json(response, 200, { jobId: existing.id, status: "existing", source: "mock_fixture" });
-        const id = randomUUID();
-        const now = new Date().toISOString();
-        transaction(() => {
+        // Inspect the key under the same writer lock as job creation and audit.
+        // A retry is valid only for the same operation, account and requester.
+        const outcome = transaction(() => {
+          const existing = idempotencyKey ? db.prepare("SELECT id, type, account_id, requested_by FROM jobs WHERE organization_id = ? AND idempotency_key = ?").get(actor.organizationId, idempotencyKey) : null;
+          if (existing) {
+            if (existing.type !== "inventory_refresh" || existing.account_id !== account.id ||
+                existing.requested_by !== actor.id) return { conflict: true };
+            return { id: existing.id, created: false };
+          }
+          const id = randomUUID();
+          const now = new Date().toISOString();
           db.prepare("INSERT INTO jobs (id, type, organization_id, account_id, requested_by, status, idempotency_key, created_at) VALUES (?, 'inventory_refresh', ?, ?, ?, 'queued', ?, ?)")
             .run(id, actor.organizationId, account.id, actor.id, idempotencyKey, now);
           appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "inventory.refresh", targetId: account.id, outcome: "queued", createdAt: now, details: { source: "mock_fixture", live: false, jobId: id } });
+          return { id, created: true };
         });
-        return json(response, 202, { jobId: id, status: "queued", source: "mock_fixture", live: false });
+        if (outcome.conflict) return json(response, 409, { error: "idempotency_conflict" });
+        return json(response, outcome.created ? 202 : 200, {
+          jobId: outcome.id, status: outcome.created ? "queued" : "existing", source: "mock_fixture", live: false,
+        });
       } catch (error) {
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error", message: error.message });
       }
