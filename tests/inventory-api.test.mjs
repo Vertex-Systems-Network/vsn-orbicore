@@ -315,3 +315,36 @@ test("ORB-002 refresh idempotency does not alias a second authorized requester i
   assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n, 1);
   assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action = 'inventory.refresh'").get().n, 1);
 });
+
+test("ORB-002 provider-tagged account cannot enqueue a mock inventory refresh even with a known fixture ID", async () => {
+  app.db.prepare("UPDATE accounts SET source = 'provider' WHERE id = ?").run("acct-northstar");
+  const before = app.db.prepare("SELECT source, last_synced_at FROM accounts WHERE id = ?").get("acct-northstar");
+  const response = await api("/api/jobs/refresh", {
+    method: "POST", headers: { "content-type": "application/json", "idempotency-key": "provider-source-refused" },
+    body: JSON.stringify({ accountId: "acct-northstar" }),
+  });
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { error: "provider_refresh_not_enabled" });
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n, 0);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action = 'inventory.refresh'").get().n, 0);
+  assert.deepEqual(app.db.prepare("SELECT source, last_synced_at FROM accounts WHERE id = ?").get("acct-northstar"), before);
+});
+
+test("ORB-002 worker refuses a queued mock refresh after account provenance changes", async () => {
+  const response = await api("/api/jobs/refresh", {
+    method: "POST", headers: { "content-type": "application/json", "idempotency-key": "provider-source-changed" },
+    body: JSON.stringify({ accountId: "acct-northstar" }),
+  });
+  assert.equal(response.status, 202);
+  const { jobId } = await response.json();
+  app.db.prepare("UPDATE accounts SET source = 'provider' WHERE id = ?").run("acct-northstar");
+  const before = app.db.prepare("SELECT source, last_synced_at FROM accounts WHERE id = ?").get("acct-northstar");
+  const result = await app.processNextJob();
+  assert.equal(result.status, "failed");
+  assert.equal(result.error, "Provider inventory refresh is not enabled.");
+  const stored = app.db.prepare("SELECT status, result_json FROM jobs WHERE id = ?").get(jobId);
+  assert.equal(stored.status, "failed");
+  assert.equal(stored.result_json, null);
+  assert.deepEqual(app.db.prepare("SELECT source, last_synced_at FROM accounts WHERE id = ?").get("acct-northstar"), before);
+  assert.deepEqual(app.db.prepare("SELECT outcome FROM audit_events WHERE action = 'inventory.refresh' ORDER BY outcome").all().map(row => row.outcome), ["failed", "queued"]);
+});
