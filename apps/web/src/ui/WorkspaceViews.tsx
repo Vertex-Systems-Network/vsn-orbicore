@@ -64,6 +64,7 @@ export function AccountsView({
   selectedAccountId,
   onSelectAccount,
   canMutate,
+  refreshBusy = false,
   isAdmin = false,
   onAccountCreated,
   onRefreshAccount,
@@ -72,6 +73,7 @@ export function AccountsView({
   selectedAccountId: string | null;
   onSelectAccount: (id: string) => void;
   canMutate: boolean;
+  refreshBusy?: boolean;
   isAdmin?: boolean;
   onAccountCreated: () => Promise<void>;
   onRefreshAccount: (accountId: string) => Promise<void>;
@@ -231,7 +233,8 @@ export function AccountsView({
                   <button
                     type="button"
                     className="secondary-button mini-btn"
-                    disabled={!canMutate}
+                    disabled={!canMutate || refreshBusy || account.source !== "mock_fixture"}
+                    title={account.source !== "mock_fixture" ? "Provider refresh is not enabled" : !canMutate ? "Requires operator, admin, or owner role" : undefined}
                     onClick={(e) => { e.stopPropagation(); void onRefreshAccount(account.id); }}
                   >
                     Refresh

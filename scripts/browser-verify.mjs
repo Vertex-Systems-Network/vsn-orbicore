@@ -208,6 +208,40 @@ try {
   await page.getByRole("button", { name: "Retry loading workspace" }).click();
   await page.locator(".page-container > .error-banner").waitFor({ state: "hidden" });
 
+  // ORB-002: the UI must follow the API's mock-only refresh contract.
+  const sourceRows = app.db.prepare("SELECT id, label, source FROM accounts ORDER BY id").all();
+  const tagged = sourceRows.find((row) => row.source === "mock_fixture");
+  assert.ok(tagged && sourceRows.length > 1);
+  const bulk = page.getByRole("button", { name: "Refresh inventory", exact: true });
+  const sentRefreshIds = [];
+  try {
+    app.db.prepare("UPDATE accounts SET source = 'provider' WHERE id = ?").run(tagged.id);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByText(/Provider refresh is not enabled; only synthetic accounts can be refreshed/).waitFor();
+    await page.getByRole("button", { name: "Hosting accounts", exact: true }).click();
+    const providerRow = page.locator(".data-table-row.accounts-cols").filter({ has: page.getByText(tagged.label, { exact: true }) });
+    await providerRow.waitFor();
+    assert.equal(await providerRow.getByRole("button", { name: "Refresh", exact: true }).isDisabled(), true);
+    assert.equal(await providerRow.getByRole("button", { name: "Refresh", exact: true }).getAttribute("title"), "Provider refresh is not enabled");
+    await page.route("**/api/jobs/refresh", async (route) => {
+      sentRefreshIds.push(route.request().postDataJSON().accountId);
+      await route.fulfill({ status: 202, json: { status: "queued", live: false } });
+    });
+    await bulk.click();
+    await page.getByRole("button", { name: "Refresh inventory", exact: true }).waitFor();
+    assert.deepEqual(sentRefreshIds.sort(), sourceRows.filter((row) => row.id !== tagged.id && row.source === "mock_fixture").map((row) => row.id).sort());
+    await page.unroute("**/api/jobs/refresh");
+    app.db.exec("UPDATE accounts SET source = 'provider'");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByText(/Provider refresh is not enabled; only synthetic accounts can be refreshed/).waitFor();
+    assert.equal(await bulk.isDisabled(), true);
+  } finally {
+    await page.unroute("**/api/jobs/refresh");
+    for (const row of sourceRows) app.db.prepare("UPDATE accounts SET source = ? WHERE id = ?").run(row.source, row.id);
+  }
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator(".account-rows .account-row").first().waitFor();
+
   // Verify that reduced-motion preference disables the dashboard spinner.
   await page.emulateMedia({ reducedMotion: "reduce" });
   const reducedAnimationSeconds = await page.evaluate(() => {
