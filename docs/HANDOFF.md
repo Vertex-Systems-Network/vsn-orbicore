@@ -1,5 +1,7 @@
 # Handoff
 
+**2026-11-27 ORB-004/005 PR #82 functional checks passed:** `2734440` passed [199/199 Node tests](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45996488064), [28/28 service jobs](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45996488345), [3/3 browser jobs](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45996488044) and [trusted ledger](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/45996488110). Both new trigger definition regressions passed. [Evidence](TEST_EVIDENCE/2026-11-27-orb-004-005-exact-source-guard-validation.md). Final evidence-only head checks/merge pending; task lifecycle and production gates unchanged.
+
 **2026-11-27 ORB-004/005 exact persisted guard validation (CI pending):** PR #81 is merged at main `5444dd38` with main CI and ledger green. Follow-up rejects altered trigger definitions that retain the previous marker/abort substrings, and case-variant name collisions. File-backed negative and existing restart regressions require hosted CI. [Evidence plan](TEST_EVIDENCE/2026-11-27-orb-004-005-exact-source-guard-validation.md). Lifecycle/verification levels unchanged; no production cutover or DDL tamper-proof claim.
 
 ## 2026-11-23 — ORB-004/005 persisted source DML guards: functional PR #81 CI green
