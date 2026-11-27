@@ -403,3 +403,51 @@ test("ORB-002 provider-tagged sites deny synthetic inspection, snapshots and Wor
   app.db.prepare("UPDATE accounts SET source = 'mock_fixture' WHERE id = ?").run("acct-northstar");
   assert.equal((await api(path + "/inspection")).status, 200);
 });
+
+test("ORB-005 migration planning and advance reject provider source or destination without writes", async () => {
+  const sourceId = "acct-northstar";
+  const targetId = "acct-copperline";
+  app.db.prepare("UPDATE accounts SET quota_bytes = 1099511627776 WHERE id = ?").run(targetId);
+  const input = { siteId: "site-northstar-main", targetAccountId: targetId, strategy: "generic_php" };
+  const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const snapshot = () => ({
+    plans: app.db.prepare("SELECT * FROM migration_plans ORDER BY id").all(),
+    audit: app.db.prepare("SELECT * FROM audit_events ORDER BY rowid").all(),
+  });
+  const setSource = app.db.prepare("UPDATE accounts SET source = ? WHERE id = ?");
+  for (const accountId of [sourceId, targetId]) {
+    setSource.run("provider", accountId);
+    const before = snapshot();
+    const denied = await post("/api/migrations", input);
+    assert.equal(denied.status, 409);
+    assert.deepEqual(await denied.json(), { error: "provider_migration_not_enabled" });
+    assert.deepEqual(snapshot(), before);
+    setSource.run("mock_fixture", accountId);
+  }
+  const created = await post("/api/migrations", input);
+  assert.equal(created.status, 201);
+  const plan = await created.json();
+  assert.equal(plan.state, "planned");
+  const advancePath = "/api/migrations/" + plan.id + "/advance";
+  for (const expected of ["preflight", "snapshot", "transfer"]) {
+    const response = await post(advancePath, {});
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).state, expected);
+  }
+  for (const accountId of [sourceId, targetId]) {
+    setSource.run("provider", accountId);
+    const before = snapshot();
+    for (const body of [{}, { simulatePartialFailure: true }]) {
+      const denied = await post(advancePath, body);
+      assert.equal(denied.status, 409);
+      assert.deepEqual(await denied.json(), { error: "provider_migration_not_enabled" });
+      assert.deepEqual(snapshot(), before);
+    }
+    setSource.run("mock_fixture", accountId);
+  }
+  setSource.run("provider", targetId);
+  const rolledBack = await post("/api/migrations/" + plan.id + "/rollback", {});
+  assert.equal(rolledBack.status, 200);
+  assert.equal((await rolledBack.json()).state, "rolled_back");
+  assert.equal(app.db.prepare("SELECT source FROM accounts WHERE id = ?").get(targetId).source, "provider");
+});
