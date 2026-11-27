@@ -9,3 +9,14 @@ The local account capability endpoint previously returned synthetic permission p
 - One local HTTP regression exercises a persisted mock snapshot before/after a synthetic provenance change. Chromium extends the existing mixed-source test to verify unknown badges, failed fetch without stale permissions, and retry recovery.
 
 No live provider calls or production permission policy changes. This is a display/API evidence boundary, not complete enforcement in every other dry-run feature. New browser assertions are Chromium-specific. Task lifecycle and verification levels unchanged.
+
+## Hosted PR #88 functional-head evidence
+
+GitHub Actions on `4a82a6e6b3f38cff0eaa3c34b9116d88198d0a56` (2026-11-27 UTC):
+
+- [Standard CI #46034277413](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46034277413) and [push CI #46034239701](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46034239701) passed. PR logs record 209/209 Node tests, zero failures/skips/cancellations, including the persisted mock capability snapshot regression. Plan alignment passed.
+- [Service integration #46034274956](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46034274956): all 28 disposable PostgreSQL/Redis service jobs succeeded.
+- [Browser #46034274959](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46034274959): all three jobs passed. Chromium browser-verify.mjs completed including the provider unknown-level, failed capability request and retry assertions. Existing Firefox/WebKit responsive/keyboard checks passed; they do not prove the new Chromium-specific scenarios.
+- [Trusted ledger #46034279311](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46034279311): succeeded; 20 tasks, 6 verified, 9 testing, 3 in progress, 2 blocked.
+
+Final evidence-only head verification and merge pending. No live provider calls, production permission authorization, or complete enforcement in unrelated dry-run modules; lifecycle and verification levels unchanged.
