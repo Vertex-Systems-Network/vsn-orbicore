@@ -81,7 +81,8 @@
       "commit_hash": null,
       "evidence_paths": [
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
-        "tests/inventory-api.test.mjs"
+        "tests/inventory-api.test.mjs",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md"
       ],
       "blockers": [
         "The mock cPanel inventory vertical slice has local fixture proof; authorized live provider capability and inventory fidelity are still untested. Owner-approved disposable scoped cPanel sandbox access required for ORB-006/019; do not confuse ORB-009 browser-only E2E with live UAPI evidence."
@@ -89,7 +90,7 @@
       "started_at": "2026-11-09T00:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-23",
+      "last_updated": "2026-11-27",
       "verification_level": "mock_tested",
       "blocker_type": "external"
     },
@@ -424,7 +425,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-inventory-shape.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-010-strict-cpanel-host-port.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md"
       ],
       "blockers": [
         "No sandbox account or scoped token provided"
@@ -432,7 +434,7 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-23",
+      "last_updated": "2026-11-27",
       "verification_level": "none",
       "blocker_type": "external"
     },
@@ -631,7 +633,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-inventory-shape.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-010-strict-cpanel-host-port.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-bytes-limit.md",
-        "docs/TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md"
+        "docs/TEST_EVIDENCE/2026-11-23-orb-005-fetch-metadata-csrf.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md"
       ],
       "blockers": [
         "PR #44 113 Node tests and 242-file Git-tracked recognized source check passed at 1ebcd978, including fail-closed license UNKNOWN/missing metadata and no/mismatched lockfile. Full historical/binary secrets discovery, deployed-system SBOM, release attestation, legal review, production service/identity, backup and provider gates remain open."
@@ -639,7 +642,7 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-23",
+      "last_updated": "2026-11-27",
       "verification_level": "unit",
       "blocker_type": "technical"
     },
@@ -1099,7 +1102,9 @@
         "docs/SECURITY_THREAT_MODEL.md"
       ],
       "commit_hash": null,
-      "evidence_paths": [],
+      "evidence_paths": [
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md"
+      ],
       "blockers": [
         "No owner-authorized sandbox account or scoped token supplied"
       ],
@@ -1108,7 +1113,7 @@
       "started_at": null,
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-10"
+      "last_updated": "2026-11-27"
     },
     {
       "id": "ORB-020",

@@ -19,3 +19,7 @@ SFTP/SSH with pinned host-key validation; WordPress agent/WP-CLI with site conse
 ## cPanel UAPI fail-closed return and redirect policy (synthetic fixture checkpoint)
 
 For the `/execute/Module/function` adapter, accept UAPI success only when the parsed response supplies an explicit numeric `status: 1`; reject status 0, missing status, unsupported status types, unexpected structures and explicit error arrays without exposing token data. Both direct `status/data` objects and documented `result.status/result.data` envelope fixtures are recognized. A 3xx response is never followed; Node fetch uses `redirect: "manual"` and returns a redacted `uapi_redirect_denied`. See [fixture-only tests](TEST_EVIDENCE/2026-11-23-orb-006-uapi-response-redirect-guard.md). This is not a claim that any live cPanel account or provider return shape was validated.
+
+## Capability evidence scope (synthetic checkpoint)
+
+Quota-only UAPI discovery reports read-only quota function success, not validated quota values. All other capabilities remain unknown/unprobed. Static fixture profiles are not proof of real account permissions. See [test plan](TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md).

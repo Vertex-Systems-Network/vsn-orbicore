@@ -120,7 +120,13 @@ export class LiveCpanelAdapterBoundary {
       live: true,
       host: connectionRef.host,
       source: "cpanel_uapi_read_only",
-      capabilities: CAPABILITY_PROFILES.cpanel_uapi_standard,
+      // The quota probe proves only that this read-only function returned
+      // UAPI success. A mock profile is not an account permission grant.
+      capabilities: CAPABILITY_PROFILES.cpanel_uapi_standard.map(({ capability }) =>
+        capability === "quotas.read"
+          ? { capability, level: "read_only", note: "Quota::get_quota_info returned UAPI success; quota values were not validated." }
+          : { capability, level: "unknown", note: "Not probed; no permission inferred from quota response." },
+      ),
       fetchedAt: new Date().toISOString(),
     };
   }
