@@ -23,3 +23,7 @@ For the `/execute/Module/function` adapter, accept UAPI success only when the pa
 ## Capability evidence scope (synthetic checkpoint)
 
 Quota-only UAPI discovery reports read-only quota function success, not validated quota values. All other capabilities remain unknown/unprobed. Static fixture profiles are not proof of real account permissions. See [test plan](TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md).
+
+## Explicit UAPI authorization and header input boundary
+
+Only a literal boolean authorization grant and nonempty printable ASCII credential strings without whitespace/control characters are accepted; username cannot contain the credential separator. Denials do not interpolate untrusted host/credential values. This validates input shape only, not the provenance of consent or live credential compatibility. See [test plan](TEST_EVIDENCE/2026-11-27-orb-002-uapi-authorization-boundary.md).
