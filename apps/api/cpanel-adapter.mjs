@@ -16,12 +16,19 @@ export class LiveCpanelAdapterBoundary {
   }
 
   async _callUapi(connectionRef, moduleName, funcName) {
-    if (!connectionRef?.authorized || !connectionRef?.username || !connectionRef?.apiToken) {
+    // An explicit boolean grant is required. Never coerce untrusted
+    // configuration values or credential objects into an authorization header.
+    if (connectionRef?.authorized !== true ||
+        typeof connectionRef.username !== "string" ||
+        typeof connectionRef.apiToken !== "string" ||
+        !connectionRef.username.trim() || !connectionRef.apiToken.trim() ||
+        /[^\x21-\x7e]|:/.test(connectionRef.username) ||
+        /[^\x21-\x7e]/.test(connectionRef.apiToken)) {
       return {
         ok: false,
         live: true,
         error: "live_credentials_not_authorized",
-        reason: `Live cPanel connection for ${connectionRef?.host ?? "unknown"} is blocked until owner-authorized sandbox tokens are explicitly provisioned.`,
+        reason: "Live cPanel connection is blocked until owner-authorized sandbox tokens are explicitly provisioned.",
       };
     }
     const endpoint = validateCpanelApiHost(connectionRef.host);
