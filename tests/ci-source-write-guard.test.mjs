@@ -200,3 +200,64 @@ test("ORB-004 malformed persisted guard is not silently accepted during clean re
     rmSync(folder, { recursive: true, force: true });
   }
 });
+
+test("ORB-004 rejects altered guard predicates and event types even with original denial text", () => {
+  const folder = mkdtempSync(join(tmpdir(), "orb-ci-exact-guard-"));
+  try {
+    const alterations = [
+      sql => sql.replace("WHEN EXISTS", "WHEN 0 AND EXISTS"),
+      sql => sql.replace("BEFORE INSERT", "BEFORE UPDATE"),
+    ];
+    for (const [i, alter] of alterations.entries()) {
+      const dbPath = join(folder, `source-${i}.sqlite`);
+      const options = { dbPath, startWorker: false, bootstrapToken: "ci-exact-guard" };
+      const app = createApp(options);
+      const original = app.db.prepare(
+        "SELECT name, sql FROM main.sqlite_master WHERE type='trigger' AND tbl_name='accounts' AND name LIKE 'orbicore_ci_hold_%_insert'",
+      ).get();
+      app.close();
+      const external = new DatabaseSync(dbPath);
+      try {
+        const changed = alter(original.sql);
+        assert.notEqual(changed, original.sql);
+        external.exec(`DROP TRIGGER "${original.name}"`);
+        external.exec(changed);
+      } finally {
+        external.close();
+      }
+      assert.throws(() => createApp(options), /ci_sqlite_source_guard_conflict/);
+      const check = new DatabaseSync(dbPath);
+      try {
+        assert.equal(check.prepare("SELECT COUNT(*) AS n FROM accounts").get().n, 3);
+        assert.equal(check.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n, 7);
+      } finally {
+        check.close();
+      }
+    }
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+});
+
+test("ORB-004 rejects case-variant SQLite trigger name collisions on restart", () => {
+  const folder = mkdtempSync(join(tmpdir(), "orb-ci-guard-case-"));
+  const dbPath = join(folder, "source.sqlite");
+  const options = { dbPath, startWorker: false, bootstrapToken: "ci-case-guard" };
+  try {
+    const app = createApp(options);
+    const original = app.db.prepare(
+      "SELECT name FROM main.sqlite_master WHERE type='trigger' AND tbl_name='accounts' AND name LIKE 'orbicore_ci_hold_%_insert'",
+    ).get();
+    app.close();
+    const external = new DatabaseSync(dbPath);
+    try {
+      external.exec(`DROP TRIGGER "${original.name}"`);
+      external.exec(`CREATE TRIGGER "${original.name.toUpperCase()}" BEFORE INSERT ON accounts BEGIN SELECT 1; END`);
+    } finally {
+      external.close();
+    }
+    assert.throws(() => createApp(options), /ci_sqlite_source_guard_conflict/);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+});

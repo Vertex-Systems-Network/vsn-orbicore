@@ -29,7 +29,7 @@ export function installCiSourceHoldWriteGuards(sqlite) {
     "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> ? ORDER BY name",
   ).all(TABLE);
   const existingTrigger = sqlite.prepare(
-    "SELECT tbl_name AS tableName, sql FROM main.sqlite_master WHERE type='trigger' AND name=?",
+    "SELECT tbl_name AS tableName, sql FROM main.sqlite_master WHERE type='trigger' AND name=? COLLATE NOCASE",
   );
   for (const table of tables) {
     // Encode the *name*, not its sorted index: schema upgrades may add tables
@@ -46,14 +46,19 @@ export function installCiSourceHoldWriteGuards(sqlite) {
         )
         BEGIN SELECT RAISE(ABORT, '${CI_SOURCE_RECOVERY_HOLD_ERROR}'); END`;
       const installed = existingTrigger.get(triggerName);
-      // Do not silently reuse a same-name schema trigger with a different
-      // table/denial contract after a malformed schema upgrade.
-      if (installed && (
-        installed.tableName !== table.name ||
-        !installed.sql?.includes(`WHERE name = '${TABLE}'`) ||
-        !installed.sql?.includes(`RAISE(ABORT, '${CI_SOURCE_RECOVERY_HOLD_ERROR}')`)
-      )) throw new Error("ci_sqlite_source_guard_conflict");
-      sqlite.exec(triggerSql);
+      // SQLite may omit IF NOT EXISTS in its stored CREATE TRIGGER text.
+      // Compare the full generated definition, not fragments: timing, event,
+      // WHEN predicate, and body must all match. Do not normalize comments,
+      // literals or arbitrary whitespace into a potentially different program.
+      const canonical = (sql) => sql?.replace(/^CREATE TRIGGER IF NOT EXISTS /, "CREATE TRIGGER ");
+      if (installed) {
+        if (installed.tableName !== table.name ||
+            canonical(installed.sql) !== canonical(triggerSql)) {
+          throw new Error("ci_sqlite_source_guard_conflict");
+        }
+      } else {
+        sqlite.exec(triggerSql);
+      }
     }
   }
   return tables.length;
