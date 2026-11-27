@@ -904,6 +904,8 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
   const [thresholdPercent, setThresholdPercent] = useState("80");
   const [error, setError] = useState<string | null>(null);
   const [drillMessage, setDrillMessage] = useState<string | null>(null);
+  const eligibleAccounts = (summary?.accounts ?? []).filter((account) => account.source === "mock_fixture");
+  const eligibleSelection = eligibleAccounts.some((account) => account.id === accountId);
 
   const load = useCallback(async () => {
     try {
@@ -911,7 +913,7 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
       if (res.ok) {
         const data = await res.json() as StorageSummary;
         setSummary(data);
-        setAccountId((curr) => curr || data.accounts[0]?.id || "");
+        setAccountId((curr) => data.accounts.some((account) => account.id === curr && account.source === "mock_fixture") ? curr : data.accounts.find((account) => account.source === "mock_fixture")?.id ?? "");
       }
     } finally {
       setLoading(false);
@@ -922,6 +924,7 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
 
   const createPolicy = async (e: FormEvent) => {
     e.preventDefault();
+    if (!canMutate || !eligibleSelection) return;
     setError(null);
     setDrillMessage(null);
     const res = await fetch("/api/storage/policies", {
@@ -933,7 +936,7 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
     if (!res.ok) {
       setError(data.error === "blocked_private_or_loopback_host" || data.error === "https_required"
         ? "Endpoint must use HTTPS and cannot target private, loopback, or metadata networks."
-        : "Check bucket naming (lowercase letters, digits, hyphens) and threshold (50-99%).");
+        : data.error === "provider_storage_not_enabled" ? "Provider storage operations are not enabled." : "Check bucket naming (lowercase letters, digits, hyphens) and threshold (50-99%).");
       return;
     }
     await load();
@@ -949,7 +952,7 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
     });
     const data = await res.json() as { lastDrillStatus?: string; status?: string; error?: string };
     if (!res.ok) {
-      setError("Could not execute storage drill.");
+      setError(data.error === "provider_storage_not_enabled" ? "Provider storage operations are not enabled." : "Could not execute storage drill.");
       return;
     }
     setDrillMessage(`Drill recorded: ${(data.lastDrillStatus ?? drillType).replaceAll("_", " ")} (policy state: ${(data.status ?? "").replaceAll("_", " ")}; source files untouched).`);
@@ -981,7 +984,7 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
               <span><strong>{acc.label}</strong><small className="cell-sub">{acc.host}</small></span>
               <span>{formatBytes(acc.usedBytes)} / {formatBytes(acc.quotaBytes)}</span>
               <span>{acc.utilizationPercent}%</span>
-              <span>~{formatBytes(acc.estimatedOffloadableBytes)} (estimated)</span>
+              <span>{acc.estimatedOffloadableBytes === null ? "Unavailable — provider unverified" : `~${formatBytes(acc.estimatedOffloadableBytes)} (estimated)`}</span>
             </div>
           ))}
         </div>
@@ -999,7 +1002,7 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
             <label>
               Source account
               <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                {summary?.accounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                {eligibleAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
               </select>
             </label>
             <label>
@@ -1025,8 +1028,8 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
           </div>
           {error && <div className="auth-error" role="alert">{error}</div>}
           <div className="inline-form-actions">
-            <small>Policies start in dry-run-only mode until object-store credentials are provisioned.</small>
-            <button className="primary-button compact-btn" disabled={!canMutate}>Save dry-run policy</button>
+            <small>Only synthetic accounts are eligible. Policies remain dry-run only; no live object-store access.</small>
+            <button className="primary-button compact-btn" disabled={!canMutate || !eligibleSelection}>Save dry-run policy</button>
           </div>
         </form>
 
@@ -1041,15 +1044,16 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
                 <span><strong>{p.accountLabel}</strong></span>
                 <span>{p.mode.replaceAll("_", " ")}</span>
                 <span className="path-cell">{p.targetEndpoint}/{p.targetBucket}</span>
-                <span>~{formatBytes(p.estimatedReclaimBytes)}</span>
+                <span>{p.estimatedReclaimBytes === null ? "Unavailable — provider unverified" : `~${formatBytes(p.estimatedReclaimBytes)}`}</span>
                 <span>
                   <span className="php-tag">{p.status.replaceAll("_", " ")}</span>
+                  {!p.drillEligible && <small className="cell-sub">Provider operations unavailable</small>}
                   {p.lastDrillStatus && <small className="cell-sub">Last drill: {p.lastDrillStatus.replaceAll("_", " ")}</small>}
                   {canMutate && (
                     <div className="drill-actions">
-                      <button type="button" className="secondary-button mini-btn" onClick={() => void runDrill(p.id, "dry_run_offload")}>Dry-run offload</button>
-                      <button type="button" className="secondary-button mini-btn" onClick={() => void runDrill(p.id, "simulate_outage")}>Outage test</button>
-                      <button type="button" className="secondary-button mini-btn" onClick={() => void runDrill(p.id, "rehydrate_verify")}>Rehydrate verify</button>
+                      <button type="button" className="secondary-button mini-btn" disabled={!p.drillEligible} onClick={() => void runDrill(p.id, "dry_run_offload")}>Dry-run offload</button>
+                      <button type="button" className="secondary-button mini-btn" disabled={!p.drillEligible} onClick={() => void runDrill(p.id, "simulate_outage")}>Outage test</button>
+                      <button type="button" className="secondary-button mini-btn" disabled={!p.drillEligible} onClick={() => void runDrill(p.id, "rehydrate_verify")}>Rehydrate verify</button>
                     </div>
                   )}
                 </span>

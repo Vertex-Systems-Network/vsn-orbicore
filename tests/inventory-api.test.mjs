@@ -451,3 +451,34 @@ test("ORB-005 migration planning and advance reject provider source or destinati
   assert.equal((await rolledBack.json()).state, "rolled_back");
   assert.equal(app.db.prepare("SELECT source FROM accounts WHERE id = ?").get(targetId).source, "provider");
 });
+
+test("ORB-005 provider storage policy creation and drills are denied without fabricated estimates or writes", async () => {
+  const accountId = "acct-northstar";
+  const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const input = { accountId, mode: "backup_archival", targetEndpoint: "https://s3.example.org", targetBucket: "test-storage-source", thresholdPercent: 80 };
+  const created = await post("/api/storage/policies", input);
+  assert.equal(created.status, 201);
+  const { id } = await created.json();
+  const drillPath = "/api/storage/policies/" + id + "/drill";
+  app.db.prepare("UPDATE accounts SET source = 'provider' WHERE id = ?").run(accountId);
+  const beforePolicies = app.db.prepare("SELECT * FROM storage_policies ORDER BY id").all();
+  const beforeAudit = app.db.prepare("SELECT * FROM audit_events ORDER BY rowid").all();
+  const denied = await post("/api/storage/policies", input);
+  assert.equal(denied.status, 409);
+  assert.deepEqual(await denied.json(), { error: "provider_storage_not_enabled" });
+  for (const drillType of ["dry_run_offload", "simulate_outage", "rehydrate_verify"]) {
+    const response = await post(drillPath, { drillType });
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: "provider_storage_not_enabled" });
+  }
+  const summary = await (await api("/api/storage/summary")).json();
+  assert.equal(summary.accounts.find((account) => account.id === accountId).estimatedOffloadableBytes, null);
+  const policy = summary.policies.find((entry) => entry.id === id);
+  assert.equal(policy.estimatedReclaimBytes, null);
+  assert.equal(policy.drillEligible, false);
+  assert.deepEqual(app.db.prepare("SELECT * FROM storage_policies ORDER BY id").all(), beforePolicies);
+  assert.deepEqual(app.db.prepare("SELECT * FROM audit_events ORDER BY rowid").all(), beforeAudit);
+  app.db.prepare("UPDATE accounts SET source = 'mock_fixture' WHERE id = ?").run(accountId);
+  const restored = await post(drillPath, { drillType: "dry_run_offload" });
+  assert.equal(restored.status, 200);
+});

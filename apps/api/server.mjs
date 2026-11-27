@@ -1924,15 +1924,22 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       });
       return json(response, 200, { id: row.id, state: "rolled_back" });
     }
+    function requireMockStorageSource(accountId, organizationId) {
+      const account = db.prepare("SELECT source FROM accounts WHERE id = ? AND organization_id = ?").get(accountId, organizationId);
+      if (account?.source !== "mock_fixture") {
+        throw Object.assign(new Error("provider_storage_not_enabled"), { code: "provider_storage_not_enabled", status: 409 });
+      }
+    }
+
     if (request.method === "GET" && url.pathname === "/api/storage/summary") {
       const accounts = accountQuery.all(actor.organizationId).map(accountFromRow);
-      const policies = db.prepare(`SELECT p.*, a.label AS account_label FROM storage_policies p
-        JOIN accounts a ON a.id = p.account_id WHERE p.organization_id = ? ORDER BY p.created_at DESC`).all(actor.organizationId);
+      const policies = db.prepare(`SELECT p.*, a.label AS account_label, a.source AS account_source FROM storage_policies p
+        JOIN accounts a ON a.id = p.account_id AND a.organization_id = p.organization_id WHERE p.organization_id = ? ORDER BY p.created_at DESC`).all(actor.organizationId);
       return json(response, 200, {
         accounts: accounts.map((account) => ({
           ...account,
           utilizationPercent: account.quotaBytes ? Math.round((account.usedBytes / account.quotaBytes) * 100) : 0,
-          estimatedOffloadableBytes: Math.round(account.usedBytes * 0.28),
+          estimatedOffloadableBytes: account.source === "mock_fixture" ? Math.round(account.usedBytes * 0.28) : null,
         })),
         policies: policies.map((policy) => ({
           id: policy.id,
@@ -1942,7 +1949,8 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           targetEndpoint: policy.target_endpoint,
           targetBucket: policy.target_bucket,
           thresholdPercent: policy.threshold_percent,
-          estimatedReclaimBytes: policy.estimated_reclaim_bytes,
+          estimatedReclaimBytes: policy.account_source === "mock_fixture" ? policy.estimated_reclaim_bytes : null,
+          drillEligible: policy.account_source === "mock_fixture",
           status: policy.status,
           lastDrillStatus: policy.last_drill_status ?? null,
           lastDrillAt: policy.last_drill_at ?? null,
@@ -1959,6 +1967,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const body = await readJsonWithSourceHold(request);
         const account = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
         if (!account) return json(response, 404, { error: "account_not_found" });
+        requireMockStorageSource(account.id, actor.organizationId);
         const mode = ["media_offload", "backup_archival", "static_assets"].includes(body.mode) ? body.mode : "backup_archival";
         const endpointCheck = validateExternalEndpoint(body.targetEndpoint, { requireHttps: true });
         if (!endpointCheck.valid) return json(response, 400, { error: endpointCheck.reason });
@@ -1972,6 +1981,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const id = randomUUID();
         const now = new Date().toISOString();
         transaction(() => {
+          requireMockStorageSource(account.id, actor.organizationId);
           db.prepare(`INSERT INTO storage_policies (id, organization_id, account_id, mode, target_endpoint, target_bucket, threshold_percent, estimated_reclaim_bytes, status, created_by, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'dry_run_only', ?, ?)`)
             .run(id, actor.organizationId, account.id, mode, endpointCheck.origin, bucket, threshold, estimatedReclaimBytes, actor.id, now);
@@ -1979,6 +1989,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         });
         return json(response, 201, { id, mode, targetEndpoint: endpointCheck.origin, targetBucket: bucket, thresholdPercent: threshold, estimatedReclaimBytes, status: "dry_run_only" });
       } catch (error) {
+        if (error?.code === "provider_storage_not_enabled") return json(response, 409, { error: error.code });
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }
@@ -2259,6 +2270,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const policyId = decodeURIComponent(storageDrillMatch[1]);
         const policy = db.prepare("SELECT * FROM storage_policies WHERE id = ? AND organization_id = ?").get(policyId, actor.organizationId);
         if (!policy) return json(response, 404, { error: "storage_policy_not_found" });
+        requireMockStorageSource(policy.account_id, actor.organizationId);
         const drillType = body.drillType;
         if (!["dry_run_offload", "simulate_outage", "rehydrate_verify"].includes(drillType)) {
           return json(response, 400, { error: "unsupported_storage_drill" });
@@ -2271,12 +2283,14 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
             : "dry_run_manifest_verified";
         const nextPolicyStatus = drillType === "simulate_outage" ? "paused" : "dry_run_only";
         transaction(() => {
+          requireMockStorageSource(policy.account_id, actor.organizationId);
           db.prepare("UPDATE storage_policies SET status = ?, last_drill_status = ?, last_drill_at = ? WHERE id = ? AND organization_id = ?")
             .run(nextPolicyStatus, drillStatus, now, policy.id, actor.organizationId);
           appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: `storage.drill.${drillType}`, targetId: policy.id, outcome: drillType === "simulate_outage" ? "failed_safe" : "completed", createdAt: now, details: { drillStatus, nextPolicyStatus, sourceFilesUntouched: true } });
         });
         return json(response, 200, { id: policy.id, status: nextPolicyStatus, lastDrillStatus: drillStatus, lastDrillAt: now, sourceFilesUntouched: true });
       } catch (error) {
+        if (error?.code === "provider_storage_not_enabled") return json(response, 409, { error: error.code });
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }
