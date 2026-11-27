@@ -258,3 +258,60 @@ test("ORB-005: UTF-8 split across HTTP chunks preserves a password exactly", asy
   }, null);
   assert.equal(login.status, 200);
 });
+
+test("ORB-002 refresh idempotency rejects a different account without adding a job or audit event", async () => {
+  const request = accountId => api("/api/jobs/refresh", {
+    method: "POST", headers: { "content-type": "application/json", "idempotency-key": "account-bound-retry" },
+    body: JSON.stringify({ accountId }),
+  });
+  const first = await request("acct-northstar");
+  assert.equal(first.status, 202);
+  const queued = await first.json();
+  const conflict = await request("acct-copperline");
+  assert.equal(conflict.status, 409);
+  assert.deepEqual(await conflict.json(), { error: "idempotency_conflict" });
+  const replay = await request("acct-northstar");
+  assert.equal(replay.status, 200);
+  assert.deepEqual(await replay.json(), { jobId: queued.jobId, status: "existing", source: "mock_fixture", live: false });
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n, 1);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action = 'inventory.refresh'").get().n, 1);
+});
+
+test("ORB-002 refresh idempotency denies malformed and overlong keys instead of truncating them", async () => {
+  for (const key of ["", "a".repeat(121), "first, second"]) {
+    const response = await api("/api/jobs/refresh", {
+      method: "POST", headers: { "content-type": "application/json", "idempotency-key": key },
+      body: JSON.stringify({ accountId: "acct-northstar" }),
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "invalid_idempotency_key" });
+  }
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n, 0);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action = 'inventory.refresh'").get().n, 0);
+});
+
+test("ORB-002 refresh idempotency does not alias a second authorized requester in the same tenant", async () => {
+  const request = cookie => api("/api/jobs/refresh", {
+    method: "POST", headers: { "content-type": "application/json", "idempotency-key": "actor-bound-retry" },
+    body: JSON.stringify({ accountId: "acct-northstar" }),
+  }, cookie);
+  const first = await request(sessionCookie);
+  assert.equal(first.status, 202);
+  const salt = randomBytes(16).toString("hex");
+  const password = "fixture-operator-passphrase-92";
+  const owner = app.db.prepare("SELECT organization_id FROM users WHERE email = ?").get("admin@example.test");
+  app.db.prepare("INSERT INTO users (id, organization_id, email, password_salt, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run("second-fixture-operator", owner.organization_id, "second-operator@example.test", salt,
+      scryptSync(password, salt, 64).toString("hex"), "operator", new Date().toISOString());
+  const login = await api("/api/auth/login", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "second-operator@example.test", password }),
+  }, null);
+  assert.equal(login.status, 200);
+  const otherCookie = login.headers.get("set-cookie").split(";")[0];
+  const conflict = await request(otherCookie);
+  assert.equal(conflict.status, 409);
+  assert.deepEqual(await conflict.json(), { error: "idempotency_conflict" });
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM jobs").get().n, 1);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action = 'inventory.refresh'").get().n, 1);
+});

@@ -83,7 +83,8 @@
         "docs/TEST_EVIDENCE/2026-11-09-local-poc.md",
         "tests/inventory-api.test.mjs",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-002-uapi-authorization-boundary.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-uapi-authorization-boundary.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md"
       ],
       "blockers": [
         "The mock cPanel inventory vertical slice has local fixture proof; authorized live provider capability and inventory fidelity are still untested. Owner-approved disposable scoped cPanel sandbox access required for ORB-006/019; do not confuse ORB-009 browser-only E2E with live UAPI evidence."
@@ -214,7 +215,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-atomic-sqlite-initialization.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-persisted-cross-connection-source-guards.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-004-005-exact-source-guard-validation.md",
-        "docs/RESEARCH/2026-11-27-sqlite-schema-trigger-validation.md"
+        "docs/RESEARCH/2026-11-27-sqlite-schema-trigger-validation.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md"
       ],
       "blockers": [
         "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification.",
@@ -374,7 +376,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-atomic-sqlite-initialization.md",
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-persisted-cross-connection-source-guards.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-004-005-exact-source-guard-validation.md",
-        "docs/RESEARCH/2026-11-27-sqlite-schema-trigger-validation.md"
+        "docs/RESEARCH/2026-11-27-sqlite-schema-trigger-validation.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
