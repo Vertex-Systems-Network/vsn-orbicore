@@ -1727,9 +1727,21 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
     const capabilityMatch = url.pathname.match(/^\/api\/accounts\/([^/]+)\/capabilities$/);
     if (request.method === "GET" && capabilityMatch) {
       const accountId = decodeURIComponent(capabilityMatch[1]);
-      const account = db.prepare("SELECT id, label, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?").get(accountId, actor.organizationId);
+      const account = db.prepare("SELECT id, label, source, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?").get(accountId, actor.organizationId);
       if (!account) return json(response, 404, { error: "account_not_found" });
-      const snapshot = db.prepare("SELECT profile_name AS profileName, capabilities_json AS capabilitiesJson, source, fetched_at AS fetchedAt FROM capability_snapshots WHERE account_id = ? AND organization_id = ? ORDER BY fetched_at DESC LIMIT 1").get(accountId, actor.organizationId);
+      // A fixture profile or persisted synthetic snapshot is never evidence
+      // of a provider account's permissions.
+      if (account.source !== "mock_fixture") {
+        return json(response, 200, {
+          accountId: account.id, accountLabel: account.label,
+          profileName: "unverified_provider",
+          capabilities: CAPABILITY_PROFILES.cpanel_uapi_standard.map(({ capability }) => ({
+            capability, level: "unknown", note: "No authorized live capability evidence.",
+          })),
+          source: "unverified_provider", fetchedAt: null, live: false,
+        });
+      }
+      const snapshot = db.prepare("SELECT profile_name AS profileName, capabilities_json AS capabilitiesJson, source, fetched_at AS fetchedAt FROM capability_snapshots WHERE account_id = ? AND organization_id = ? AND source = 'mock_fixture' ORDER BY fetched_at DESC LIMIT 1").get(accountId, actor.organizationId);
       const capabilities = snapshot ? JSON.parse(snapshot.capabilitiesJson) : CAPABILITY_PROFILES[account.capabilityProfile] ?? CAPABILITY_PROFILES.cpanel_uapi_standard;
       return json(response, 200, {
         accountId: account.id,

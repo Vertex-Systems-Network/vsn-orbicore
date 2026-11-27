@@ -78,8 +78,10 @@ export function AccountsView({
   onAccountCreated: () => Promise<void>;
   onRefreshAccount: (accountId: string) => Promise<void>;
 }) {
-  const [capabilities, setCapabilities] = useState<CapabilitySnapshot | null>(null);
+  const [capabilityResult, setCapabilities] = useState<CapabilitySnapshot | null>(null);
   const [capLoading, setCapLoading] = useState(false);
+  const [capError, setCapError] = useState<string | null>(null);
+  const [capRequestVersion, setCapRequestVersion] = useState(0);
   const [showAddForm, setShowAddForm] = useState(false);
   const [label, setLabel] = useState("");
   const [host, setHost] = useState("");
@@ -94,17 +96,31 @@ export function AccountsView({
 
   const activeAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0] ?? null;
 
+  const capabilities = capabilityResult?.accountId === activeAccount?.id &&
+    capabilityResult?.source === (activeAccount?.source === "mock_fixture" ? "mock_fixture" : "unverified_provider")
+    ? capabilityResult : null;
+
   useEffect(() => {
-    if (!activeAccount) { setCapabilities(null); return; }
+    setCapabilities(null);
+    setCapError(null);
+    if (!activeAccount) { setCapLoading(false); return; }
     let cancelled = false;
     setCapLoading(true);
-    fetch(`/api/accounts/${encodeURIComponent(activeAccount.id)}/capabilities`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: CapabilitySnapshot | null) => { if (!cancelled) setCapabilities(data); })
-      .catch(() => { if (!cancelled) setCapabilities(null); })
+    const id = activeAccount.id;
+    const source = activeAccount.source === "mock_fixture" ? "mock_fixture" : "unverified_provider";
+    fetch(`/api/accounts/${encodeURIComponent(id)}/capabilities`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Capability snapshot unavailable");
+        const data = await res.json() as CapabilitySnapshot;
+        if (data.accountId !== id || data.source !== source || !Array.isArray(data.capabilities)) {
+          throw new Error("Capability snapshot does not match account provenance");
+        }
+        if (!cancelled) setCapabilities(data);
+      })
+      .catch(() => { if (!cancelled) setCapError(id); })
       .finally(() => { if (!cancelled) setCapLoading(false); });
     return () => { cancelled = true; };
-  }, [activeAccount?.id]);
+  }, [activeAccount?.id, activeAccount?.source, capRequestVersion]);
 
   const submitSandbox = async (event: FormEvent) => {
     event.preventDefault();
@@ -253,11 +269,13 @@ export function AccountsView({
               <h2>Capability snapshot: {activeAccount?.label ?? "None selected"}</h2>
               {capabilities && <span className="count-chip">{capabilities.profileName}</span>}
             </div>
-            <p>Explicitly separates supported UAPI reads from operations requiring WHM, SSH, or external object storage.</p>
+            <p>{activeAccount?.source === "provider" ? "Provider capabilities are unverified. No authorized live capability evidence is available." : "Synthetic capability profile only; not a live permission grant."}</p>
           </div>
         </div>
-        {capLoading ? (
-          <div className="loading-state"><span className="loader" /> Loading capability snapshot...</div>
+        {activeAccount && capError === activeAccount.id && !capLoading ? (
+          <div className="error-banner" role="alert">Capability snapshot unavailable. No permissions can be inferred. <button type="button" onClick={() => setCapRequestVersion((v) => v + 1)}>Retry capabilities</button></div>
+        ) : activeAccount && (capLoading || !capabilities) ? (
+          <div className="loading-state" role="status"><span className="loader" /> Loading capability snapshot...</div>
         ) : capabilities ? (
           <div className="capability-grid">
             {capabilities.capabilities.map((cap) => (

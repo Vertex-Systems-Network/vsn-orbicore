@@ -348,3 +348,25 @@ test("ORB-002 worker refuses a queued mock refresh after account provenance chan
   assert.deepEqual(app.db.prepare("SELECT source, last_synced_at FROM accounts WHERE id = ?").get("acct-northstar"), before);
   assert.deepEqual(app.db.prepare("SELECT outcome FROM audit_events WHERE action = 'inventory.refresh' ORDER BY outcome").all().map(row => row.outcome), ["failed", "queued"]);
 });
+
+test("ORB-002 provider account cannot inherit a persisted mock capability snapshot", async () => {
+  const path = "/api/accounts/acct-northstar/capabilities";
+  const before = await api(path);
+  assert.equal(before.status, 200);
+  const mock = await before.json();
+  assert.equal(mock.source, "mock_fixture");
+  assert.ok(mock.capabilities.some((entry) => entry.level === "supported"));
+  app.db.prepare("UPDATE accounts SET source = 'provider' WHERE id = ?").run("acct-northstar");
+  const response = await api(path);
+  assert.equal(response.status, 200);
+  const unknown = await response.json();
+  assert.equal(unknown.accountId, "acct-northstar");
+  assert.equal(unknown.source, "unverified_provider");
+  assert.equal(unknown.profileName, "unverified_provider");
+  assert.equal(unknown.live, false);
+  assert.equal(unknown.fetchedAt, null);
+  assert.deepEqual(unknown.capabilities.map((entry) => entry.capability), mock.capabilities.map((entry) => entry.capability));
+  assert.ok(unknown.capabilities.every((entry) => entry.level === "unknown"));
+  app.db.prepare("UPDATE accounts SET source = 'mock_fixture' WHERE id = ?").run("acct-northstar");
+  assert.deepEqual(await (await api(path)).json(), mock);
+});
