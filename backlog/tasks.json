@@ -384,7 +384,8 @@
         "docs/RESEARCH/2026-11-27-sqlite-schema-trigger-validation.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-site-dry-run-source-boundary.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-005-migration-source-boundary.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-005-migration-source-boundary.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-005-storage-source-boundary.md"
       ],
       "blockers": [
         "PostgreSQL 009 hosted CI-only atomic redacted login, pending MFA, recovery upgrade and logout audit migration succeeded with real non-owner role and previous unlogged functions denied. Tested 75 project unit tests, nine PostgreSQL/Redis/Compose service jobs and Chromium at functional SHA; tenant Node-compatible SHA chain and login/MFA/logout rollback fault injection verified. Standard SQLite/scrypt HTTP remains unchanged; unknown/wrong-password attempts are rate-limited but not tenant-audited. Still open: production credential verification/migration without plaintext export, complete auth-failure audit and MFA/TOTP/passkeys key custody, production TLS cookie/CSRF and trusted write roles, SQLite v7 jobs/audit/secrets migration, reversible cutover, off-host backup/recovery and scoped live provider consent.",
@@ -589,7 +590,8 @@
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-refresh-control-provenance.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-provider-capability-snapshot-boundary.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-site-dry-run-source-boundary.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-005-migration-source-boundary.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-005-migration-source-boundary.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-005-storage-source-boundary.md"
       ],
       "blockers": [
         "PR #50 Chromium text-only 200% simulated user stylesheet passed 60 samples over 17 UI states and 320/390/1280px at 969fc631; CI reproduced and fixed 4 actual auth/security layout and control clipping faults. Existing native zoom/WebAuthn/MFA/tenant/browser suite and 113 Node tests remain green. NOT native Firefox text-only zoom. Remaining Firefox/WebKit browser controls, manual screen-reader/full WCAG contrast/touch/focus, full error/table state matrix and production provider/identity/tenant security. Targeted Firefox 159.0 / WebKit 27.2 hosted smoke passed 16 synthetic UI states/engine on 8477ba83. Native Firefox Text Only Zoom, complete cross-engine error matrix, human WCAG/screen reader/contrast/touch and production provider/identity remain unverified."

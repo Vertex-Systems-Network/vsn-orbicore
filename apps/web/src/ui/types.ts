@@ -113,7 +113,8 @@ export type StoragePolicy = {
   targetEndpoint: string;
   targetBucket: string;
   thresholdPercent: number;
-  estimatedReclaimBytes: number;
+  estimatedReclaimBytes: number | null;
+  drillEligible: boolean;
   status: string;
   lastDrillStatus?: string | null;
   lastDrillAt?: string | null;
@@ -121,7 +122,7 @@ export type StoragePolicy = {
 };
 
 export type StorageSummary = {
-  accounts: Array<HostingAccount & { utilizationPercent: number; estimatedOffloadableBytes: number }>;
+  accounts: Array<HostingAccount & { utilizationPercent: number; estimatedOffloadableBytes: number | null }>;
   policies: StoragePolicy[];
   sharedDiskPoolingSupported: boolean;
   note: string;
