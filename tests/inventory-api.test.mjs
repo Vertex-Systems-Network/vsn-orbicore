@@ -482,3 +482,48 @@ test("ORB-005 provider storage policy creation and drills are denied without fab
   const restored = await post(drillPath, { drillType: "dry_run_offload" });
   assert.equal(restored.status, 200);
 });
+
+test("ORB-005 automation excludes provider records, stale candidates only, and disabled rules cannot execute", async () => {
+  const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const sourceId = "acct-northstar";
+  app.db.prepare("UPDATE accounts SET source = 'provider', used_bytes = quota_bytes, last_synced_at = NULL WHERE id = ?").run(sourceId);
+  app.db.prepare("UPDATE accounts SET last_synced_at = ? WHERE id = ?").run(new Date().toISOString(), "acct-copperline");
+  app.db.prepare("UPDATE accounts SET last_synced_at = NULL WHERE id = ?").run("acct-fieldwork");
+  const providerLabel = app.db.prepare("SELECT label FROM accounts WHERE id = ?").get(sourceId).label;
+  const insights = await (await api("/api/automation/insights")).json();
+  assert.equal(insights.excludedProviderAccounts, 1);
+  assert.ok(insights.insights.some((item) => item.id === "insight-provider-unverified"));
+  assert.ok(insights.insights.every((item) => !item.id.includes(sourceId) && !item.title.includes(providerLabel)));
+  const expectedSnapshots = app.db.prepare("SELECT COUNT(*) AS count FROM site_snapshots ss JOIN sites s ON s.id = ss.site_id JOIN accounts a ON a.id = s.account_id WHERE a.source = 'mock_fixture'").get().count;
+  const ids = [];
+  for (const ruleType of ["inventory_stale_refresh", "quota_threshold_alert", "backup_snapshot_schedule"]) {
+    const created = await post("/api/automation/rules", { name: ruleType, ruleType, approvalMode: "dry_run_bounded", dailyRunCap: 3 });
+    assert.equal(created.status, 201);
+    const { rule } = await created.json();
+    ids.push(rule.id);
+    const run = await post("/api/automation/rules/" + rule.id + "/run", {});
+    assert.equal(run.status, 201);
+    const { summary } = await run.json();
+    assert.equal(summary.source, "mock_fixture");
+    assert.equal(summary.excludedProviderAccounts, 1);
+    if (ruleType === "inventory_stale_refresh") assert.deepEqual(summary.candidateRefreshIds, ["acct-fieldwork"]);
+    if (ruleType === "quota_threshold_alert") assert.ok(!summary.accountsOverThreshold.includes(providerLabel));
+    if (ruleType === "backup_snapshot_schedule") assert.equal(summary.recordedSiteSnapshots, expectedSnapshots);
+  }
+  app.db.prepare("UPDATE automation_rules SET enabled = 0 WHERE id = ?").run(ids[0]);
+  const snapshot = () => ({
+    runs: app.db.prepare("SELECT * FROM automation_runs ORDER BY id").all(),
+    rules: app.db.prepare("SELECT * FROM automation_rules ORDER BY id").all(),
+    audit: app.db.prepare("SELECT * FROM audit_events ORDER BY rowid").all(),
+  });
+  const before = snapshot();
+  const disabled = await post("/api/automation/rules/" + ids[0] + "/run", {});
+  assert.equal(disabled.status, 409);
+  assert.equal((await disabled.json()).status, "disabled_by_policy");
+  assert.deepEqual(snapshot(), before);
+  app.db.exec("UPDATE accounts SET source = 'provider'");
+  const empty = await post("/api/automation/rules/" + ids[1] + "/run", {});
+  assert.equal(empty.status, 409);
+  assert.equal((await empty.json()).status, "no_synthetic_accounts");
+  assert.deepEqual(snapshot(), before);
+});

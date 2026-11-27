@@ -1955,7 +1955,7 @@ export function AutomationAndReportsView({
     <div className="workspace-stack">
       <div className="environment-banner" role="status">
         <span className="banner-icon">i</span>
-        <span><strong>Deterministic operations boundary:</strong> Telemetry insights are computed locally from measured workspace state. No autonomous background loop or external LLM API is enabled.</span>
+        <span><strong>Deterministic operations boundary:</strong> Hosting insights and rule runs evaluate synthetic accounts only; unverified provider accounts are excluded. No autonomous background loop or external LLM API is enabled.</span>
       </div>
 
       <section className="panel">
@@ -1999,7 +1999,7 @@ export function AutomationAndReportsView({
               <h2>Policy-gated automation rules</h2>
               <span className="count-chip">{rules.length}</span>
             </div>
-            <p>Explicit operator trigger and strict per-day run caps govern every dry-run execution.</p>
+            <p>Explicit operator trigger and strict per-day run caps govern every synthetic-only dry-run execution.</p>
           </div>
         </div>
         {isAdmin && (
@@ -2052,7 +2052,7 @@ export function AutomationAndReportsView({
                   <button
                     type="button"
                     className="secondary-button mini-btn"
-                    disabled={!canMutate}
+                    disabled={!canMutate || rule.enabled !== 1}
                     onClick={() => void runRuleDryRun(rule.id)}
                   >
                     Run dry-run
