@@ -2034,6 +2034,14 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }
+    function requireMockSiteSource(siteId, organizationId) {
+      const current = db.prepare(`SELECT a.source FROM sites s JOIN accounts a ON a.id = s.account_id
+        WHERE s.id = ? AND a.organization_id = ?`).get(siteId, organizationId);
+      if (!current || current.source !== "mock_fixture") {
+        throw Object.assign(new Error("provider_site_operations_not_enabled"), { code: "provider_site_operations_not_enabled", status: 409 });
+      }
+    }
+
     const siteInspectionMatch = url.pathname.match(/^\/api\/sites\/([^/]+)\/inspection$/);
     if (request.method === "GET" && siteInspectionMatch) {
       const siteId = decodeURIComponent(siteInspectionMatch[1]);
@@ -2042,6 +2050,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       if (!site) return json(response, 404, { error: "site_not_found" });
       const account = db.prepare("SELECT id, label, host, source, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?")
         .get(site.accountId, actor.organizationId);
+      if (account?.source !== "mock_fixture") return json(response, 409, { error: "provider_site_operations_not_enabled" });
       const snapshots = db.prepare(`SELECT id, action, status, checksum_sha256 AS checksumSha256, details_json AS detailsJson, created_at AS createdAt
         FROM site_snapshots WHERE site_id = ? AND organization_id = ? ORDER BY created_at DESC LIMIT 10`).all(site.id, actor.organizationId)
         .map((row) => ({ ...row, details: JSON.parse(row.detailsJson), detailsJson: undefined }));
@@ -2062,6 +2071,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         if (!site) return json(response, 404, { error: "site_not_found" });
         if (!/wordpress|woo/i.test(site.kind)) return json(response, 400, { error: "not_a_wordpress_site" });
         const body = await readJsonWithSourceHold(request);
+        requireMockSiteSource(site.id, actor.organizationId);
         if (!["create", "destroy"].includes(body.action)) return json(response, 400, { error: "invalid_staging_action" });
         const now = new Date().toISOString();
         const existing = db.prepare("SELECT * FROM wp_site_state WHERE site_id = ? AND organization_id = ?").get(site.id, actor.organizationId);
@@ -2071,6 +2081,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const initialPending = existing ? existing.pending_updates : (site.status === "attention" ? 3 : 0);
         const coreVersion = existing?.core_version ?? "6.7.2";
         transaction(() => {
+          requireMockSiteSource(site.id, actor.organizationId);
           db.prepare(`INSERT INTO wp_site_state (site_id, organization_id, core_version, previous_core_version, pending_updates, previous_pending_updates, staging_url, staging_created_at, last_restore_point_sha256, last_action, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(site_id) DO UPDATE SET staging_url = excluded.staging_url, staging_created_at = excluded.staging_created_at, last_restore_point_sha256 = excluded.last_restore_point_sha256, last_action = excluded.last_action, updated_at = excluded.updated_at`)
@@ -2079,6 +2090,9 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         });
         return json(response, 200, { siteId: site.id, stagingUrl, stagingCreatedAt, restorePointSha256: restoreSha, dryRun: true });
       } catch (error) {
+        if (error?.code === "provider_site_operations_not_enabled") {
+          return json(response, 409, { error: "provider_site_operations_not_enabled" });
+        }
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }
@@ -2093,6 +2107,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         if (!site) return json(response, 404, { error: "site_not_found" });
         if (!/wordpress|woo/i.test(site.kind)) return json(response, 400, { error: "not_a_wordpress_site" });
         const body = await readJsonWithSourceHold(request);
+        requireMockSiteSource(site.id, actor.organizationId);
         if (!["apply_updates", "rollback"].includes(body.action)) return json(response, 400, { error: "invalid_wordpress_action" });
         const now = new Date().toISOString();
         const existing = db.prepare("SELECT * FROM wp_site_state WHERE site_id = ? AND organization_id = ?").get(site.id, actor.organizationId);
@@ -2102,6 +2117,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           const restoredCore = existing.previous_core_version;
           const restoredPending = existing.previous_pending_updates ?? 0;
           transaction(() => {
+            requireMockSiteSource(site.id, actor.organizationId);
             db.prepare(`UPDATE wp_site_state SET core_version = ?, previous_core_version = NULL, pending_updates = ?, previous_pending_updates = NULL, last_action = 'rollback', updated_at = ?
               WHERE site_id = ? AND organization_id = ?`)
               .run(restoredCore, restoredPending, now, site.id, actor.organizationId);
@@ -2115,6 +2131,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const restoreSha = sha256(`wp-restore:${site.id}:${prevCore}:${now}`);
         const nextCore = "6.8.1";
         transaction(() => {
+          requireMockSiteSource(site.id, actor.organizationId);
           db.prepare(`INSERT INTO wp_site_state (site_id, organization_id, core_version, previous_core_version, pending_updates, previous_pending_updates, staging_url, staging_created_at, last_restore_point_sha256, last_action, updated_at)
             VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, 'apply_updates', ?)
             ON CONFLICT(site_id) DO UPDATE SET previous_core_version = excluded.previous_core_version, core_version = excluded.core_version, previous_pending_updates = excluded.previous_pending_updates, pending_updates = 0, last_restore_point_sha256 = excluded.last_restore_point_sha256, last_action = 'apply_updates', updated_at = excluded.updated_at`)
@@ -2123,6 +2140,9 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         });
         return json(response, 200, { siteId: site.id, action: "apply_updates", coreVersion: nextCore, pendingUpdates: 0, restorePointSha256: restoreSha, canRollback: true, dryRun: true });
       } catch (error) {
+        if (error?.code === "provider_site_operations_not_enabled") {
+          return json(response, 409, { error: "provider_site_operations_not_enabled" });
+        }
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }
@@ -2138,6 +2158,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const account = db.prepare("SELECT id, label, host, source, capability_profile AS capabilityProfile FROM accounts WHERE id = ? AND organization_id = ?")
           .get(site.accountId, actor.organizationId);
         const body = await readJsonWithSourceHold(request);
+        requireMockSiteSource(site.id, actor.organizationId);
         if (!["backup_dry_run", "wp_preflight", "dns_ssl_check"].includes(body.action)) {
           return json(response, 400, { error: "unsupported_site_action" });
         }
@@ -2147,6 +2168,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         }
         const snapshotId = randomUUID();
         transaction(() => {
+          requireMockSiteSource(site.id, actor.organizationId);
           db.prepare(`INSERT INTO site_snapshots (id, organization_id, site_id, action, status, checksum_sha256, details_json, created_by, created_at)
             VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`)
             .run(snapshotId, actor.organizationId, site.id, body.action, execution.checksumSha256, JSON.stringify(execution.details), actor.id, execution.createdAt);
@@ -2154,6 +2176,9 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         });
         return json(response, 201, { id: snapshotId, action: body.action, status: "completed", checksumSha256: execution.checksumSha256, details: execution.details, createdAt: execution.createdAt });
       } catch (error) {
+        if (error?.code === "provider_site_operations_not_enabled") {
+          return json(response, 409, { error: "provider_site_operations_not_enabled" });
+        }
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }

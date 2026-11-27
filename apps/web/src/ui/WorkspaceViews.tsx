@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Icon } from "./icons";
 import type {
   AdvisoryInsight,
@@ -327,8 +327,13 @@ export function WebsitesView({ sites, globalQuery, canMutate }: { sites: Site[];
   const [sortKey, setSortKey] = useState<"domain" | "kind" | "phpVersion" | "status">("domain");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(sites[0]?.id ?? null);
-  const [inspection, setInspection] = useState<SiteInspection | null>(null);
+  const [inspectionResult, setInspection] = useState<SiteInspection | null>(null);
   const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectError, setInspectError] = useState<{ siteId: string; message: string } | null>(null);
+  const inspectionRequest = useRef(0);
+  const currentSite = useRef(selectedSiteId);
+  currentSite.current = selectedSiteId;
+  const inspection = inspectionResult?.site.id === selectedSiteId ? inspectionResult : null;
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -363,19 +368,36 @@ export function WebsitesView({ sites, globalQuery, canMutate }: { sites: Site[];
   }, [filtered, selectedSiteId]);
 
   const loadInspection = useCallback(async (siteId: string) => {
+    if (currentSite.current !== siteId) return;
+    const request = ++inspectionRequest.current;
+    setInspection(null);
+    setInspectError(null);
     setInspectLoading(true);
+    const isCurrent = () => inspectionRequest.current === request && currentSite.current === siteId;
     try {
       const res = await fetch(`/api/sites/${encodeURIComponent(siteId)}/inspection`);
-      if (res.ok) setInspection(await res.json() as SiteInspection);
-      else setInspection(null);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error === "provider_site_operations_not_enabled"
+          ? "Provider site inspection and dry-run operations are not enabled."
+          : "Site inspection unavailable. No permissions can be inferred.");
+      }
+      const data = await res.json() as SiteInspection;
+      if (data.site.id !== siteId || data.account.source !== "mock_fixture") {
+        throw new Error("Site inspection does not match synthetic account provenance.");
+      }
+      if (isCurrent()) setInspection(data);
+    } catch (error) {
+      if (isCurrent()) setInspectError({ siteId, message: error instanceof Error ? error.message : "Site inspection unavailable." });
     } finally {
-      setInspectLoading(false);
+      if (isCurrent()) setInspectLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!selectedSiteId) { setInspection(null); return; }
+    if (!selectedSiteId) { setInspection(null); setInspectError(null); setInspectLoading(false); return; }
     void loadInspection(selectedSiteId);
+    return () => { inspectionRequest.current += 1; };
   }, [selectedSiteId, loadInspection]);
 
   const triggerSiteAction = async (actionId: string) => {
@@ -529,8 +551,10 @@ export function WebsitesView({ sites, globalQuery, canMutate }: { sites: Site[];
             <p>Read-only diagnostics and dry-run site actions strictly scoped by the parent hosting account profile.</p>
           </div>
         </div>
-        {inspectLoading ? (
-          <div className="loading-state"><span className="loader" /> Inspecting website posture...</div>
+        {selectedSiteId && inspectError?.siteId === selectedSiteId && !inspectLoading ? (
+          <div className="error-banner" role="alert">{inspectError.message} <button type="button" onClick={() => void loadInspection(selectedSiteId)}>Retry inspection</button></div>
+        ) : selectedSiteId && (inspectLoading || !inspection) ? (
+          <div className="loading-state" role="status"><span className="loader" /> Inspecting website posture...</div>
         ) : inspection ? (
           <div className="inspection-body">
             <div className="capability-grid">

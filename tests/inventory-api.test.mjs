@@ -370,3 +370,36 @@ test("ORB-002 provider account cannot inherit a persisted mock capability snapsh
   app.db.prepare("UPDATE accounts SET source = 'mock_fixture' WHERE id = ?").run("acct-northstar");
   assert.deepEqual(await (await api(path)).json(), mock);
 });
+
+test("ORB-002 provider-tagged sites deny synthetic inspection, snapshots and WordPress lifecycle writes", async () => {
+  const siteId = "site-northstar-main";
+  const path = "/api/sites/" + siteId;
+  const original = await api(path + "/inspection");
+  assert.equal(original.status, 200);
+  assert.equal((await original.json()).source, "mock_fixture");
+  app.db.prepare("UPDATE accounts SET source = 'provider' WHERE id = ?").run("acct-northstar");
+  const before = {
+    snapshots: app.db.prepare("SELECT * FROM site_snapshots WHERE site_id = ? ORDER BY id").all(siteId),
+    wordpress: app.db.prepare("SELECT * FROM wp_site_state WHERE site_id = ?").all(siteId),
+    audit: app.db.prepare("SELECT * FROM audit_events ORDER BY rowid").all(),
+  };
+  const denied = await api(path + "/inspection");
+  assert.equal(denied.status, 409);
+  assert.deepEqual(await denied.json(), { error: "provider_site_operations_not_enabled" });
+  for (const [suffix, action] of [
+    ["/actions", "backup_dry_run"], ["/actions", "wp_preflight"], ["/actions", "dns_ssl_check"],
+    ["/wordpress/staging", "create"], ["/wordpress/staging", "destroy"],
+    ["/wordpress/update", "apply_updates"], ["/wordpress/update", "rollback"],
+  ]) {
+    const response = await api(path + suffix, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }),
+    });
+    assert.equal(response.status, 409, suffix + " " + action);
+    assert.deepEqual(await response.json(), { error: "provider_site_operations_not_enabled" });
+  }
+  assert.deepEqual(app.db.prepare("SELECT * FROM site_snapshots WHERE site_id = ? ORDER BY id").all(siteId), before.snapshots);
+  assert.deepEqual(app.db.prepare("SELECT * FROM wp_site_state WHERE site_id = ?").all(siteId), before.wordpress);
+  assert.deepEqual(app.db.prepare("SELECT * FROM audit_events ORDER BY rowid").all(), before.audit);
+  app.db.prepare("UPDATE accounts SET source = 'mock_fixture' WHERE id = ?").run("acct-northstar");
+  assert.equal((await api(path + "/inspection")).status, 200);
+});
