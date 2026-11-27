@@ -223,6 +223,19 @@ try {
     await providerRow.waitFor();
     assert.equal(await providerRow.getByRole("button", { name: "Refresh", exact: true }).isDisabled(), true);
     assert.equal(await providerRow.getByRole("button", { name: "Refresh", exact: true }).getAttribute("title"), "Provider refresh is not enabled");
+    await providerRow.click();
+    await page.getByText("Provider capabilities are unverified. No authorized live capability evidence is available.", { exact: true }).waitFor();
+    await page.locator(".capability-grid .cap-badge").first().waitFor();
+    assert.ok((await page.locator(".capability-grid .cap-badge").allTextContents()).every((level) => level === "unknown"));
+    await page.route("**/api/accounts/*/capabilities", (route) => route.fulfill({ status: 503, json: { error: "fixture_unavailable" } }));
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await page.getByRole("button", { name: "Hosting accounts", exact: true }).click();
+    await page.getByRole("alert").getByText(/Capability snapshot unavailable/).waitFor();
+    assert.equal(await page.locator(".capability-grid .cap-badge").count(), 0);
+    await page.unroute("**/api/accounts/*/capabilities");
+    await page.getByRole("button", { name: "Retry capabilities" }).click();
+    await page.locator(".capability-grid .cap-badge").first().waitFor();
+    assert.ok((await page.locator(".capability-grid .cap-badge").allTextContents()).every((level) => level === "unknown"));
     await page.route("**/api/jobs/refresh", async (route) => {
       sentRefreshIds.push(route.request().postDataJSON().accountId);
       await route.fulfill({ status: 202, json: { status: "queued", live: false } });

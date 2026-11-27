@@ -86,7 +86,8 @@
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-uapi-authorization-boundary.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-mock-inventory-source-boundary.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-002-refresh-control-provenance.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-refresh-control-provenance.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-provider-capability-snapshot-boundary.md"
       ],
       "blockers": [
         "The mock cPanel inventory vertical slice has local fixture proof; authorized live provider capability and inventory fidelity are still untested. Owner-approved disposable scoped cPanel sandbox access required for ORB-006/019; do not confuse ORB-009 browser-only E2E with live UAPI evidence."
@@ -582,7 +583,8 @@
         "docs/RESEARCH/2026-11-23-wcag-144-font-only-resize-method.md",
         "scripts/browser-text-resize.mjs",
         "docs/TEST_EVIDENCE/2026-11-23-orb-009-018-firefox-webkit-ci.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-002-refresh-control-provenance.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-refresh-control-provenance.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-provider-capability-snapshot-boundary.md"
       ],
       "blockers": [
         "PR #50 Chromium text-only 200% simulated user stylesheet passed 60 samples over 17 UI states and 320/390/1280px at 969fc631; CI reproduced and fixed 4 actual auth/security layout and control clipping faults. Existing native zoom/WebAuthn/MFA/tenant/browser suite and 113 Node tests remain green. NOT native Firefox text-only zoom. Remaining Firefox/WebKit browser controls, manual screen-reader/full WCAG contrast/touch/focus, full error/table state matrix and production provider/identity/tenant security. Targeted Firefox 159.0 / WebKit 27.2 hosted smoke passed 16 synthetic UI states/engine on 8477ba83. Native Firefox Text Only Zoom, complete cross-engine error matrix, human WCAG/screen reader/contrast/touch and production provider/identity remain unverified."
