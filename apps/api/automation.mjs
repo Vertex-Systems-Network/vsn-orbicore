@@ -16,9 +16,18 @@ export const APPROVAL_MODES = [
 export function generateAdvisoryInsights(db, organizationId, { now = new Date() } = {}) {
   const insights = [];
   const accounts = db.prepare(`SELECT id, label, host, health, used_bytes, quota_bytes, last_synced_at, capability_profile
-    FROM accounts WHERE organization_id = ?`).all(organizationId);
+    FROM accounts WHERE organization_id = ? AND source = 'mock_fixture'`).all(organizationId);
   const sites = db.prepare(`SELECT s.id, s.domain, s.kind, s.php_version, s.status, a.label AS account_label
-    FROM sites s JOIN accounts a ON a.id = s.account_id WHERE a.organization_id = ?`).all(organizationId);
+    FROM sites s JOIN accounts a ON a.id = s.account_id WHERE a.organization_id = ? AND a.source = 'mock_fixture'`).all(organizationId);
+  const excludedProviderAccounts = db.prepare("SELECT COUNT(*) AS count FROM accounts WHERE organization_id = ? AND source <> 'mock_fixture'").get(organizationId).count;
+  if (excludedProviderAccounts > 0) {
+    insights.push({
+      id: "insight-provider-unverified", severity: "info", category: "capability_boundary",
+      title: "Provider accounts excluded from synthetic advisor",
+      detail: `${excludedProviderAccounts} account(s) lack authorized live provider evidence. No synthetic health or capability conclusion is available for them.`,
+      evidenceKind: "unknown", observedAt: now.toISOString(), recommendedAction: "Hosting accounts",
+    });
+  }
   const verifiedContacts = db.prepare(`SELECT COUNT(*) AS count FROM recovery_contacts rc
     JOIN users u ON u.id = rc.user_id WHERE u.organization_id = ? AND rc.verified_at IS NOT NULL`).get(organizationId).count;
   const completedBackups = db.prepare(`SELECT COUNT(*) AS count FROM audit_events
@@ -34,7 +43,7 @@ export function generateAdvisoryInsights(db, organizationId, { now = new Date() 
         category: "storage_capacity",
         title: `${acc.label} storage at ${pct}% quota`,
         detail: `Account uses ${pct}% of allocated disk. Evaluate S3 archival or media offload dry-run policy.`,
-        evidenceKind: "measured",
+        evidenceKind: "configured",
         observedAt: acc.last_synced_at ?? now.toISOString(),
         recommendedAction: "Storage",
       });
@@ -47,7 +56,7 @@ export function generateAdvisoryInsights(db, organizationId, { now = new Date() 
         category: "inventory_freshness",
         title: `${acc.label} snapshot is over 24h old`,
         detail: `Last fixture sync was recorded at ${acc.last_synced_at ?? "never"}. Queue a read-only refresh.`,
-        evidenceKind: "measured",
+        evidenceKind: "configured",
         observedAt: acc.last_synced_at ?? now.toISOString(),
         recommendedAction: "Overview",
       });
@@ -74,7 +83,7 @@ export function generateAdvisoryInsights(db, organizationId, { now = new Date() 
       category: "runtime_lifecycle",
       title: `${php81Sites.length} site(s) still target PHP 8.1`,
       detail: `Review compatibility for ${php81Sites.map((s) => s.domain).join(", ")} prior to migration or runtime upgrades.`,
-      evidenceKind: "measured",
+      evidenceKind: "configured",
       observedAt: now.toISOString(),
       recommendedAction: "Websites",
     });
@@ -110,70 +119,64 @@ export function generateAdvisoryInsights(db, organizationId, { now = new Date() 
     generatedAt: now.toISOString(),
     readOnly: true,
     liveProviderConnections: 0,
+    excludedProviderAccounts,
     insights,
   };
 }
 
 export function executePolicyRuleDryRun(db, { organizationId, actorId, rule }) {
-  const now = new Date();
-  const dayStart = `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
-  const runsToday = db.prepare(`SELECT COUNT(*) AS count FROM automation_runs
-    WHERE rule_id = ? AND organization_id = ? AND created_at >= ?`).get(rule.id, organizationId, dayStart).count;
-
-  if (runsToday >= rule.daily_run_cap) {
-    return {
-      executed: false,
-      status: "budget_capped",
-      reason: `Daily execution cap (${rule.daily_run_cap}) reached for this rule.`,
-    };
-  }
-
-  if (rule.approval_mode === "manual_approval" && rule.enabled === 0) {
-    return {
-      executed: false,
-      status: "disabled_by_policy",
-      reason: "Rule is currently paused.",
-    };
-  }
-
-  const runId = randomUUID();
-  const createdAt = now.toISOString();
-  let summary = {};
-
-  if (rule.rule_type === "inventory_stale_refresh") {
-    const accounts = db.prepare("SELECT id, label, last_synced_at FROM accounts WHERE organization_id = ?").all(organizationId);
-    summary = { dryRun: true, evaluatedAccounts: accounts.length, candidateRefreshIds: accounts.map((a) => a.id) };
-  } else if (rule.rule_type === "quota_threshold_alert") {
-    const highUsage = db.prepare(`SELECT id, label, used_bytes, quota_bytes FROM accounts
-      WHERE organization_id = ? AND quota_bytes > 0 AND (used_bytes * 100 / quota_bytes) >= 80`).all(organizationId);
-    summary = { dryRun: true, accountsOverThreshold: highUsage.map((a) => a.label), thresholdPercent: 80 };
-  } else {
-    const snapshots = db.prepare("SELECT COUNT(*) AS count FROM site_snapshots WHERE organization_id = ?").get(organizationId).count;
-    summary = { dryRun: true, recordedSiteSnapshots: snapshots, action: "verify_backup_schedule_posture" };
-  }
-
   db.exec("BEGIN IMMEDIATE");
   try {
+    const current = db.prepare("SELECT * FROM automation_rules WHERE id = ? AND organization_id = ?").get(rule.id, organizationId);
+    const deny = (status, reason) => {
+      db.exec("ROLLBACK");
+      return { executed: false, status, reason };
+    };
+    if (!current || current.enabled !== 1 || !RULE_TYPES.includes(current.rule_type) || !APPROVAL_MODES.includes(current.approval_mode)) {
+      return deny("disabled_by_policy", "Rule is paused or unavailable.");
+    }
+    const now = new Date();
+    const dayStart = `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+    const runsToday = db.prepare(`SELECT COUNT(*) AS count FROM automation_runs
+      WHERE rule_id = ? AND organization_id = ? AND created_at >= ?`).get(current.id, organizationId, dayStart).count;
+    if (runsToday >= current.daily_run_cap) {
+      return deny("budget_capped", `Daily execution cap (${current.daily_run_cap}) reached for this rule.`);
+    }
+    const excludedProviderAccounts = db.prepare("SELECT COUNT(*) AS count FROM accounts WHERE organization_id = ? AND source <> 'mock_fixture'").get(organizationId).count;
+    const accounts = db.prepare("SELECT id, label, used_bytes, quota_bytes, last_synced_at FROM accounts WHERE organization_id = ? AND source = 'mock_fixture' ORDER BY id").all(organizationId);
+    if (accounts.length === 0) return deny("no_synthetic_accounts", "No synthetic accounts are available. Provider automation is not enabled.");
+    const runId = randomUUID();
+    const createdAt = now.toISOString();
+    let summary = { dryRun: true, source: "mock_fixture", excludedProviderAccounts };
+    if (current.rule_type === "inventory_stale_refresh") {
+      const staleThresholdMs = 24 * 60 * 60 * 1000;
+      summary = { ...summary, evaluatedAccounts: accounts.length, candidateRefreshIds: accounts.filter((account) => {
+        const lastSync = account.last_synced_at ? Date.parse(account.last_synced_at) : NaN;
+        return !Number.isFinite(lastSync) || now.getTime() - lastSync > staleThresholdMs;
+      }).map((account) => account.id) };
+    } else if (current.rule_type === "quota_threshold_alert") {
+      const highUsage = accounts.filter((account) => account.quota_bytes > 0 && (account.used_bytes * 100 / account.quota_bytes) >= 80);
+      summary = { ...summary, accountsOverThreshold: highUsage.map((account) => account.label), thresholdPercent: 80 };
+    } else {
+      const snapshots = db.prepare(`SELECT COUNT(*) AS count FROM site_snapshots ss
+        JOIN sites s ON s.id = ss.site_id JOIN accounts a ON a.id = s.account_id AND a.organization_id = ss.organization_id
+        WHERE ss.organization_id = ? AND a.source = 'mock_fixture'`).get(organizationId).count;
+      summary = { ...summary, recordedSiteSnapshots: snapshots, action: "verify_backup_schedule_posture" };
+    }
     db.prepare(`INSERT INTO automation_runs (id, organization_id, rule_id, actor_id, status, summary_json, created_at)
       VALUES (?, ?, ?, ?, 'completed', ?, ?)`)
-      .run(runId, organizationId, rule.id, actorId, JSON.stringify(redactSecrets(summary)), createdAt);
-    db.prepare("UPDATE automation_rules SET last_run_at = ? WHERE id = ? AND organization_id = ?").run(createdAt, rule.id, organizationId);
+      .run(runId, organizationId, current.id, actorId, JSON.stringify(redactSecrets(summary)), createdAt);
+    db.prepare("UPDATE automation_rules SET last_run_at = ? WHERE id = ? AND organization_id = ?").run(createdAt, current.id, organizationId);
     appendAuditEvent(db, {
-      organizationId,
-      actor: actorId,
-      action: "automation.rule.dry_run",
-      targetId: rule.id,
-      outcome: "completed",
-      createdAt,
-      details: { runId, ruleType: rule.rule_type, dryRun: true },
+      organizationId, actor: actorId, action: "automation.rule.dry_run", targetId: current.id,
+      outcome: "completed", createdAt, details: { runId, ruleType: current.rule_type, dryRun: true },
     });
     db.exec("COMMIT");
+    return { executed: true, runId, status: "completed", summary, createdAt };
   } catch (error) {
     db.exec("ROLLBACK");
     throw error;
   }
-
-  return { executed: true, runId, status: "completed", summary, createdAt };
 }
 
 export function buildAgencyReadinessReport(db, organizationId) {

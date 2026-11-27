@@ -2339,7 +2339,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const rule = db.prepare("SELECT * FROM automation_rules WHERE id = ? AND organization_id = ?").get(ruleId, actor.organizationId);
       if (!rule) return json(response, 404, { error: "automation_rule_not_found" });
       const result = executePolicyRuleDryRun(db, { organizationId: actor.organizationId, actorId: actor.id, rule });
-      if (!result.executed) return json(response, 429, result);
+      if (!result.executed) return json(response, result.status === "budget_capped" ? 429 : 409, result);
       return json(response, 201, result);
     }
     if (request.method === "POST" && url.pathname === "/api/accounts/cpanel/probe") {
