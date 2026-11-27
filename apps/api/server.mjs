@@ -1788,6 +1788,17 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         })),
       });
     }
+    function requireMockMigrationSources(siteId, sourceAccountId, targetAccountId, organizationId) {
+      const pair = db.prepare(`SELECT source.source AS source_kind, target.source AS target_kind
+        FROM sites s JOIN accounts source ON source.id = s.account_id
+        JOIN accounts target ON target.id = ? AND target.organization_id = source.organization_id
+        WHERE s.id = ? AND source.id = ? AND source.organization_id = ?`)
+        .get(targetAccountId, siteId, sourceAccountId, organizationId);
+      if (!pair || pair.source_kind !== "mock_fixture" || pair.target_kind !== "mock_fixture") {
+        throw Object.assign(new Error("provider_migration_not_enabled"), { code: "provider_migration_not_enabled", status: 409 });
+      }
+    }
+
     if (request.method === "POST" && url.pathname === "/api/migrations") {
       if (!allowSameOrigin(request, response)) return;
       if (!["owner", "admin", "operator"].includes(actor.role)) return json(response, 403, { error: "permission_denied" });
@@ -1797,6 +1808,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           JOIN accounts a ON a.id = s.account_id WHERE s.id = ? AND a.organization_id = ?`).get(body.siteId, actor.organizationId);
         const target = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(body.targetAccountId, actor.organizationId);
         if (!site || !target) return json(response, 404, { error: "site_or_target_not_found" });
+        requireMockMigrationSources(site.id, site.account_id, target.id, actor.organizationId);
         const strategy = ["wordpress_optimized", "generic_php", "whm_account_package"].includes(body.strategy) ? body.strategy : "wordpress_optimized";
         const freeTargetBytes = Math.max(0, target.quota_bytes - target.used_bytes);
         const estimatedSiteBytes = Math.max(512 * 1024 * 1024, Math.round(site.used_bytes * 0.35));
@@ -1826,6 +1838,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const now = new Date().toISOString();
         const initialState = blockerReason ? "blocked" : "planned";
         transaction(() => {
+          requireMockMigrationSources(site.id, site.account_id, target.id, actor.organizationId);
           db.prepare(`INSERT INTO migration_plans (id, organization_id, site_id, source_account_id, target_account_id, strategy, state, preflight_json, blocker_reason, rollback_note, created_by, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
             .run(id, actor.organizationId, site.id, site.account_id, target.id, strategy, initialState, JSON.stringify(preflight), blockerReason, "Source files remain untouched until post-cutover retention gate.", actor.id, now, now);
@@ -1833,6 +1846,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         });
         return json(response, 201, { id, state: initialState, checkpointPercent: 0, preflight, blockerReason });
       } catch (error) {
+        if (error?.code === "provider_migration_not_enabled") return json(response, 409, { error: error.code });
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }
@@ -1845,11 +1859,13 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const migrationId = decodeURIComponent(migrationAdvanceMatch[1]);
         const row = db.prepare("SELECT * FROM migration_plans WHERE id = ? AND organization_id = ?").get(migrationId, actor.organizationId);
         if (!row) return json(response, 404, { error: "migration_not_found" });
+        requireMockMigrationSources(row.site_id, row.source_account_id, row.target_account_id, actor.organizationId);
 
         const now = new Date().toISOString();
         if (body.simulatePartialFailure === true && row.state === "transfer") {
           const reason = "Simulated transfer interruption at 30% checkpoint; delta block manifest preserved for idempotent resume.";
           transaction(() => {
+            requireMockMigrationSources(row.site_id, row.source_account_id, row.target_account_id, actor.organizationId);
             db.prepare("UPDATE migration_plans SET state = 'failed', checkpoint_percent = 30, failed_at_stage = 'transfer', blocker_reason = ?, updated_at = ? WHERE id = ? AND organization_id = ?")
               .run(reason, now, row.id, actor.organizationId);
             appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "migration.partial_failure", targetId: row.id, outcome: "failed", createdAt: now, details: { stage: "transfer", checkpointPercent: 30, dryRun: true } });
@@ -1881,12 +1897,14 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
             : row.checkpoint_percent ?? 0;
         const checksum = row.checksum_sha256 ?? (nextState === "snapshot" ? sha256(`${row.id}:${row.site_id}:${now}`) : null);
         transaction(() => {
+          requireMockMigrationSources(row.site_id, row.source_account_id, row.target_account_id, actor.organizationId);
           db.prepare("UPDATE migration_plans SET state = ?, checksum_sha256 = ?, checkpoint_percent = ?, failed_at_stage = NULL, blocker_reason = NULL, updated_at = ? WHERE id = ? AND organization_id = ?")
             .run(nextState, checksum, nextCheckpoint, now, row.id, actor.organizationId);
           appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "migration.state.advance", targetId: row.id, outcome: "completed", createdAt: now, details: { from: row.state, to: nextState, checkpointPercent: nextCheckpoint, dryRun: true } });
         });
         return json(response, 200, { id: row.id, state: nextState, checkpointPercent: nextCheckpoint, checksumSha256: checksum });
       } catch (error) {
+        if (error?.code === "provider_migration_not_enabled") return json(response, 409, { error: error.code });
         return json(response, error.status ?? 500, { error: error.status ? "invalid_request" : "internal_error" });
       }
     }

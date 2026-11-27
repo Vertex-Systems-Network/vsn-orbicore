@@ -673,8 +673,12 @@ export function MigrationsView({
 }) {
   const [migrations, setMigrations] = useState<MigrationPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [siteId, setSiteId] = useState(sites[0]?.id ?? "");
-  const [targetAccountId, setTargetAccountId] = useState(accounts[1]?.id ?? accounts[0]?.id ?? "");
+  const mockAccounts = accounts.filter((account) => account.source === "mock_fixture");
+  const mockIds = new Set(mockAccounts.map((account) => account.id));
+  const mockSites = sites.filter((site) => mockIds.has(site.accountId));
+  const [siteId, setSiteId] = useState(mockSites[0]?.id ?? "");
+  const [targetAccountId, setTargetAccountId] = useState(mockAccounts[1]?.id ?? mockAccounts[0]?.id ?? "");
+  const eligibleSelection = mockSites.some((site) => site.id === siteId) && mockIds.has(targetAccountId);
   const [strategy, setStrategy] = useState<"wordpress_optimized" | "generic_php" | "whm_account_package">("wordpress_optimized");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -693,12 +697,13 @@ export function MigrationsView({
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    if (!siteId && sites[0]) setSiteId(sites[0].id);
-    if (!targetAccountId && accounts.length) setTargetAccountId((accounts[1] ?? accounts[0]).id);
+    if (!mockSites.some((site) => site.id === siteId)) setSiteId(mockSites[0]?.id ?? "");
+    if (!mockIds.has(targetAccountId)) setTargetAccountId(mockAccounts[1]?.id ?? mockAccounts[0]?.id ?? "");
   }, [sites, accounts, siteId, targetAccountId]);
 
   const createPlan = async (e: FormEvent) => {
     e.preventDefault();
+    if (!canMutate || !eligibleSelection || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -707,7 +712,12 @@ export function MigrationsView({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ siteId, targetAccountId, strategy }),
       });
-      if (!res.ok) throw new Error("Could not create dry-run migration plan.");
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error === "provider_migration_not_enabled"
+          ? "Provider migration is not enabled; both accounts must be synthetic."
+          : "Could not create dry-run migration plan.");
+      }
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Failed to plan migration.");
@@ -730,7 +740,9 @@ export function MigrationsView({
     if (!res.ok) {
       setError(data.error === "cutover_authorization_required"
         ? "DNS cutover requires explicit confirmation."
-        : "Migration stage could not advance.");
+        : data.error === "provider_migration_not_enabled"
+          ? "Provider migration is not enabled; the local plan may still be rolled back."
+          : "Migration stage could not advance.");
       return;
     }
     await load();
@@ -757,13 +769,13 @@ export function MigrationsView({
             <label>
               Source website
               <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
-                {sites.map((s) => <option key={s.id} value={s.id}>{s.domain} ({s.accountLabel ?? s.accountId})</option>)}
+                {mockSites.map((s) => <option key={s.id} value={s.id}>{s.domain} ({s.accountLabel ?? s.accountId})</option>)}
               </select>
             </label>
             <label>
               Destination account
               <select value={targetAccountId} onChange={(e) => setTargetAccountId(e.target.value)}>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.label} ({formatBytes(Math.max(0, a.quotaBytes - a.usedBytes))} free)</option>)}
+                {mockAccounts.map((a) => <option key={a.id} value={a.id}>{a.label} ({formatBytes(Math.max(0, a.quotaBytes - a.usedBytes))} free)</option>)}
               </select>
             </label>
             <label>
@@ -777,8 +789,8 @@ export function MigrationsView({
           </div>
           {error && <div className="auth-error" role="alert">{error}</div>}
           <div className="inline-form-actions">
-            <small>No live server transfer is performed; records persist locally to validate workflow gates.</small>
-            <button className="primary-button compact-btn" disabled={busy || !canMutate || !siteId}>
+            <small>Only synthetic accounts are eligible. No live server transfer is performed; records persist locally.</small>
+            <button className="primary-button compact-btn" disabled={busy || !canMutate || !eligibleSelection}>
               {busy ? "Evaluating preflight..." : "Run dry-run preflight"}
             </button>
           </div>
@@ -806,6 +818,7 @@ export function MigrationsView({
               const needsCutoverApproval = plan.state === "ready_for_cutover";
               const isTerminal = ["completed", "rolled_back", "blocked", "failed"].includes(plan.state);
               const canResumeFromFailure = plan.state === "failed" && plan.failedAtStage === "transfer";
+              const sourceEligible = mockIds.has(plan.sourceAccountId) && mockIds.has(plan.targetAccountId);
               return (
                 <article className="migration-card" key={plan.id}>
                   <div className="migration-card-top">
@@ -824,6 +837,7 @@ export function MigrationsView({
                     ))}
                   </div>
                   {plan.blockerReason && <div className="auth-error">{plan.blockerReason}</div>}
+                  {!sourceEligible && <div className="auth-error">Advance unavailable: both accounts must be synthetic. Local rollback remains available where permitted.</div>}
                   <div className="migration-meta">
                     <span>Est. transfer: {formatBytes(plan.preflight.estimatedSiteBytes)}</span>
                     <span>Target free: {formatBytes(plan.preflight.targetFreeBytes)}</span>
@@ -837,6 +851,7 @@ export function MigrationsView({
                         <button
                           type="button"
                           className="primary-button mini-btn"
+                          disabled={!sourceEligible}
                           onClick={() => void advance(plan.id, { confirmCutover: needsCutoverApproval })}
                         >
                           {needsCutoverApproval ? "Authorize dry-run cutover" : "Advance next step"}
@@ -846,6 +861,7 @@ export function MigrationsView({
                         <button
                           type="button"
                           className="secondary-button mini-btn"
+                          disabled={!sourceEligible}
                           onClick={() => void advance(plan.id, { simulatePartialFailure: true })}
                         >
                           Simulate 30% failure
@@ -855,6 +871,7 @@ export function MigrationsView({
                         <button
                           type="button"
                           className="primary-button mini-btn"
+                          disabled={!sourceEligible}
                           onClick={() => void advance(plan.id)}
                         >
                           Resume from 30% checkpoint
