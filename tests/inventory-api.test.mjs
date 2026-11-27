@@ -527,3 +527,51 @@ test("ORB-005 automation excludes provider records, stale candidates only, and d
   assert.equal((await empty.json()).status, "no_synthetic_accounts");
   assert.deepEqual(snapshot(), before);
 });
+
+test("ORB-005 agency report separates synthetic hosting evidence from unverified providers and local readiness", async () => {
+  const report = async () => {
+    const response = await api("/api/agency/report");
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const before = await report();
+  assert.equal(before.reportVersion, 2);
+  assert.equal(before.excludedProviderInventory.accountsCount, 0);
+  const id = "acct-northstar";
+  const excluded = before.accounts.find((account) => account.id === id);
+  const excludedSites = app.db.prepare("SELECT COUNT(*) AS count FROM sites WHERE account_id = ?").get(id).count;
+  app.db.prepare("UPDATE accounts SET source = 'provider' WHERE id = ?").run(id);
+  const mixed = await report();
+  assert.equal(mixed.measurementBoundary.hostingScope, "synthetic_accounts_only");
+  assert.equal(mixed.measurementBoundary.localSystemScope, "organization");
+  assert.equal(mixed.excludedProviderInventory.accountsCount, 1);
+  assert.equal(mixed.excludedProviderInventory.sitesTotal, excludedSites);
+  assert.ok(mixed.accounts.every((account) => account.source === "mock_fixture"));
+  assert.equal(mixed.portfolio.accountsCount, before.portfolio.accountsCount - 1);
+  assert.equal(mixed.portfolio.sitesTotal, before.portfolio.sitesTotal - excludedSites);
+  assert.equal(mixed.portfolio.usedBytes, before.portfolio.usedBytes - excluded.usedBytes);
+  assert.equal(mixed.portfolio.quotaBytes, before.portfolio.quotaBytes - excluded.quotaBytes);
+  assert.equal(mixed.portfolio.sitesActive + mixed.portfolio.sitesAttention, mixed.portfolio.sitesTotal);
+  assert.equal(mixed.readiness.verifiedSiteSnapshots, app.db.prepare("SELECT COUNT(*) AS count FROM site_snapshots ss JOIN sites s ON s.id = ss.site_id WHERE s.account_id <> ? AND ss.status = 'completed'").get(id).count);
+  const policies = app.db.prepare("SELECT COUNT(*) AS count, COALESCE(SUM(estimated_reclaim_bytes), 0) AS bytes FROM storage_policies WHERE account_id <> ?").get(id);
+  assert.equal(mixed.readiness.storageOffloadPolicies, policies.count);
+  assert.equal(mixed.readiness.estimatedOffloadReclaimBytes, policies.bytes);
+  const migrations = app.db.prepare("SELECT state, COUNT(*) AS count FROM migration_plans WHERE source_account_id <> ? AND target_account_id <> ? GROUP BY state").all(id, id);
+  assert.deepEqual(mixed.readiness.migrationCountsByState, Object.fromEntries(migrations.map((entry) => [entry.state, entry.count])));
+  app.db.exec("UPDATE accounts SET source = 'provider'");
+  const empty = await report();
+  assert.equal(empty.excludedProviderInventory.accountsCount, before.portfolio.accountsCount);
+  assert.equal(empty.excludedProviderInventory.sitesTotal, before.portfolio.sitesTotal);
+  assert.deepEqual(empty.accounts, []);
+  assert.equal(empty.portfolio.accountsCount, 0);
+  assert.equal(empty.portfolio.sitesTotal, 0);
+  assert.equal(empty.portfolio.utilizationPercent, null);
+  assert.equal(empty.readiness.verifiedSiteSnapshots, 0);
+  assert.equal(empty.readiness.storageOffloadPolicies, 0);
+  assert.equal(empty.readiness.estimatedOffloadReclaimBytes, 0);
+  assert.deepEqual(empty.readiness.migrationCountsByState, {});
+  for (const field of ["completedSystemBackups", "completedRestoreDrills", "activeTeamByRole"]) {
+    assert.deepEqual(mixed.readiness[field], before.readiness[field]);
+    assert.deepEqual(empty.readiness[field], before.readiness[field]);
+  }
+});
