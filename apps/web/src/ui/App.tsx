@@ -430,6 +430,9 @@ export function App() {
     return (overview?.accounts ?? []).filter((account) => `${account.label} ${account.host} ${account.username}`.toLowerCase().includes(normalized));
   }, [overview, query]);
 
+  const refreshableAccounts = (overview?.accounts ?? []).filter((account) => account.source === "mock_fixture");
+  const hasProviderAccounts = (overview?.accounts ?? []).some((account) => account.source !== "mock_fixture");
+
   const runRefresh = async (accountId?: string) => {
     if (!overview || refreshing) return;
     if (!canMutate) {
@@ -438,8 +441,8 @@ export function App() {
     }
     setRefreshing(true);
     try {
-      const ids = accountId ? [accountId] : overview.accounts.map((account) => account.id);
-      if (ids.length === 0) throw new Error("No hosting accounts are available to refresh.");
+      const ids = refreshableAccounts.filter((account) => !accountId || account.id === accountId).map((account) => account.id);
+      if (ids.length === 0) throw new Error("No synthetic hosting accounts are available to refresh. Provider refresh is not enabled.");
       const responses = await Promise.all(ids.map((id) => fetch("/api/jobs/refresh", {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accountId: id }),
       })));
@@ -554,12 +557,12 @@ export function App() {
           <div>
             <div className="eyebrow"><span className="live-indicator" /> CONTROL CENTER <span className="eyebrow-divider">·</span> {new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date())}</div>
             <h1>{activeNav === "Overview" ? `Workspace active, ${displayName}` : activeNav}</h1>
-            <p className="page-subtitle">Capability-aware hosting operations across local synthetic fixtures and dry-run workflows.</p>
+            <p className="page-subtitle">Capability-aware hosting operations across local synthetic fixtures and dry-run workflows.{hasProviderAccounts && " Provider refresh is not enabled; only synthetic accounts can be refreshed."}</p>
           </div>
           <div className="heading-actions">
             {isAdmin && <button className="secondary-button" onClick={() => void seedExtendedDemo()} disabled={seedingDemo}><Icon name="database" /> {seedingDemo ? "Loading..." : "Load extended demo data"}</button>}
             <button className="secondary-button" onClick={() => setActiveNav("Hosting accounts")}><Icon name="plus" /> {canMutate ? "Sandbox account" : "Hosting accounts"}</button>
-            <button className="primary-button" title={!canMutate ? "Requires operator, admin, or owner role" : undefined} onClick={() => void runRefresh()} disabled={!canMutate || loading || refreshing || !overview || overview.accounts.length === 0}><Icon className={refreshing ? "spinning" : ""} name="refresh" />{refreshing ? "Refreshing..." : "Refresh inventory"}</button>
+            <button className="primary-button" title={!canMutate ? "Requires operator, admin, or owner role" : hasProviderAccounts ? "Only synthetic accounts can be refreshed; provider refresh is not enabled." : undefined} onClick={() => void runRefresh()} disabled={!canMutate || loading || refreshing || refreshableAccounts.length === 0}><Icon className={refreshing ? "spinning" : ""} name="refresh" />{refreshing ? "Refreshing..." : "Refresh inventory"}</button>
           </div>
         </section>
 
@@ -596,6 +599,7 @@ export function App() {
             selectedAccountId={selectedAccountId}
             onSelectAccount={setSelectedAccountId}
             canMutate={canMutate}
+            refreshBusy={loading || refreshing}
             isAdmin={isAdmin}
             onAccountCreated={loadOverview}
             onRefreshAccount={(id) => runRefresh(id)}
