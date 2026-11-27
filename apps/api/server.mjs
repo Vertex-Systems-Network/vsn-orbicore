@@ -864,7 +864,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       const account = db.prepare("SELECT * FROM accounts WHERE id = ? AND organization_id = ?").get(candidate.account_id, candidate.organization_id);
       if (!account) throw new Error("The hosting account no longer exists.");
       const fixtureAccount = fixture.accounts.find((entry) => entry.id === account.id);
-      if (!fixtureAccount && account.source !== "mock_fixture") throw new Error("The mock adapter has no fixture for this account.");
+      if (account.source !== "mock_fixture") throw new Error("Provider inventory refresh is not enabled.");
       const siteCount = fixtureAccount
         ? fixtureAccount.sites.length
         : db.prepare("SELECT COUNT(*) AS count FROM sites WHERE account_id = ?").get(account.id).count;
@@ -874,7 +874,8 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         // A hold committed after claim but before completion must not allow
         // job/account/audit mutations to advance the signed source snapshot.
         rejectCiSourceRecoveryHold(db);
-        db.prepare("UPDATE accounts SET last_synced_at = ?, source = 'mock_fixture' WHERE id = ? AND organization_id = ?").run(now, account.id, candidate.organization_id);
+        const updated = db.prepare("UPDATE accounts SET last_synced_at = ? WHERE id = ? AND organization_id = ? AND source = 'mock_fixture'").run(now, account.id, candidate.organization_id);
+        if (updated.changes !== 1) throw new Error("Provider inventory refresh is not enabled.");
         db.prepare("UPDATE jobs SET status = 'completed', completed_at = ?, result_json = ?, error = NULL WHERE id = ?")
           .run(now, JSON.stringify(result), candidate.id);
         appendAuditEvent(db, { organizationId: candidate.organization_id, actor: actor.id, action: "inventory.refresh", targetId: account.id, outcome: "completed", createdAt: now, details: { source: "mock_fixture", live: false, jobId: candidate.id } });
@@ -1420,8 +1421,9 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
       try {
         const body = await readJsonWithSourceHold(request);
         if (typeof body.accountId !== "string" || body.accountId.length > 100) return json(response, 400, { error: "invalid_account_id" });
-        const account = db.prepare("SELECT id FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
+        const account = db.prepare("SELECT id, source FROM accounts WHERE id = ? AND organization_id = ?").get(body.accountId, actor.organizationId);
         if (!account) return json(response, 404, { error: "account_not_found" });
+        if (account.source !== "mock_fixture") return json(response, 409, { error: "provider_refresh_not_enabled" });
         const suppliedKey = request.headers["idempotency-key"] ?? null;
         if (suppliedKey !== null && (typeof suppliedKey !== "string" ||
             suppliedKey.length > 120 || !suppliedKey.trim() || suppliedKey.includes(","))) {
@@ -1464,6 +1466,9 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         // Inspect the key under the same writer lock as job creation and audit.
         // A retry is valid only for the same operation, account and requester.
         const outcome = transaction(() => {
+          const current = db.prepare("SELECT source FROM accounts WHERE id = ? AND organization_id = ?").get(account.id, actor.organizationId);
+          if (!current) return { missing: true };
+          if (current.source !== "mock_fixture") return { providerDisabled: true };
           const existing = idempotencyKey ? db.prepare("SELECT id, type, account_id, requested_by FROM jobs WHERE organization_id = ? AND idempotency_key = ?").get(actor.organizationId, idempotencyKey) : null;
           if (existing) {
             if (existing.type !== "inventory_refresh" || existing.account_id !== account.id ||
@@ -1477,6 +1482,8 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
           appendAuditEvent(db, { organizationId: actor.organizationId, actor: actor.id, action: "inventory.refresh", targetId: account.id, outcome: "queued", createdAt: now, details: { source: "mock_fixture", live: false, jobId: id } });
           return { id, created: true };
         });
+        if (outcome.missing) return json(response, 404, { error: "account_not_found" });
+        if (outcome.providerDisabled) return json(response, 409, { error: "provider_refresh_not_enabled" });
         if (outcome.conflict) return json(response, 409, { error: "idempotency_conflict" });
         return json(response, outcome.created ? 202 : 200, {
           jobId: outcome.id, status: outcome.created ? "queued" : "existing", source: "mock_fixture", live: false,

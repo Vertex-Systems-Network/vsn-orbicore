@@ -84,7 +84,8 @@
         "tests/inventory-api.test.mjs",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-evidence-scoped-cpanel-capabilities.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-uapi-authorization-boundary.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-mock-inventory-source-boundary.md"
       ],
       "blockers": [
         "The mock cPanel inventory vertical slice has local fixture proof; authorized live provider capability and inventory fidelity are still untested. Owner-approved disposable scoped cPanel sandbox access required for ORB-006/019; do not confuse ORB-009 browser-only E2E with live UAPI evidence."
@@ -216,7 +217,8 @@
         "docs/TEST_EVIDENCE/2026-11-23-orb-004-persisted-cross-connection-source-guards.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-004-005-exact-source-guard-validation.md",
         "docs/RESEARCH/2026-11-27-sqlite-schema-trigger-validation.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-sqlite-refresh-idempotency.md",
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-mock-inventory-source-boundary.md"
       ],
       "blockers": [
         "Transactional PostgreSQL synthetic outbox/Redis worker and disposable Compose named-volume/AOF recovery passed. ORB-005 has integration-tested read-only PostgreSQL core identity snapshot/RLS but no complete SQLite v7 migration or runtime HTTP cutover, trusted DB writes, provider policy, production supervision/host-failure verification.",
