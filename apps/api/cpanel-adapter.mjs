@@ -104,6 +104,11 @@ export class LiveCpanelAdapterBoundary {
       if (!result || typeof result !== "object" || Array.isArray(result)) {
         return { ok: false, live: true, error: "invalid_uapi_response" };
       }
+      // A malformed error field is not evidence of a successful call.
+      // Accept omitted/null errors for compatibility, or an explicit array.
+      if (result.errors != null && !Array.isArray(result.errors)) {
+        return { ok: false, live: true, error: "invalid_uapi_response" };
+      }
       const messagesCount = Array.isArray(result.errors) ? result.errors.length : 0;
       if (result.status === 0 || messagesCount > 0) {
         return { ok: false, live: true, error: "uapi_call_failed", messagesCount };
