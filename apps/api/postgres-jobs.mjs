@@ -79,7 +79,7 @@ export function createPostgresJobRepository(database) {
         [organizationId, hashedKey],
       );
       const job = jobFromRow(existing.rows[0]);
-      if (!job || job.accountId !== accountId || job.type !== JOB_TYPE) {
+      if (!job || job.accountId !== accountId || job.type !== JOB_TYPE || job.requestedBy !== requestedBy) {
         throw new Error("idempotency_key_payload_conflict");
       }
       return { job, created: false };

@@ -67,3 +67,29 @@ test("ORB-004: malformed PostgreSQL/Redis worker parameters fail before I/O", ()
     pool, redis: {}, organizationId: "org", workerId: "worker",
   }), /Redis/);
 });
+
+test("ORB-004 cross-requester idempotency conflict rolls back without outbox intent", async () => {
+  const calls = [];
+  let released = 0;
+  const connection = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (sql.startsWith("INSERT INTO jobs")) return { rows: [] };
+      if (sql.startsWith("SELECT")) return { rows: [{
+        id: request.id, organization_id: request.organizationId, account_id: request.accountId,
+        requested_by: request.requestedBy, type: "inventory_refresh", status: "queued",
+      }] };
+      return { rows: [] };
+    },
+    release() { released += 1; },
+  };
+  const repository = createTransactionalOutboxJobRepository({ query: connection.query, async connect() { return connection; } });
+  await assert.rejects(() => repository.enqueue({ ...request, requestedBy: "other-user" }), /idempotency_key_payload_conflict/);
+  assert.deepEqual(calls.map(({ sql }) => sql.split(" ")[0]), ["BEGIN", "INSERT", "SELECT", "ROLLBACK"]);
+  assert.equal(released, 1);
+  calls.length = 0;
+  const replay = await repository.enqueue(request);
+  assert.equal(replay.created, false);
+  assert.deepEqual(calls.map(({ sql }) => sql.split(" ")[0]), ["BEGIN", "INSERT", "SELECT", "COMMIT"]);
+  assert.equal(released, 2);
+});

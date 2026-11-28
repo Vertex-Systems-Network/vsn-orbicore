@@ -56,3 +56,26 @@ test("ORB-004: fail invalid identifiers, lease bounds and unsupported driver bef
   await assert.rejects(() => store.claimNext({ organizationId: "tenant", workerId: "worker", leaseSeconds: 0 }), /leaseSeconds/);
   await assert.rejects(() => store.complete({ organizationId: "tenant", jobId: "job1", claimToken: "not-a-uuid" }), /claimToken/);
 });
+
+test("ORB-004 PostgreSQL job replay binds the key to the original requester", async () => {
+  for (const originalRequester of ["operator-a", null]) {
+    const row = {
+      id: "job-ci", organization_id: "org-ci", account_id: "acct-ci",
+      requested_by: originalRequester, type: "inventory_refresh", status: "queued",
+      attempts: 0, max_attempts: 3, result_json: null, error: null,
+      created_at: new Date(), completed_at: null,
+    };
+    const repository = createPostgresJobRepository({
+      async query(sql) {
+        return { rows: sql.startsWith("INSERT") ? [] : [row] };
+      },
+    });
+    const input = { organizationId: "org-ci", accountId: "acct-ci", idempotencyKey: "retry" };
+    const replay = await repository.enqueue({ ...input, requestedBy: originalRequester });
+    assert.equal(replay.created, false);
+    assert.equal(replay.job.id, row.id);
+    for (const other of ["operator-b", ...(originalRequester === null ? [] : [null])]) {
+      await assert.rejects(() => repository.enqueue({ ...input, requestedBy: other }), /idempotency_key_payload_conflict/);
+    }
+  }
+});

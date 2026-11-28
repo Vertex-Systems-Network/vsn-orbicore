@@ -113,6 +113,24 @@ try {
   assert.equal(duplicate.status, 200);
   assert.equal(duplicate.data.status, "existing");
   assert.equal(duplicate.data.jobId, jobA);
+  const otherActorId = "ci-outbox-other-operator";
+  await pool.query(
+    "INSERT INTO users(id, organization_id, email, password_salt, password_hash, role, disabled, mfa_enabled) VALUES ($1,$2,$3,$4,$5,'operator',false,false)",
+    [otherActorId, actor.organization_id, "outbox-other@example.test", actor.password_salt, actor.password_hash],
+  );
+  const countsBeforeConflict = await pool.query(
+    "SELECT (SELECT COUNT(*)::int FROM jobs WHERE organization_id = $1) AS jobs, (SELECT COUNT(*)::int FROM job_outbox WHERE organization_id = $1) AS intents",
+    [organizationId],
+  );
+  await assert.rejects(repository.enqueue({
+    organizationId, accountId: row.id, requestedBy: otherActorId, idempotencyKey: fixedKey,
+  }), /idempotency_key_payload_conflict/);
+  const countsAfterConflict = await pool.query(
+    "SELECT (SELECT COUNT(*)::int FROM jobs WHERE organization_id = $1) AS jobs, (SELECT COUNT(*)::int FROM job_outbox WHERE organization_id = $1) AS intents",
+    [organizationId],
+  );
+  assert.deepEqual(countsAfterConflict.rows, countsBeforeConflict.rows);
+  assert.equal((await repository.getJob({ organizationId, id: jobA })).requestedBy, actor.id);
   const jobB = await enqueue("outbox-second-" + randomUUID());
   const outboxCount = await pool.query(
     "SELECT COUNT(*)::int AS n FROM job_outbox WHERE job_id = ANY($1::text[])",

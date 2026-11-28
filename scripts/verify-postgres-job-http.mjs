@@ -110,6 +110,24 @@ try {
     "INSERT INTO users (id, organization_id, email, password_salt, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, 'viewer', ?)",
   ).run("viewer-ci", "org-demo", "viewer@example.test", salt,
     scryptSync(viewerPassword, salt, 64).toString("hex"), new Date().toISOString());
+  // A second authorized operator may not replay another requester's key.
+  const operatorSalt = randomBytes(16).toString("hex");
+  const operatorPassword = "synthetic-operator-password-12345";
+  app.db.prepare(
+    "INSERT INTO users (id, organization_id, email, password_salt, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, 'operator', ?)",
+  ).run("operator-ci", "org-demo", "operator@example.test", operatorSalt,
+    scryptSync(operatorPassword, operatorSalt, 64).toString("hex"), new Date().toISOString());
+  const operatorLogin = await call("/api/auth/login", {
+    method: "POST", body: { email: "operator@example.test", password: operatorPassword },
+  });
+  assert.equal(operatorLogin.code, 200);
+  const actorConflict = await call("/api/jobs/refresh", {
+    method: "POST", cookie: operatorLogin.cookie, body: { accountId: "acct-copperline" }, key: "pg-http-one",
+  });
+  assert.equal(actorConflict.code, 409);
+  assert.equal(actorConflict.body.error, "idempotency_conflict");
+  assert.equal(Number((await pool.query("SELECT COUNT(*) AS count FROM jobs WHERE organization_id = $1", ["org-demo"])).rows[0].count), 1);
+
   const viewerLogin = await call("/api/auth/login", {
     method: "POST", body: { email: "viewer@example.test", password: viewerPassword },
   });
