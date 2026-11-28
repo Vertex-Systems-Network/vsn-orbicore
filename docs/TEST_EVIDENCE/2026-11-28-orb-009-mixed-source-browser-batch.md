@@ -1,0 +1,15 @@
+# ORB-009/018 — mixed-source browser regression batch
+
+Base main 1912b5006dc6bf7edd8298227ef10d932974b0c6; previous PR #93 final hosted checks passed and merged. Hosted verification pending.
+
+Two separate commits extend the existing Chromium script to check real provider-tagged fixture inspection rejection and retry, synthetic site recovery, mixed-source migration/storage selector eligibility and unavailable projections, advisor/report exclusion, and provider-only planner/storage disabled controls plus empty synthetic report totals. Test provenance changes are confined to disposable in-memory data and restored in the existing finally block. No new live provider or cross-engine-specific scenario proof, manual accessibility, production action or lifecycle promotion.
+
+Operator protocol: continue eligible development while checks run, stage meaningful commits without changing the published branch ref, then publish a coordinated ref update after previous checks complete. Canonical AGENTS.md requires GitHub-only work (no local clone/checkpoint); local execution is not claimed. Hosted workflow evidence remains authoritative.
+
+## First hosted run — failure retained
+
+[Browser run 46087561313](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46087561313) on `be011becbb56a416a82ed45f4635b4b96f4308b4`: Firefox and WebKit existing checks passed; Chromium confirmed website denial/retry/recovery, then timed out resolving the migration Source website label (job 140800613336, script line 270). [Standard CI](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46087561274) and [ledger](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46087561264) passed. Not merged. The correction supplies stable explicit accessible names on the three existing select controls, selects by exact combobox role/name, and compares the complete eligible option IDs against fixture DB rows. No test removed or relaxed. Root cause hypothesis: wrapping label text includes option contents or is otherwise not matched exactly; hosted rerun is needed to confirm. No local execution under AGENTS.md.
+
+## Corrected functional head verified
+
+On `f991710886d610818e99784a0096bbdbe931b52b`, [standard CI](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46088940219), [browser workflow](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46088940401) and [trusted ledger](https://github.com/Vertex-Systems-Network/vsn-orbicore/actions/runs/46088937270) passed. All three browser jobs completed successfully. Chromium job 140805043887 explicitly recorded both the website denial/retry/recovery and mixed-source/provider-only migration, storage, advisor/report scenario success. Existing WebAuthn, native page zoom, sampled text-spacing and simulated text-resize checks passed. No new Firefox/WebKit-specific mixed-source scenario or manual WCAG proof. Service workflow did not trigger. Previous failing evidence retained. Final evidence-only head checks and merge pending; no task lifecycle promotion.

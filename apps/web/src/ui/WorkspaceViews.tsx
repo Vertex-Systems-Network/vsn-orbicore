@@ -768,13 +768,13 @@ export function MigrationsView({
           <div className="form-grid">
             <label>
               Source website
-              <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+              <select aria-label="Source website" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
                 {mockSites.map((s) => <option key={s.id} value={s.id}>{s.domain} ({s.accountLabel ?? s.accountId})</option>)}
               </select>
             </label>
             <label>
               Destination account
-              <select value={targetAccountId} onChange={(e) => setTargetAccountId(e.target.value)}>
+              <select aria-label="Destination account" value={targetAccountId} onChange={(e) => setTargetAccountId(e.target.value)}>
                 {mockAccounts.map((a) => <option key={a.id} value={a.id}>{a.label} ({formatBytes(Math.max(0, a.quotaBytes - a.usedBytes))} free)</option>)}
               </select>
             </label>
@@ -1001,7 +1001,7 @@ export function StorageView({ canMutate }: { canMutate: boolean }) {
           <div className="form-grid">
             <label>
               Source account
-              <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              <select aria-label="Source account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
                 {eligibleAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
               </select>
             </label>
