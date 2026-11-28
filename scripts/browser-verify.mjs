@@ -263,10 +263,43 @@ try {
     assert.equal(await page.getByRole("button", { name: "Retry inspection", exact: true }).count(), 0);
     console.log("Mixed-source website inspection, denied actions and retry recovery verified.");
 
+    // Verify selector eligibility against real mixed-source API records, not mocked responses.
+    await page.getByRole("button", { name: "Migrations", exact: true }).click();
+    const sourceWebsite = page.getByLabel("Source website", { exact: true });
+    const destination = page.getByLabel("Destination account", { exact: true });
+    await sourceWebsite.locator("option").first().waitFor({ state: "attached" });
+    assert.ok(!(await sourceWebsite.locator("option").evaluateAll((options) => options.map((option) => option.value))).includes(providerSite.id));
+    assert.ok(!(await destination.locator("option").evaluateAll((options) => options.map((option) => option.value))).includes(tagged.id));
+    await page.getByRole("button", { name: "Storage", exact: true }).click();
+    const sourceAccount = page.getByLabel("Source account", { exact: true });
+    await sourceAccount.locator("option").first().waitFor({ state: "attached" });
+    assert.ok(!(await sourceAccount.locator("option").evaluateAll((options) => options.map((option) => option.value))).includes(tagged.id));
+    const storageRow = page.locator(".data-table-row.storage-cols").filter({ has: page.getByText(tagged.label, { exact: true }) });
+    await storageRow.getByText("Unavailable — provider unverified", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Automation & reports", exact: true }).click();
+    await page.getByText("Provider accounts excluded from synthetic advisor", { exact: true }).waitFor();
+    const excludedSiteCount = app.db.prepare("SELECT COUNT(*) AS count FROM sites WHERE account_id = ?").get(tagged.id).count;
+    await page.getByText("1 unverified provider account(s) and " + excludedSiteCount + " site(s) excluded from hosting metrics. No live provider readiness is inferred.", { exact: true }).waitFor();
+
     app.db.exec("UPDATE accounts SET source = 'provider'");
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.getByText(/Provider refresh is not enabled; only synthetic accounts can be refreshed/).waitFor();
     assert.equal(await bulk.isDisabled(), true);
+    await page.getByRole("button", { name: "Migrations", exact: true }).click();
+    await page.getByRole("button", { name: "Run dry-run preflight", exact: true }).waitFor();
+    assert.equal(await page.getByLabel("Source website", { exact: true }).locator("option").count(), 0);
+    assert.equal(await page.getByLabel("Destination account", { exact: true }).locator("option").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Run dry-run preflight", exact: true }).isDisabled(), true);
+    await page.getByRole("button", { name: "Storage", exact: true }).click();
+    await page.getByRole("button", { name: "Save dry-run policy", exact: true }).waitFor();
+    assert.equal(await page.getByLabel("Source account", { exact: true }).locator("option").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Save dry-run policy", exact: true }).isDisabled(), true);
+    await page.getByRole("button", { name: "Automation & reports", exact: true }).click();
+    const syntheticUtilization = page.locator(".report-stat").filter({ has: page.getByText("Synthetic disk utilization", { exact: true }) });
+    await syntheticUtilization.getByText("Unavailable", { exact: true }).waitFor();
+    const syntheticInventory = page.locator(".report-stat").filter({ has: page.getByText("Synthetic accounts / sites", { exact: true }) });
+    await syntheticInventory.getByText("0 / 0", { exact: true }).waitFor();
+    console.log("Mixed-source and provider-only migration, storage, advisor and report controls verified.");
   } finally {
     await page.unroute("**/api/jobs/refresh");
     for (const row of sourceRows) app.db.prepare("UPDATE accounts SET source = ? WHERE id = ?").run(row.source, row.id);
