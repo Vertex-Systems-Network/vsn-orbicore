@@ -265,15 +265,18 @@ try {
 
     // Verify selector eligibility against real mixed-source API records, not mocked responses.
     await page.getByRole("button", { name: "Migrations", exact: true }).click();
-    const sourceWebsite = page.getByLabel("Source website", { exact: true });
-    const destination = page.getByLabel("Destination account", { exact: true });
+    const sourceWebsite = page.getByRole("combobox", { name: "Source website", exact: true });
+    const destination = page.getByRole("combobox", { name: "Destination account", exact: true });
     await sourceWebsite.locator("option").first().waitFor({ state: "attached" });
-    assert.ok(!(await sourceWebsite.locator("option").evaluateAll((options) => options.map((option) => option.value))).includes(providerSite.id));
-    assert.ok(!(await destination.locator("option").evaluateAll((options) => options.map((option) => option.value))).includes(tagged.id));
+    const eligibleAccountIds = sourceRows.filter((row) => row.id !== tagged.id && row.source === "mock_fixture").map((row) => row.id).sort();
+    const eligibleSiteIds = app.db.prepare("SELECT s.id FROM sites s JOIN accounts a ON a.id = s.account_id WHERE a.source = 'mock_fixture' ORDER BY s.id").all().map((row) => row.id).sort();
+    const optionIds = async (select) => (await select.locator("option").evaluateAll((options) => options.map((option) => option.value))).sort();
+    assert.deepEqual(await optionIds(sourceWebsite), eligibleSiteIds);
+    assert.deepEqual(await optionIds(destination), eligibleAccountIds);
     await page.getByRole("button", { name: "Storage", exact: true }).click();
-    const sourceAccount = page.getByLabel("Source account", { exact: true });
+    const sourceAccount = page.getByRole("combobox", { name: "Source account", exact: true });
     await sourceAccount.locator("option").first().waitFor({ state: "attached" });
-    assert.ok(!(await sourceAccount.locator("option").evaluateAll((options) => options.map((option) => option.value))).includes(tagged.id));
+    assert.deepEqual(await optionIds(sourceAccount), eligibleAccountIds);
     const storageRow = page.locator(".data-table-row.storage-cols").filter({ has: page.getByText(tagged.label, { exact: true }) });
     await storageRow.getByText("Unavailable — provider unverified", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Automation & reports", exact: true }).click();
@@ -287,12 +290,12 @@ try {
     assert.equal(await bulk.isDisabled(), true);
     await page.getByRole("button", { name: "Migrations", exact: true }).click();
     await page.getByRole("button", { name: "Run dry-run preflight", exact: true }).waitFor();
-    assert.equal(await page.getByLabel("Source website", { exact: true }).locator("option").count(), 0);
-    assert.equal(await page.getByLabel("Destination account", { exact: true }).locator("option").count(), 0);
+    assert.equal(await page.getByRole("combobox", { name: "Source website", exact: true }).locator("option").count(), 0);
+    assert.equal(await page.getByRole("combobox", { name: "Destination account", exact: true }).locator("option").count(), 0);
     assert.equal(await page.getByRole("button", { name: "Run dry-run preflight", exact: true }).isDisabled(), true);
     await page.getByRole("button", { name: "Storage", exact: true }).click();
     await page.getByRole("button", { name: "Save dry-run policy", exact: true }).waitFor();
-    assert.equal(await page.getByLabel("Source account", { exact: true }).locator("option").count(), 0);
+    assert.equal(await page.getByRole("combobox", { name: "Source account", exact: true }).locator("option").count(), 0);
     assert.equal(await page.getByRole("button", { name: "Save dry-run policy", exact: true }).isDisabled(), true);
     await page.getByRole("button", { name: "Automation & reports", exact: true }).click();
     const syntheticUtilization = page.locator(".report-stat").filter({ has: page.getByText("Synthetic disk utilization", { exact: true }) });
