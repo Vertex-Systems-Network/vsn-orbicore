@@ -2087,18 +2087,19 @@ export function AutomationAndReportsView({
           <div className="panel-heading">
             <div>
               <h2>Agency portfolio readiness report</h2>
-              <p>Unified inventory, resilience, and capability boundary snapshot ({report.organization.name}).</p>
+              <p>Synthetic hosting inventory and organization-wide local system readiness ({report.organization.name}).</p>
             </div>
             <button type="button" className="secondary-button compact-btn" onClick={downloadReport}>
               Download agency report JSON
             </button>
           </div>
+          <p className="notice-strip" role="status">{report.excludedProviderInventory.accountsCount} unverified provider account(s) and {report.excludedProviderInventory.sitesTotal} site(s) excluded from hosting metrics. No live provider readiness is inferred.</p>
           <div className="report-grid">
-            <div className="report-stat"><small>Accounts / Sites</small><strong>{report.portfolio.accountsCount} / {report.portfolio.sitesTotal}</strong></div>
-            <div className="report-stat"><small>Disk utilization</small><strong>{report.portfolio.utilizationPercent}%</strong></div>
-            <div className="report-stat"><small>Verified site snapshots</small><strong>{report.readiness.verifiedSiteSnapshots}</strong></div>
-            <div className="report-stat"><small>SQLite backups / drills</small><strong>{report.readiness.completedSystemBackups} / {report.readiness.completedRestoreDrills}</strong></div>
-            <div className="report-stat"><small>Storage policies</small><strong>{report.readiness.storageOffloadPolicies}</strong></div>
+            <div className="report-stat"><small>Synthetic accounts / sites</small><strong>{report.portfolio.accountsCount} / {report.portfolio.sitesTotal}</strong></div>
+            <div className="report-stat"><small>Synthetic disk utilization</small><strong>{report.portfolio.utilizationPercent === null ? "Unavailable" : `${report.portfolio.utilizationPercent}%`}</strong></div>
+            <div className="report-stat"><small>Completed dry-run snapshots</small><strong>{report.readiness.verifiedSiteSnapshots}</strong></div>
+            <div className="report-stat"><small>Local SQLite backups / drills</small><strong>{report.readiness.completedSystemBackups} / {report.readiness.completedRestoreDrills}</strong></div>
+            <div className="report-stat"><small>Synthetic storage policies</small><strong>{report.readiness.storageOffloadPolicies}</strong></div>
             <div className="report-stat"><small>Live connections</small><strong>{report.measurementBoundary.liveProviderConnections}</strong></div>
           </div>
         </section>

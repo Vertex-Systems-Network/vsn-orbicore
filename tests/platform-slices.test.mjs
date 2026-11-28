@@ -504,7 +504,9 @@ test("Deterministic telemetry advisor, policy-gated automation daily caps, and a
   assert.equal(run2Body.status, "budget_capped");
 
   const report = await fetch(`${baseUrl}/api/agency/report`, { headers: { cookie } }).then((r) => r.json());
-  assert.equal(report.reportVersion, 1);
+  assert.equal(report.reportVersion, 2);
+  assert.equal(report.measurementBoundary.hostingScope, "synthetic_accounts_only");
+  assert.equal(report.excludedProviderInventory.accountsCount, 0);
   assert.equal(report.measurementBoundary.liveProviderConnections, 0);
   assert.equal(report.portfolio.accountsCount, 3);
   assert.equal(report.portfolio.sitesTotal, 7);

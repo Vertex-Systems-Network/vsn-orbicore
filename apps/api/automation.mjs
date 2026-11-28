@@ -181,14 +181,26 @@ export function executePolicyRuleDryRun(db, { organizationId, actorId, rule }) {
 
 export function buildAgencyReadinessReport(db, organizationId) {
   const org = db.prepare("SELECT id, name, created_at AS createdAt FROM organizations WHERE id = ?").get(organizationId);
-  const accounts = db.prepare("SELECT id, label, host, health, used_bytes AS usedBytes, quota_bytes AS quotaBytes, source, capability_profile AS capabilityProfile FROM accounts WHERE organization_id = ? ORDER BY label").all(organizationId);
+  const accounts = db.prepare("SELECT id, label, host, health, used_bytes AS usedBytes, quota_bytes AS quotaBytes, source, capability_profile AS capabilityProfile FROM accounts WHERE organization_id = ? AND source = 'mock_fixture' ORDER BY label").all(organizationId);
+  const excludedAccounts = db.prepare("SELECT COUNT(*) AS count FROM accounts WHERE organization_id = ? AND source <> 'mock_fixture'").get(organizationId).count;
+  const excludedSites = db.prepare(`SELECT COUNT(*) AS count FROM sites s JOIN accounts a ON a.id = s.account_id
+    WHERE a.organization_id = ? AND a.source <> 'mock_fixture'`).get(organizationId).count;
   const siteStats = db.prepare(`SELECT COUNT(*) AS total,
     SUM(CASE WHEN s.status = 'active' THEN 1 ELSE 0 END) AS activeCount,
     SUM(CASE WHEN s.status = 'attention' THEN 1 ELSE 0 END) AS attentionCount
-    FROM sites s JOIN accounts a ON a.id = s.account_id WHERE a.organization_id = ?`).get(organizationId);
-  const migrations = db.prepare("SELECT state, COUNT(*) AS count FROM migration_plans WHERE organization_id = ? GROUP BY state").all(organizationId);
-  const policies = db.prepare("SELECT COUNT(*) AS count, COALESCE(SUM(estimated_reclaim_bytes), 0) AS reclaimBytes FROM storage_policies WHERE organization_id = ?").get(organizationId);
-  const snapshots = db.prepare("SELECT COUNT(*) AS count FROM site_snapshots WHERE organization_id = ?").get(organizationId).count;
+    FROM sites s JOIN accounts a ON a.id = s.account_id WHERE a.organization_id = ? AND a.source = 'mock_fixture'`).get(organizationId);
+  const migrations = db.prepare(`SELECT m.state, COUNT(*) AS count FROM migration_plans m
+    JOIN sites s ON s.id = m.site_id AND s.account_id = m.source_account_id
+    JOIN accounts src ON src.id = m.source_account_id AND src.organization_id = m.organization_id
+    JOIN accounts dst ON dst.id = m.target_account_id AND dst.organization_id = m.organization_id
+    WHERE m.organization_id = ? AND src.source = 'mock_fixture' AND dst.source = 'mock_fixture'
+    GROUP BY m.state`).all(organizationId);
+  const policies = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(p.estimated_reclaim_bytes), 0) AS reclaimBytes
+    FROM storage_policies p JOIN accounts a ON a.id = p.account_id AND a.organization_id = p.organization_id
+    WHERE p.organization_id = ? AND a.source = 'mock_fixture'`).get(organizationId);
+  const snapshots = db.prepare(`SELECT COUNT(*) AS count FROM site_snapshots ss
+    JOIN sites s ON s.id = ss.site_id JOIN accounts a ON a.id = s.account_id AND a.organization_id = ss.organization_id
+    WHERE ss.organization_id = ? AND a.source = 'mock_fixture' AND ss.status = 'completed'`).get(organizationId).count;
   const backups = db.prepare("SELECT COUNT(*) AS count FROM audit_events WHERE organization_id = ? AND action = 'system.backup' AND outcome = 'completed'").get(organizationId).count;
   const restoreDrills = db.prepare("SELECT COUNT(*) AS count FROM audit_events WHERE organization_id = ? AND action = 'system.restore_drill' AND outcome = 'completed'").get(organizationId).count;
   const teamMembers = db.prepare("SELECT role, COUNT(*) AS count FROM users WHERE organization_id = ? AND disabled = 0 GROUP BY role").all(organizationId);
@@ -197,15 +209,18 @@ export function buildAgencyReadinessReport(db, organizationId) {
   const totalQuotaBytes = accounts.reduce((sum, acc) => sum + acc.quotaBytes, 0);
 
   return {
-    reportVersion: 1,
+    reportVersion: 2,
     generatedAt: new Date().toISOString(),
     organization: org ?? { id: organizationId, name: "Workspace" },
     measurementBoundary: {
       liveProviderConnections: 0,
       source: "mock_fixture",
+      hostingScope: "synthetic_accounts_only",
+      localSystemScope: "organization",
       sharedDiskPoolingSupported: false,
       externalSmtpConfigured: false,
     },
+    excludedProviderInventory: { accountsCount: excludedAccounts, sitesTotal: excludedSites, reason: "live_provider_evidence_not_authorized" },
     portfolio: {
       accountsCount: accounts.length,
       sitesTotal: siteStats.total ?? 0,
@@ -213,7 +228,7 @@ export function buildAgencyReadinessReport(db, organizationId) {
       sitesAttention: siteStats.attentionCount ?? 0,
       usedBytes: totalUsedBytes,
       quotaBytes: totalQuotaBytes,
-      utilizationPercent: totalQuotaBytes ? Math.round((totalUsedBytes / totalQuotaBytes) * 100) : 0,
+      utilizationPercent: totalQuotaBytes > 0 ? Math.round((totalUsedBytes / totalQuotaBytes) * 100) : null,
     },
     readiness: {
       verifiedSiteSnapshots: snapshots,

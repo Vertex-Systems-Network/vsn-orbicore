@@ -279,8 +279,9 @@ export type AgencyReport = {
   reportVersion: number;
   generatedAt: string;
   organization: { id: string; name: string };
-  measurementBoundary: { liveProviderConnections: number; source: string; sharedDiskPoolingSupported: boolean; externalSmtpConfigured: boolean };
-  portfolio: { accountsCount: number; sitesTotal: number; sitesActive: number; sitesAttention: number; usedBytes: number; quotaBytes: number; utilizationPercent: number };
+  measurementBoundary: { liveProviderConnections: number; source: string; hostingScope: "synthetic_accounts_only"; localSystemScope: "organization"; sharedDiskPoolingSupported: boolean; externalSmtpConfigured: boolean };
+  excludedProviderInventory: { accountsCount: number; sitesTotal: number; reason: string };
+  portfolio: { accountsCount: number; sitesTotal: number; sitesActive: number; sitesAttention: number; usedBytes: number; quotaBytes: number; utilizationPercent: number | null };
   readiness: {
     verifiedSiteSnapshots: number;
     completedSystemBackups: number;
