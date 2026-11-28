@@ -244,6 +244,25 @@ try {
     await page.getByRole("button", { name: "Refresh inventory", exact: true }).waitFor();
     assert.deepEqual(sentRefreshIds.sort(), sourceRows.filter((row) => row.id !== tagged.id && row.source === "mock_fixture").map((row) => row.id).sort());
     await page.unroute("**/api/jobs/refresh");
+
+    // ORB-009: real provider inspection rejection, retry, and recovery to a synthetic site.
+    const providerSite = app.db.prepare("SELECT id, domain FROM sites WHERE account_id = ? ORDER BY id LIMIT 1").get(tagged.id);
+    const mockSite = app.db.prepare("SELECT s.id, s.domain FROM sites s JOIN accounts a ON a.id = s.account_id WHERE a.source = 'mock_fixture' ORDER BY s.id LIMIT 1").get();
+    assert.ok(providerSite && mockSite);
+    await page.getByRole("button", { name: "Websites", exact: true }).click();
+    const siteRow = (domain) => page.locator(".data-table-row.websites-cols").filter({ has: page.getByText(domain, { exact: true }) });
+    await siteRow(providerSite.domain).click();
+    await page.getByRole("alert").getByText("Provider site inspection and dry-run operations are not enabled.", { exact: false }).waitFor();
+    assert.equal(await page.locator(".inspection-body").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Run dry-run", exact: true }).count(), 0);
+    await page.getByRole("button", { name: "Retry inspection", exact: true }).click();
+    await page.getByRole("alert").getByText("Provider site inspection and dry-run operations are not enabled.", { exact: false }).waitFor();
+    await siteRow(mockSite.domain).click();
+    await page.getByRole("heading", { name: "Site inspection & capability gates: " + mockSite.domain, exact: true }).waitFor();
+    await page.locator(".inspection-body").waitFor();
+    assert.equal(await page.getByRole("button", { name: "Retry inspection", exact: true }).count(), 0);
+    console.log("Mixed-source website inspection, denied actions and retry recovery verified.");
+
     app.db.exec("UPDATE accounts SET source = 'provider'");
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.getByText(/Provider refresh is not enabled; only synthetic accounts can be refreshed/).waitFor();
