@@ -5,7 +5,7 @@ import { copySyntheticTerminalJobHistorySnapshot } from "../apps/api/postgres-id
 
 const now = "2026-11-23T09:00:00.000Z";
 const later = "2026-11-23T09:01:00.000Z";
-const source = { accounts:[{id:"acct-ci",organization_id:"org-ci"}], users:[{id:"user-ci",organization_id:"org-ci"}] };
+const source = { accounts:[{id:"acct-ci",organization_id:"org-ci",source:"mock_fixture"}], users:[{id:"user-ci",organization_id:"org-ci"}] };
 const job = () => ({
   id:"job-ci",organization_id:"org-ci",account_id:"acct-ci",requested_by:"user-ci",
   type:"inventory_refresh",status:"completed",idempotency_key:"ci-terminal-sample",
@@ -57,4 +57,21 @@ test("ORB-004/005 terminal history uses parameters and does not enqueue work", a
     sqlite:{prepare(){throw Error("sqlite accessed");}},
     postgres:{connect(){throw Error("pg connected");}},
   }),/explicit_synthetic_offline_copy_required/);
+});
+
+test("ORB-004/005 terminal history rejects provider provenance, non-string identifiers and duplicate identities before insert", async () => {
+  const provider = { ...source, accounts: [{ ...source.accounts[0], source: "provider" }] };
+  const unknown = { ...source, accounts: [{ id: "acct-ci", organization_id: "org-ci" }] };
+  for (const invalidSource of [provider, unknown]) {
+    assert.throws(() => validateSyntheticTerminalJobs([job()], invalidSource), /tenant_actor_mismatch/);
+  }
+  assert.throws(() => validateSyntheticTerminalJobs([{ ...job(), id: 123 }], source), /unsupported_nonterminal/);
+  assert.throws(() => validateSyntheticTerminalJobs([job(), { ...job(), idempotency_key: "ci-terminal-other" }], source), /duplicate_terminal_job_identity/);
+  assert.throws(() => validateSyntheticTerminalJobs([job(), { ...job(), id: "job-other" }], source), /duplicate_terminal_job_identity/);
+  let queries = 0;
+  await assert.rejects(() => insertSyntheticTerminalJobs({
+    client: { async query() { queries += 1; } },
+    source: { ...source, jobs: [job(), { ...job(), id: "job-other" }] },
+  }), /duplicate_terminal_job_identity/);
+  assert.equal(queries, 0);
 });
