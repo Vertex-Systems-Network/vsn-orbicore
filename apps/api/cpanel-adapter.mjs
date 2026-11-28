@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { CAPABILITY_PROFILES, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
+import { CAPABILITY_PROFILES, isCapabilityProfileName, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -104,6 +104,11 @@ export class LiveCpanelAdapterBoundary {
       if (!result || typeof result !== "object" || Array.isArray(result)) {
         return { ok: false, live: true, error: "invalid_uapi_response" };
       }
+      // A malformed error field is not evidence of a successful call.
+      // Accept omitted/null errors for compatibility, or an explicit array.
+      if (result.errors != null && !Array.isArray(result.errors)) {
+        return { ok: false, live: true, error: "invalid_uapi_response" };
+      }
       const messagesCount = Array.isArray(result.errors) ? result.errors.length : 0;
       if (result.status === 0 || messagesCount > 0) {
         return { ok: false, live: true, error: "uapi_call_failed", messagesCount };
@@ -202,7 +207,7 @@ export function createMockCpanelAdapter(fixture) {
     live: false,
 
     discoverCapabilities({ accountId, label, capabilityProfile = "cpanel_uapi_standard" }) {
-      const profileName = capabilityProfile in CAPABILITY_PROFILES ? capabilityProfile : "cpanel_uapi_standard";
+      const profileName = isCapabilityProfileName(capabilityProfile) ? capabilityProfile : "cpanel_uapi_standard";
       return {
         accountId,
         accountLabel: label,
@@ -246,7 +251,7 @@ export function createMockCpanelAdapter(fixture) {
     },
 
     inspectSiteHealth({ site, account, snapshots = [], wpState = null }) {
-      const profileName = account?.capabilityProfile && account.capabilityProfile in CAPABILITY_PROFILES
+      const profileName = isCapabilityProfileName(account?.capabilityProfile)
         ? account.capabilityProfile
         : "cpanel_uapi_standard";
       const capabilities = CAPABILITY_PROFILES[profileName];

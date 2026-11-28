@@ -193,3 +193,8 @@ export const CAPABILITY_PROFILES = {
     { capability: "storage.block_mount", level: "not_available", note: "Use S3-compatible object storage instead" },
   ],
 };
+
+// Profile identifiers are data, never inherited object properties or coercible values.
+export function isCapabilityProfileName(value) {
+  return typeof value === "string" && Object.hasOwn(CAPABILITY_PROFILES, value);
+}

@@ -575,3 +575,23 @@ test("ORB-005 agency report separates synthetic hosting evidence from unverified
     assert.deepEqual(empty.readiness[field], before.readiness[field]);
   }
 });
+
+test("ORB-002 sandbox creation rejects invalid explicit capability profiles without writes", async () => {
+  const state = () => ["accounts", "sites", "capability_snapshots", "audit_events"].map((table) =>
+    app.db.prepare("SELECT COUNT(*) AS count FROM " + table).get().count);
+  const before = state();
+  const create = (input) => api("/api/accounts/sandbox", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ label: "Synthetic profile regression", username: "profile_ci", host: "cp.example.org", quotaGb: 10, ...input }),
+  });
+  for (const capabilityProfile of ["constructor", "__proto__", "toString", "unknown-profile", null, 42, {}]) {
+    const response = await create({ capabilityProfile });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "invalid_capability_profile" });
+    assert.deepEqual(state(), before);
+  }
+  const created = await create({ capabilityProfile: "cpanel_uapi_restricted" });
+  assert.equal(created.status, 201);
+  const account = app.db.prepare("SELECT capability_profile FROM accounts WHERE username = ?").get("profile_ci");
+  assert.equal(account.capability_profile, "cpanel_uapi_restricted");
+});

@@ -88,7 +88,8 @@
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-mock-inventory-source-boundary.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-refresh-control-provenance.md",
         "docs/TEST_EVIDENCE/2026-11-27-orb-002-provider-capability-snapshot-boundary.md",
-        "docs/TEST_EVIDENCE/2026-11-27-orb-002-site-dry-run-source-boundary.md"
+        "docs/TEST_EVIDENCE/2026-11-27-orb-002-site-dry-run-source-boundary.md",
+        "docs/TEST_EVIDENCE/2026-11-28-orb-002-uapi-profile-batch.md"
       ],
       "blockers": [
         "The mock cPanel inventory vertical slice has local fixture proof; authorized live provider capability and inventory fidelity are still untested. Owner-approved disposable scoped cPanel sandbox access required for ORB-006/019; do not confuse ORB-009 browser-only E2E with live UAPI evidence."
@@ -96,7 +97,7 @@
       "started_at": "2026-11-09T00:00:00Z",
       "completed_at": null,
       "verified_at": null,
-      "last_updated": "2026-11-27",
+      "last_updated": "2026-11-28",
       "verification_level": "mock_tested",
       "blocker_type": "external"
     },
