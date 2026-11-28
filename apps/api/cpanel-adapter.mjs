@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { CAPABILITY_PROFILES, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
+import { CAPABILITY_PROFILES, isCapabilityProfileName, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -207,7 +207,7 @@ export function createMockCpanelAdapter(fixture) {
     live: false,
 
     discoverCapabilities({ accountId, label, capabilityProfile = "cpanel_uapi_standard" }) {
-      const profileName = capabilityProfile in CAPABILITY_PROFILES ? capabilityProfile : "cpanel_uapi_standard";
+      const profileName = isCapabilityProfileName(capabilityProfile) ? capabilityProfile : "cpanel_uapi_standard";
       return {
         accountId,
         accountLabel: label,
@@ -251,7 +251,7 @@ export function createMockCpanelAdapter(fixture) {
     },
 
     inspectSiteHealth({ site, account, snapshots = [], wpState = null }) {
-      const profileName = account?.capabilityProfile && account.capabilityProfile in CAPABILITY_PROFILES
+      const profileName = isCapabilityProfileName(account?.capabilityProfile)
         ? account.capabilityProfile
         : "cpanel_uapi_standard";
       const capabilities = CAPABILITY_PROFILES[profileName];

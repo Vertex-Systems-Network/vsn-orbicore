@@ -6,7 +6,7 @@ import { randomUUID, randomBytes, createHash, scryptSync, timingSafeEqual } from
 import { DatabaseSync } from "node:sqlite";
 import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from "@simplewebauthn/server";
 import { decryptMfaSecret, decryptMfaSecretWithFallback, encodeBase32, encryptMfaSecret, mfaEncryptionKey, newRecoveryCodes, parseMfaKeyring, recoveryCodeHash, verifyTotp } from "./mfa.mjs";
-import { CAPABILITY_PROFILES, redactSecrets, resolveContainedPath, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
+import { CAPABILITY_PROFILES, isCapabilityProfileName, redactSecrets, resolveContainedPath, validateCpanelApiHost, validateExternalEndpoint } from "./security.mjs";
 import { createLocalNotificationAdapter, dispatchRecoveryNotification, issueRecoveryContactVerification, verifyRecoveryContactToken } from "./notifications.mjs";
 import { buildDeploymentReadiness, buildDiagnosticBundle, createDatabaseBackup, listBackups, runPreflight, runRestoreDrill, verifyBackupFile } from "./preflight.mjs";
 import { createMockCpanelAdapter, LiveCpanelAdapterBoundary } from "./cpanel-adapter.mjs";
@@ -1695,7 +1695,10 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const body = await readJsonWithSourceHold(request);
         const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
         const username = typeof body.username === "string" ? body.username.trim().slice(0, 40) : "";
-        const profileName = typeof body.capabilityProfile === "string" && body.capabilityProfile in CAPABILITY_PROFILES ? body.capabilityProfile : "cpanel_uapi_standard";
+        if (body.capabilityProfile !== undefined && !isCapabilityProfileName(body.capabilityProfile)) {
+          return json(response, 400, { error: "invalid_capability_profile" });
+        }
+        const profileName = body.capabilityProfile ?? "cpanel_uapi_standard";
         const quotaGb = Number(body.quotaGb ?? 50);
         const hostCheck = validateCpanelApiHost(body.host);
         if (!label || !/^[a-zA-Z0-9_-]{2,32}$/.test(username) || !hostCheck.valid || !Number.isFinite(quotaGb) || quotaGb < 1 || quotaGb > 5000) {
@@ -1742,7 +1745,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         });
       }
       const snapshot = db.prepare("SELECT profile_name AS profileName, capabilities_json AS capabilitiesJson, source, fetched_at AS fetchedAt FROM capability_snapshots WHERE account_id = ? AND organization_id = ? AND source = 'mock_fixture' ORDER BY fetched_at DESC LIMIT 1").get(accountId, actor.organizationId);
-      const capabilities = snapshot ? JSON.parse(snapshot.capabilitiesJson) : CAPABILITY_PROFILES[account.capabilityProfile] ?? CAPABILITY_PROFILES.cpanel_uapi_standard;
+      const capabilities = snapshot ? JSON.parse(snapshot.capabilitiesJson) : (isCapabilityProfileName(account.capabilityProfile) ? CAPABILITY_PROFILES[account.capabilityProfile] : []);
       return json(response, 200, {
         accountId: account.id,
         accountLabel: account.label,
@@ -1813,7 +1816,7 @@ export function createApp({ dbPath = process.env.ORBICORE_DB_PATH ?? resolve(her
         const freeTargetBytes = Math.max(0, target.quota_bytes - target.used_bytes);
         const estimatedSiteBytes = Math.max(512 * 1024 * 1024, Math.round(site.used_bytes * 0.35));
         const sameAccount = site.account_id === target.id;
-        const targetProfile = CAPABILITY_PROFILES[target.capability_profile ?? "cpanel_uapi_standard"] ?? [];
+        const targetProfile = isCapabilityProfileName(target.capability_profile) ? CAPABILITY_PROFILES[target.capability_profile] : [];
         const whmAllowed = targetProfile.find((c) => c.capability === "whm.account_transfer")?.level === "supported";
         const whmBlocked = strategy === "whm_account_package" && !whmAllowed;
         const preflight = {

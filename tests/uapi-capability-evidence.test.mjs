@@ -73,3 +73,13 @@ test("ORB-002 malformed UAPI error metadata cannot grant capability or inventory
   const denied = new LiveCpanelAdapterBoundary({ fetchImpl: async () => new Response(JSON.stringify({ status: 1, errors: [marker], data: {} })) });
   assert.deepEqual(await denied.discoverCapabilities(connection), { ok: false, live: true, error: "uapi_call_failed", messagesCount: 1 });
 });
+
+test("ORB-002 synthetic adapter does not resolve inherited properties as capability profiles", () => {
+  const adapter = createMockCpanelAdapter({});
+  for (const capabilityProfile of ["constructor", "__proto__", "toString", null, 1, {}, []]) {
+    const snapshot = adapter.discoverCapabilities({ accountId: "fixture", label: "Fixture", capabilityProfile });
+    assert.equal(snapshot.profileName, "cpanel_uapi_standard");
+    assert.deepEqual(snapshot.capabilities, CAPABILITY_PROFILES.cpanel_uapi_standard);
+    assert.equal(snapshot.live, false);
+  }
+});
